@@ -1,8 +1,8 @@
 """Calendar and Ganzhi helpers used by MingLi-Bench.
 
-This module intentionally focuses on small, testable primitives. It does not
-attempt to replace a full Chinese calendar engine yet; lunar conversion and
-solar-term calculation are listed as roadmap items.
+This module intentionally focuses on small, testable primitives. Solar-term
+helpers live in ``mingli_bench.solar_terms``; lunar conversion remains future
+work.
 """
 
 from __future__ import annotations

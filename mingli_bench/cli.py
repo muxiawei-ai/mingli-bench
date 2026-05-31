@@ -163,7 +163,7 @@ Examples:
     parser.add_argument(
         "--bazi-date",
         metavar="YYYY-MM-DD",
-        help="Calculate partial Bazi pillars from a Gregorian date and exit"
+        help="Calculate Bazi pillars from a Gregorian date and exit"
     )
 
     parser.add_argument(

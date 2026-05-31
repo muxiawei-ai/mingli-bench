@@ -9,8 +9,10 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 ### Added
 
 - GitHub Actions CI for Python 3.9-3.12.
-- `mingli_bench.bazi` partial Bazi derivation:
-  - Gregorian date to year pillar with documented approximate Li Chun boundary,
+- `mingli_bench.solar_terms` approximate 24 solar-term calculation based on apparent solar longitude.
+- `mingli_bench.bazi` Bazi derivation:
+  - Gregorian date/time to year pillar with calculated Li Chun boundary,
+  - Gregorian date/time to month pillar with major solar-term boundaries,
   - Gregorian date to day pillar,
   - late Zi-hour rollover at 23:00,
   - day stem + time to hour pillar,
@@ -18,7 +20,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - CLI flags:
   - `--bazi-date`,
   - `--bazi-time`.
-- Fixture regression tests for Bazi day/hour pillars.
+- Fixture regression tests for Bazi month/day/hour pillars.
 
 ## [0.1.0] - 2026-05-31
 
