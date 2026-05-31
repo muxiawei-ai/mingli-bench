@@ -1,0 +1,10 @@
+include LICENSE
+include README.md
+include README_zh.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include ATTRIBUTION.md
+include requirements.txt
+recursive-include data *.json *.txt
+recursive-include examples *.py
+recursive-include tests *.py

@@ -7,7 +7,6 @@ from typing import Dict, Any, Tuple, Type, Union, Optional
 
 from .base import ModelClient
 from ..utils.logger import get_logger
-from ..utils.config import load_config
 
 logger = get_logger(__name__)
 
@@ -131,6 +130,8 @@ class ModelFactory:
         """
         # Load configuration
         if config is None:
+            from ..utils.config import load_config
+
             config = load_config()
 
         logger.debug(f"ModelFactory.create called with model_name: '{model_name}'")

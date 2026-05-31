@@ -3,11 +3,13 @@ Command-line interface for Fortune Telling Benchmark.
 """
 
 import argparse
+import json
 import sys
 
-from .benchmark import FortuneTellingBenchmark
+from .calendar import hour_branch, parse_bazi_pillars
+from .charts import get_chart_summary
 from .models.factory import ModelFactory
-from .utils import get_logger, load_config
+from .utils import get_logger
 from .data import DataLoader
 
 logger = get_logger(__name__)
@@ -34,6 +36,11 @@ Examples:
   
   # Filter by category
   python -m mingli_bench.cli --model gemini-pro --categories 事件 婚姻
+
+  # Developer utilities, no model key required
+  python -m mingli_bench.cli --hour-branch 23
+  python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
+  python -m mingli_bench.cli --show-chart case_1
         """
     )
     
@@ -87,6 +94,11 @@ Examples:
         "--data-path",
         help="Path to benchmark data file"
     )
+
+    parser.add_argument(
+        "--fortune-data-path",
+        help="Path to fortune_api_results.json for chart utilities"
+    )
     
     # Output options
     parser.add_argument(
@@ -132,6 +144,25 @@ Examples:
         action="store_true",
         help="Show dataset statistics and exit"
     )
+
+    parser.add_argument(
+        "--hour-branch",
+        type=int,
+        metavar="HOUR",
+        help="Print the earthly branch for a 24-hour clock hour and exit"
+    )
+
+    parser.add_argument(
+        "--analyze-pillars",
+        metavar="PILLARS",
+        help='Parse four Bazi pillars such as "甲寅 戊辰 己亥 壬申" and exit'
+    )
+
+    parser.add_argument(
+        "--show-chart",
+        metavar="CASE_ID",
+        help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
+    )
     
     args = parser.parse_args()
     
@@ -162,6 +193,34 @@ Examples:
         for cat, count in stats['categories'].items():
             print(f"    - {cat}: {count}")
         return 0
+
+    if args.hour_branch is not None:
+        try:
+            print(hour_branch(args.hour_branch))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to calculate hour branch: {e}")
+            return 1
+
+    if args.analyze_pillars:
+        try:
+            print(json.dumps(parse_bazi_pillars(args.analyze_pillars), ensure_ascii=False, indent=2))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to analyze Bazi pillars: {e}")
+            return 1
+
+    if args.show_chart:
+        try:
+            print(json.dumps(
+                get_chart_summary(args.show_chart, path=args.fortune_data_path),
+                ensure_ascii=False,
+                indent=2,
+            ))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to show chart: {e}")
+            return 1
     
     # Check if model is required for remaining operations
     if not args.model:
@@ -169,6 +228,8 @@ Examples:
     
     # Load configuration
     try:
+        from .utils.config import load_config
+
         config = load_config(args.env_file)
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
@@ -188,6 +249,8 @@ Examples:
         return 1
     
     # Create benchmark
+    from .benchmark import FortuneTellingBenchmark
+
     benchmark = FortuneTellingBenchmark(model_client, args.data_path)
     
     # Run evaluation

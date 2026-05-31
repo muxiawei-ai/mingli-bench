@@ -1,169 +1,153 @@
-<div align="center">
+# MingLi-Bench
 
-# Chinese Fortune Telling Bench
-
-**A benchmark for evaluating large language models on Chinese traditional fortune telling — Bazi (八字) and Ziwei Doushu (紫微斗数).**
+Reusable Chinese metaphysics data utilities and LLM benchmark tooling for Bazi (八字), Ziwei Doushu (紫微斗数), and structured fortune-telling evaluation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Questions](https://img.shields.io/badge/Questions-160-green.svg)](./data/data.json)
 [![Years](https://img.shields.io/badge/Years-2022--2025-orange.svg)](./data)
 
-English | [中文](./README_zh.md)
+[中文](./README_zh.md)
 
-</div>
+## Why This Project Is Useful
 
----
+Chinese calendar and metaphysics systems are often locked inside private apps, ad hoc scripts, or prompt-only demos. MingLi-Bench makes the computational pieces easier to inspect, test, and reuse:
 
-## Overview
+- Normalized benchmark questions with birth metadata, event categories, options, and answers.
+- Pre-computed Bazi and Ziwei chart fixtures that separate chart derivation from model reasoning.
+- Small, testable Ganzhi and Bazi helper functions for developer workflows.
+- A CLI for dataset inspection, chart lookup, pillar analysis, and LLM benchmark runs.
+- A reproducible evaluation harness for comparing models, prompts, chart injection, and option shuffling.
 
-Questions are multiple-choice and scored by exact match against a ground-truth answer. The corpus is sourced from the annual **Global Fortune Teller Competition** ([全球算命师大赛](https://hkjfma.org)) for 2022–2025. Raw sheets live under [data/raw/](./data/raw/). For Bazi-specific benchmarks, [BaziQA (Chen et al., 2025)](https://arxiv.org/pdf/2602.12889).
+The project is not positioned as a fortune-telling consumer app. It is a developer-facing toolkit and benchmark for Chinese calendar / metaphysics data workflows.
 
-| File | Description |
-|---|---|
-| [data/data.json](./data/data.json) | 160 normalized multiple-choice questions across twelve life aspects (career, health, marriage, children, wealth, …). |
-| [data/fortune_api_results.json](./data/fortune_api_results.json) | Pre-computed Bazi and Ziwei charts (via [iztro](https://github.com/SylarLong/iztro)), keyed by `case_id` and joined to `data.json` at runtime when `--astro` is set. Isolates pure reasoning from chart derivation. |
+## Features
 
-> Filter by year with `--year`. Inspect the dataset with `--stats`.
-
----
+- 160 normalized multiple-choice benchmark questions from 2022-2025.
+- Twelve event categories: career, health, marriage, family, wealth, personality, and more.
+- Pre-computed Bazi and Ziwei chart data in `data/fortune_api_results.json`.
+- Pure utility functions for:
+  - sexagenary cycle names and indexes,
+  - earthly branch mapping for Chinese double-hours,
+  - Bazi four-pillar parsing,
+  - five-element counting,
+  - compact chart summary extraction.
+- CLI utilities that do not require an LLM key:
+  - dataset statistics,
+  - hour branch lookup,
+  - Bazi pillar analysis,
+  - chart summary lookup by `case_id`.
+- LLM evaluation CLI with OpenRouter, OpenAI, Anthropic, Google, DeepSeek, and Doubao support.
 
 ## Installation
 
 ```bash
-git clone https://github.com/DestinyLinker/MingLi-Bench.git
-cd MingLi-Bench
-pip install -r requirements.txt
+git clone https://github.com/muxiawei-ai/mingli-bench.git
+cd mingli-bench
+python -m pip install -e .
 ```
 
----
+If you only want to run from source without installing the package:
 
-## Configuration
+```bash
+python -m pip install -r requirements.txt
+```
 
-The CLI reads API keys and defaults from a `.env` file. Copy the template and fill in only the providers you plan to use — empty or placeholder values are skipped automatically.
+## CLI Usage
+
+No API key required:
+
+```bash
+python -m mingli_bench.cli --stats
+python -m mingli_bench.cli --hour-branch 23
+python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
+python -m mingli_bench.cli --show-chart case_1
+```
+
+Installed command form:
+
+```bash
+mingli-bench --stats
+mingli-bench --show-chart case_1
+```
+
+LLM benchmark run:
 
 ```bash
 cp .env.example .env
-```
+# Fill the provider key you plan to use.
 
-<details>
-<summary><b>Supported providers</b></summary>
-
-```dotenv
-# OpenRouter — one key, most models
-OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-
-# Native providers (only if you call them directly)
-OPENAI_API_KEY=sk-...
-# OPENAI_BASE_URL=https://api.openai.com/v1   # override for OpenAI-compatible gateways
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-
-# Doubao / Volcengine — both key and endpoint id are required
-DOUBAO_API_KEY=...
-DOUBAO_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-DOUBAO_ENDPOINT_ID=ep-...
-
-# Defaults (CLI flags can override)
-TIMEOUT=60
-MAX_WORKERS=5
-MAX_TOKENS=8192
-TEMPERATURE=0.0
-```
-
-</details>
-
-`.env` is git-ignored. To run against a different key set, pass `--env-file /path/to/other.env`.
-
-**Sanity check** once keys are in place:
-
-```bash
-python -m mingli_bench.cli --list-models   # supported model names
-python -m mingli_bench.cli --stats         # dataset statistics
-```
-
----
-
-## Quick Start
-
-> **Recommended defaults:** always pass `--cot` and `--astro`. Chain-of-Thought gives the model room to reason through the chart, and `--astro` injects pre-computed Bazi/Ziwei charts so scores reflect reasoning ability rather than date-to-chart conversion accuracy. Drop them only when you specifically want to ablate either effect.
-
-There are two common routing modes.
-
-### 1. Via OpenRouter (one key, most models)
-
-Leave `--platform` unset and write the model name in OpenRouter's `provider/model` form. The CLI auto-detects the `/` and routes through OpenRouter.
-
-```bash
-python -m mingli_bench.cli --model openai/gpt-4o               --year 2025 --cot --astro --max-workers 8
-python -m mingli_bench.cli --model anthropic/claude-sonnet-4-6 --year 2025 --cot --astro
-python -m mingli_bench.cli --model google/gemini-2.5-pro       --year 2025 --cot --astro
-python -m mingli_bench.cli --model deepseek/deepseek-r1        --year 2025 --cot --astro
-```
-
-### 2. Native provider
-
-When the model name doesn't match auto-detection rules (e.g. a versioned Doubao endpoint id), or when you want to force an OpenAI-compatible gateway, pass `--platform` explicitly.
-
-```bash
-# Native Doubao / Volcengine
 python -m mingli_bench.cli \
-    --platform doubao --model doubao-seed-2-0-pro-260215 \
-    --year 2025 --cot --astro --max-workers 8
-
-# Any model name, routed through an OpenAI-compatible gateway (set via OPENAI_BASE_URL)
-python -m mingli_bench.cli \
-    --platform openai --model doubao-seed-2-0-pro-260215 \
-    --year 2025 --cot --astro --max-workers 8
+  --model google/gemini-2.5-pro \
+  --year 2025 \
+  --cot \
+  --astro \
+  --sample 10
 ```
 
-`--platform` accepts: `openai`, `openrouter`, `anthropic`, `google`, `deepseek`, `doubao`.
+OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and `google/gemini-2.5-pro` are routed through OpenRouter automatically when the model name contains `/`.
 
----
+## Python API Examples
 
-## CLI Reference
+```python
+from mingli_bench.calendar import hour_branch, parse_bazi_pillars
+from mingli_bench.charts import get_chart_summary
 
-| Flag | Default | Description |
-|---|---|---|
-| `--model, -m` | **required** | Model name. Contains `/` → treated as an OpenRouter id; otherwise provider is inferred from prefix (`gpt-*`, `claude-*`, `gemini-*`, `deepseek-*`, `doubao-*`). |
-| `--platform` | inferred | Force routing platform, overriding prefix-based inference. |
-| `--year, -y` | all | Evaluate one year only. Available: `2022`, `2023`, `2024`, `2025`. |
-| `--max-workers` | `5` | Concurrent API calls. Raise to 8–16 if rate limits allow; lower on throttling. |
-| `--cot` | off | Prepend a Chain-of-Thought instruction to the prompt. |
-| `--astro` | off | Inject pre-computed Bazi/Ziwei charts from `data/fortune_api_results.json` into the prompt (model does not have to derive them from the birth date). |
-| `--sample, -s N` | all | Evaluate only the first N questions. Useful as a smoke test. |
-| `--categories, -c` | all | Filter by category, e.g. `--categories 事业 婚姻`. Available: 事业、健康、外貌、婚姻、子女、学业、官非、家庭、性格、灾劫、财运、运势. |
-| `--shuffle-options` | off | Randomize option order per question to guard against position bias. |
-| `--output-dir, -o` | `logs` | Directory for result files. |
-| `--no-save` | off | Print to terminal only; do not write files. |
-| `--env-file` | `.env` | Use a different env file. |
-| `--list-models` | — | Print supported model names and exit. |
-| `--stats` | — | Print dataset statistics (optionally filtered by `--year`) and exit. |
+print(hour_branch(23))  # 子
 
-Full help: `python -m mingli_bench.cli --help`.
+bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
+print(bazi["day_master"])  # 己
+print(bazi["five_elements_summary"])
 
----
+chart = get_chart_summary("case_1")
+print(chart["bazi"]["chinese_date"])
+print(chart["ziwei"]["palaces"][0])
+```
 
-## Output
+## Dataset
 
-Each run writes three artifacts under `--output-dir` (default `logs/`):
-
-| Artifact | Description |
+| File | Description |
 |---|---|
-| `<model>_results.json` | Per-question predictions, scoring, and aggregates. |
-| `<model>_summary.txt`  | Headline numbers. |
-| `<model>_responses/`   | Raw model responses, one file per question. |
+| `data/data.json` | Normalized benchmark questions, options, answers, categories, and birth metadata. |
+| `data/fortune_api_results.json` | Pre-computed Bazi and Ziwei chart fixtures keyed by `case_id`. |
+| `data/raw/` | Raw yearly source text files. |
 
----
+The chart fixtures are generated externally and are treated as data fixtures in this repository. The current Python utilities extract and normalize them; full lunar conversion and solar-term calculation are planned as future core modules.
+
+## Attribution
+
+This project is derived from and references upstream open-source and data resources, including `DestinyLinker/MingLi-Bench`, `iztro`, and raw competition materials. See [ATTRIBUTION.md](./ATTRIBUTION.md) for details.
+
+## Testing
+
+```bash
+python -m unittest discover -s tests
+```
+
+The test suite covers pure calendar helpers and chart fixture extraction. LLM API tests are intentionally not part of the default suite because they require credentials and can incur cost.
+
+## Roadmap
+
+- Add pure lunar / solar date conversion utilities.
+- Add 24 solar-term calculation and validation fixtures.
+- Add Bazi year/month/day/hour pillar derivation from Gregorian birth data.
+- Add timezone and birthplace normalization helpers.
+- Add richer Ziwei chart normalization APIs.
+- Add model-response caching and deterministic benchmark run manifests.
+- Publish package builds to PyPI once the API stabilizes.
+
+## Contributing
+
+Contributions are welcome. Good first contributions include:
+
+- adding calendar and Ganzhi test fixtures,
+- improving chart normalization,
+- adding documentation examples,
+- adding model evaluation adapters,
+- validating data records and raw-data provenance.
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request.
 
 ## License
 
-Released under the [MIT License](./LICENSE).
-
-## Contact
-
-- Issues: [github.com/DestinyLinker/MingLi-Bench/issues](https://github.com/DestinyLinker/MingLi-Bench/issues)
-- Email: [help@destinylinker.com](mailto:help@destinylinker.com)
+MIT License. See [LICENSE](./LICENSE).

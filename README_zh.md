@@ -1,222 +1,158 @@
-<div align="center">
+# MingLi-Bench
 
-# 中国传统命理评测基准 (Chinese Fortune Telling Bench)
-
-**面向大语言模型的中国传统命理评测基准 —— 涵盖八字与紫微斗数。**
+面向八字、紫微斗数与中文命理评测的可复用数据工具库和 LLM benchmark 工具。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Questions](https://img.shields.io/badge/Questions-160-green.svg)](./data/data.json)
 [![Years](https://img.shields.io/badge/Years-2022--2025-orange.svg)](./data)
 
-[English](./README.md) | 中文
+[English](./README.md)
 
-</div>
+## 一句话介绍
 
----
+MingLi-Bench 是一个工程化的中文命理数据与评测工具库，提供干支/时辰/八字基础函数、预排八字与紫微命盘数据、命理选择题 benchmark，以及可复现实验 CLI。
 
-## 简介
+## 为什么有开源价值
 
-本基准全部采用选择题形式,以**与标准答案完全一致**作为评分标准。题目来源于 **全球算命师大赛**([hkjfma.org](https://hkjfma.org))2022–2025 年度赛题,原始数据位于 [data/raw/](./data/raw/)。
+中文历法和命理计算经常散落在私有应用、临时脚本或纯 prompt demo 里，难以测试、复用和比较。MingLi-Bench 的价值在于把这些能力拆成可审计的工程资产：
 
-| 文件 | 说明 |
-|---|---|
-| [data/data.json](./data/data.json) | 对 160 道选择题进行整理,划分入事业、健康、婚姻、子女、财运等十二大类事件类型。 |
-| [data/fortune_api_results.json](./data/fortune_api_results.json) | 借助 [iztro](https://github.com/SylarLong/iztro) 预先排定的八字与紫微斗数命盘,通过 `case_id` （命主索引） 与 `data.json` （题目）关联;当传入 `--astro` 时在，会在运行时注入命盘信息,用于将**排盘**与**推理**两个环节解耦。 |
+- 标准化题目数据：出生信息、问题、选项、答案、事件类别。
+- 预排命盘数据：把“排盘是否准确”和“推理是否准确”解耦。
+- 可测试纯函数：干支、时辰地支、四柱解析、五行统计。
+- CLI 工具：无需模型 key 也能查数据、看命盘、解析四柱。
+- LLM 评测框架：用于比较模型、prompt、命盘注入、选项打乱等实验设置。
 
-> 使用 `--year` 按年份筛选题目;使用 `--stats` 查看数据集统计信息。
+这个项目不是消费级“算命娱乐应用”，而是面向开发者、研究者和开源贡献者的中文历法 / 命理数据工具与评测基准。
 
----
+## 功能列表
+
+- 160 道 2022-2025 年命理选择题。
+- 十二类事件标签：事业、健康、婚姻、家庭、财运、性格等。
+- `data/fortune_api_results.json` 中的预排八字和紫微斗数命盘。
+- 核心工具函数：
+  - 六十甲子名称与索引，
+  - 24 小时制到十二时辰地支，
+  - 八字四柱解析，
+  - 五行数量统计，
+  - 按 `case_id` 提取命盘摘要。
+- CLI：
+  - 数据集统计，
+  - 时辰地支查询，
+  - 四柱解析，
+  - case 命盘摘要，
+  - 多模型 LLM benchmark。
+- 支持 OpenRouter、OpenAI、Anthropic、Google、DeepSeek、豆包等模型接口。
 
 ## 安装
 
 ```bash
-git clone https://github.com/DestinyLinker/MingLi-Bench.git
-cd MingLi-Bench
-pip install -r requirements.txt
+git clone https://github.com/muxiawei-ai/mingli-bench.git
+cd mingli-bench
+python -m pip install -e .
 ```
 
----
+如果只想从源码目录运行：
 
-## 配置
+```bash
+python -m pip install -r requirements.txt
+```
 
-命令行工具会从 `.env` 文件读取 API 密钥和默认参数。复制模板文件后,**只需填写你实际调用的服务商**即可 —— 空值或占位值会被自动忽略。
+## CLI 使用
+
+无需 API key：
+
+```bash
+python -m mingli_bench.cli --stats
+python -m mingli_bench.cli --hour-branch 23
+python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
+python -m mingli_bench.cli --show-chart case_1
+```
+
+安装后也可以使用命令：
+
+```bash
+mingli-bench --stats
+mingli-bench --show-chart case_1
+```
+
+LLM 评测示例：
 
 ```bash
 cp .env.example .env
-```
+# 填入你要调用的模型服务商 key
 
-<details>
-<summary><b>支持的服务商</b></summary>
-
-```dotenv
-# OpenRouter —— 一个密钥即可调用大多数模型
-OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-
-# 原生接口(仅当你直接调用对应服务时才需填写)
-OPENAI_API_KEY=sk-...
-# OPENAI_BASE_URL=https://api.openai.com/v1   # 如需对接 OpenAI 兼容网关,可在此覆盖
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-
-# 豆包 / 火山引擎 —— 密钥与 endpoint id 均为必填
-DOUBAO_API_KEY=...
-DOUBAO_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-DOUBAO_ENDPOINT_ID=ep-...
-
-# 默认参数(可被命令行参数覆盖)
-TIMEOUT=60
-MAX_WORKERS=5
-MAX_TOKENS=8192
-TEMPERATURE=0.0
-```
-
-</details>
-
-`.env` 已加入 `.gitignore`。如需切换另一套密钥,可通过 `--env-file /path/to/other.env` 指定。
-
-key 配置完成后,可先做一次**连通性自检**:
-
-```bash
-python -m mingli_bench.cli --list-models   # 查看受支持的模型列表
-python -m mingli_bench.cli --stats         # 查看数据集统计信息
-```
-
----
-
-## 快速上手
-
-> **推荐默认配置:** 建议始终开启 `--cot` 与 `--astro`。思维链(CoT)让模型有足够的空间对命盘进行逐步推演;`--astro` 会注入预先排好的八字 / 紫微斗数命盘,使得评测分数反映的是**推理能力**而非**由生辰排盘**的准确度。仅当你希望对这两项做消融实验时,才建议关闭它们。
-
-常用的调用方式有两种。
-
-### 1. 通过 OpenRouter(一个密钥,覆盖大多数模型)
-
-无需指定 `--platform`,将模型名写成 OpenRouter 的 `provider/model` 形式即可。命令行会识别到 `/` 并自动路由至 OpenRouter。
-
-```bash
-python -m mingli_bench.cli --model openai/gpt-4o               --year 2025 --cot --astro --max-workers 8
-python -m mingli_bench.cli --model anthropic/claude-sonnet-4-6 --year 2025 --cot --astro
-python -m mingli_bench.cli --model google/gemini-2.5-pro       --year 2025 --cot --astro
-python -m mingli_bench.cli --model deepseek/deepseek-r1        --year 2025 --cot --astro
-```
-
-### 2. 直接调用原生接口
-
-当模型名无法被自动识别(例如带版本号的豆包 endpoint id),或你希望强制走某个 OpenAI 兼容网关时,可显式传入 `--platform`。
-
-```bash
-# 原生豆包 / 火山引擎接口
 python -m mingli_bench.cli \
-    --platform doubao --model doubao-seed-2-0-pro-260215 \
-    --year 2025 --cot --astro --max-workers 8
-
-# 任意模型名,通过 OpenAI 兼容网关调用(网关地址由 OPENAI_BASE_URL 指定)
-python -m mingli_bench.cli \
-    --platform openai --model doubao-seed-2-0-pro-260215 \
-    --year 2025 --cot --astro --max-workers 8
+  --model google/gemini-2.5-pro \
+  --year 2025 \
+  --cot \
+  --astro \
+  --sample 10
 ```
 
-`--platform` 可选值:`openai`、`openrouter`、`anthropic`、`google`、`deepseek`、`doubao`。
+当模型名包含 `/`，例如 `openai/gpt-4o`、`anthropic/claude-sonnet-4-6`、`google/gemini-2.5-pro`，CLI 会自动按 OpenRouter 模型 ID 处理。
 
----
+## Python API 示例
 
-## 提示词示例
+```python
+from mingli_bench.calendar import hour_branch, parse_bazi_pillars
+from mingli_bench.charts import get_chart_summary
 
-以 [data/data.json](./data/data.json) 中的 `ftb_0001` 为例,不加任何参数时:
+print(hour_branch(23))  # 子
 
-```text
-以下是一道关于中国传统命理的题目。
+bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
+print(bazi["day_master"])  # 己
+print(bazi["five_elements_summary"])
 
-命主信息：
-男命：1974年4月28日下午4:40分 出生地点：usa
-结合中国传统命理学（包括但不限于四柱八字、紫微斗数等）进行推算，请直接给出答案，用'答案：X'的格式（X为A、B、C或D）。
-
-问题：此命1996年发生何事？
-
-选项：
-A. 患上严重抑郁痴
-B. 回港认识现任妻子
-C. 交通意外，撞车，人平安
-D. 得到一笔意外之财
+chart = get_chart_summary("case_1")
+print(chart["bazi"]["chinese_date"])
+print(chart["ziwei"]["palaces"][0])
 ```
 
-加 `--cot`,上面的指令行替换为:
-
-```text
-结合中国传统命理学（包括但不限于四柱八字、紫微斗数等），请先分析推理过程，然后给出答案。最后用'答案：X'的格式给出你的选择（X为A、B、C或D）。
-```
-
-加 `--astro`,在指令与问题之间插入预先排好的命盘:
-
-```text
-八字命盘信息：
-八字：甲寅 戊辰 己亥 壬申
-时辰：申时
-五行局：金四局
-生肖：虎
-
-紫微命盘信息：
-十二宫位星曜分布：
-命宫：天同 火星
-兄弟：七杀 天马
-夫妻：天梁 左辅 右弼 天钺 地劫
-子女：廉贞 天相
-财帛：巨门
-疾厄：贪狼
-迁移：太阴 地空 擎羊
-仆役：紫微 天府 文昌 禄存
-官禄：天机 天魁 陀罗
-田宅：破军 文曲
-福德：太阳 铃星
-父母：武曲
-```
-
----
-
-## 命令行参数
-
-| 参数 | 默认值 | 说明 |
-|---|---|---|
-| `--model, -m` | **必填** | 模型名。含 `/` 时视为 OpenRouter id;否则根据前缀推断服务商(`gpt-*`、`claude-*`、`gemini-*`、`deepseek-*`、`doubao-*`)。 |
-| `--platform` | 自动推断 | 强制指定调用平台,覆盖基于前缀的推断。 |
-| `--year, -y` | 全部 | 仅评测指定年份的题目,可选:`2022`、`2023`、`2024`、`2025`。 |
-| `--max-workers` | `5` | API 并发请求数。速率限制允许时可提高到 8–16;触发限流则应调低。 |
-| `--cot` | 关闭 | 在提示词前加入思维链(CoT)指令。 |
-| `--astro` | 关闭 | 从 `data/fortune_api_results.json` 中注入预先排好的八字 / 紫微斗数命盘(模型无需自行根据生辰排盘)。 |
-| `--sample, -s N` | 全部 | 仅评测前 N 道题目,适合做快速自测。 |
-| `--categories, -c` | 全部 | 按类别筛选,例如 `--categories 事业 婚姻`。可选:事业、健康、外貌、婚姻、子女、学业、官非、家庭、性格、灾劫、财运、运势。 |
-| `--shuffle-options` | 关闭 | 每题随机打乱选项顺序,避免位置偏差。 |
-| `--output-dir, -o` | `logs` | 结果文件的输出目录。 |
-| `--no-save` | 关闭 | 仅输出到终端,不写入文件。 |
-| `--env-file` | `.env` | 指定其他 env 文件。 |
-| `--list-models` | — | 列出受支持的模型并退出。 |
-| `--stats` | — | 打印数据集统计信息并退出(可与 `--year` 联合使用)。 |
-
-完整帮助文档:`python -m mingli_bench.cli --help`。
-
----
-
-## 输出结果
-
-每次运行都会在 `--output-dir`(默认 `logs/`)下生成三类文件:
+## 数据说明
 
 | 文件 | 说明 |
 |---|---|
-| `<model>_results.json` | 每道题目的预测结果、打分与整体统计。 |
-| `<model>_summary.txt`  | 核心指标摘要。 |
-| `<model>_responses/`   | 模型原始响应,每题保存为一个独立文件。 |
+| `data/data.json` | 标准化题目、选项、答案、类别和出生信息。 |
+| `data/fortune_api_results.json` | 以 `case_id` 关联的预排八字 / 紫微命盘数据。 |
+| `data/raw/` | 原始年度文本。 |
 
----
+当前仓库把命盘作为数据 fixture 使用，并提供提取和标准化工具。完整农历转换、节气计算和从公历生日直接推四柱属于后续 Roadmap。
+
+## 来源与致谢
+
+本项目基于并引用了上游开源项目和数据资源，包括 `DestinyLinker/MingLi-Bench`、`iztro` 以及赛事原始资料。详细说明见 [ATTRIBUTION.md](./ATTRIBUTION.md)。
+
+## 测试
+
+```bash
+python -m unittest discover -s tests
+```
+
+默认测试覆盖纯函数和命盘数据提取。LLM API 测试不放在默认测试里，因为需要密钥且会产生费用。
+
+## Roadmap
+
+- 增加农历 / 公历转换纯函数。
+- 增加二十四节气计算与验证样例。
+- 从公历出生信息推导年柱、月柱、日柱、时柱。
+- 增加时区和出生地标准化工具。
+- 增加更完整的紫微斗数命盘标准化 API。
+- 增加模型响应缓存和可复现实验 manifest。
+- API 稳定后发布 PyPI 包。
+
+## 贡献方式
+
+欢迎贡献。适合优先参与的方向：
+
+- 增加历法、干支、节气测试样例。
+- 改进命盘标准化。
+- 补充文档和 API 示例。
+- 增加模型评测适配器。
+- 校验数据记录和原始数据来源。
+
+提交 PR 前请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ## 许可证
 
 本项目基于 [MIT License](./LICENSE) 开源。
-
-## 联系方式
-
-- Issues: [github.com/DestinyLinker/MingLi-Bench/issues](https://github.com/DestinyLinker/MingLi-Bench/issues)
-- 邮箱: [help@destinylinker.com](mailto:help@destinylinker.com)
