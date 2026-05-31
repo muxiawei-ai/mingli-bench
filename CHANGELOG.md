@@ -4,6 +4,22 @@ All notable changes to MingLi-Bench will be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses semantic versioning once public releases begin.
 
+## [Unreleased]
+
+### Added
+
+- GitHub Actions CI for Python 3.9-3.12.
+- `mingli_bench.bazi` partial Bazi derivation:
+  - Gregorian date to year pillar with documented approximate Li Chun boundary,
+  - Gregorian date to day pillar,
+  - late Zi-hour rollover at 23:00,
+  - day stem + time to hour pillar,
+  - `bazi_from_gregorian()` JSON-friendly helper.
+- CLI flags:
+  - `--bazi-date`,
+  - `--bazi-time`.
+- Fixture regression tests for Bazi day/hour pillars.
+
 ## [0.1.0] - 2026-05-31
 
 ### Added

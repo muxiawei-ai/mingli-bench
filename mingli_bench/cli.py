@@ -8,6 +8,7 @@ import sys
 
 from .calendar import hour_branch, parse_bazi_pillars
 from .charts import get_chart_summary
+from .bazi import bazi_from_gregorian
 from .models.factory import ModelFactory
 from .utils import get_logger
 from .data import DataLoader
@@ -40,6 +41,7 @@ Examples:
   # Developer utilities, no model key required
   python -m mingli_bench.cli --hour-branch 23
   python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
+  python -m mingli_bench.cli --bazi-date 1974-04-28 --bazi-time 16:40
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -159,6 +161,18 @@ Examples:
     )
 
     parser.add_argument(
+        "--bazi-date",
+        metavar="YYYY-MM-DD",
+        help="Calculate partial Bazi pillars from a Gregorian date and exit"
+    )
+
+    parser.add_argument(
+        "--bazi-time",
+        metavar="HH:MM",
+        help="Optional 24-hour time used with --bazi-date, for example 16:40"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -208,6 +222,26 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to analyze Bazi pillars: {e}")
+            return 1
+
+    if args.bazi_date:
+        try:
+            hour = None
+            minute = 0
+            if args.bazi_time:
+                time_parts = args.bazi_time.split(":", 1)
+                if len(time_parts) != 2:
+                    raise ValueError("--bazi-time must use HH:MM format")
+                hour = int(time_parts[0])
+                minute = int(time_parts[1])
+            print(json.dumps(
+                bazi_from_gregorian(args.bazi_date, hour=hour, minute=minute),
+                ensure_ascii=False,
+                indent=2,
+            ))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to calculate Bazi pillars: {e}")
             return 1
 
     if args.show_chart:

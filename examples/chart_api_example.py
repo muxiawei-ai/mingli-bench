@@ -12,12 +12,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from mingli_bench.bazi import bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.charts import get_chart_summary
 
 
 def main() -> None:
     print("Hour branch for 23:00:", hour_branch(23))
+
+    partial_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
+    print("Partial Bazi:", partial_chart)
 
     bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
     print("Day master:", bazi["day_master"])

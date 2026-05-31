@@ -3,6 +3,7 @@
 Reusable Chinese metaphysics data utilities and LLM benchmark tooling for Bazi (八字), Ziwei Doushu (紫微斗数), and structured fortune-telling evaluation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/muxiawei-ai/mingli-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/muxiawei-ai/mingli-bench/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Questions](https://img.shields.io/badge/Questions-160-green.svg)](./data/data.json)
 [![Years](https://img.shields.io/badge/Years-2022--2025-orange.svg)](./data)
@@ -29,6 +30,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
 - Pure utility functions for:
   - sexagenary cycle names and indexes,
   - earthly branch mapping for Chinese double-hours,
+  - partial Bazi derivation from Gregorian date/time,
   - Bazi four-pillar parsing,
   - five-element counting,
   - compact chart summary extraction.
@@ -61,6 +63,7 @@ No API key required:
 python -m mingli_bench.cli --stats
 python -m mingli_bench.cli --hour-branch 23
 python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
+python -m mingli_bench.cli --bazi-date 1974-04-28 --bazi-time 16:40
 python -m mingli_bench.cli --show-chart case_1
 ```
 
@@ -90,10 +93,16 @@ OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and
 ## Python API Examples
 
 ```python
+from mingli_bench.bazi import bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.charts import get_chart_summary
 
 print(hour_branch(23))  # 子
+
+partial_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
+print(partial_chart["year_pillar"])  # 甲寅
+print(partial_chart["day_pillar"])   # 己亥
+print(partial_chart["hour_pillar"])  # 壬申
 
 bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
 print(bazi["day_master"])  # 己
@@ -113,6 +122,17 @@ print(chart["ziwei"]["palaces"][0])
 | `data/raw/` | Raw yearly source text files. |
 
 The chart fixtures are generated externally and are treated as data fixtures in this repository. The current Python utilities extract and normalize them; full lunar conversion and solar-term calculation are planned as future core modules.
+
+### Current Bazi Calculation Scope
+
+`mingli_bench.bazi` currently implements:
+
+- year pillar from Gregorian date using a documented approximate Li Chun boundary,
+- day pillar with fixture-validated continuous sexagenary day cycle,
+- late Zi-hour day rollover at 23:00,
+- hour pillar from day stem and time.
+
+`month_pillar` is intentionally returned as `None` by `bazi_from_gregorian()` until solar-term calculation is implemented. This avoids pretending to provide complete Bazi chart derivation before the necessary calendar engine exists.
 
 ## Attribution
 
