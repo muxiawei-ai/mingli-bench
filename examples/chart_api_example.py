@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from mingli_bench.bazi import bazi_from_gregorian
+from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.charts import get_chart_summary
 
@@ -22,6 +22,22 @@ def main() -> None:
 
     bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
     print("Bazi:", bazi_chart)
+
+    birth_info_chart = bazi_from_birth_info(
+        {
+            "raw": "女命：西历1978年04月05日17：00-19：00酉时  台湾生",
+            "gender": "女",
+            "year": 1978,
+            "month": 4,
+            "day": 5,
+            "hour": 18,
+            "minute": 0,
+            "country": "中国",
+            "location": "台湾",
+            "calendar_type": "solar",
+        }
+    )
+    print("Bazi from birth_info:", birth_info_chart["timezone"], birth_info_chart["month_pillar"])
 
     bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
     print("Day master:", bazi["day_master"])

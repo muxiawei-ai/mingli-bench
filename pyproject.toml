@@ -15,6 +15,7 @@ authors = [
 keywords = [
   "bazi",
   "solar-terms",
+  "timezone",
   "ziwei-doushu",
   "chinese-calendar",
   "llm-evaluation",

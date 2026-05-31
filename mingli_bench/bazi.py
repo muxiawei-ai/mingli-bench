@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from .calendar import (
     EARTHLY_BRANCHES,
@@ -14,6 +14,7 @@ from .calendar import (
     sexagenary_index,
     sexagenary_name,
 )
+from .locations import resolve_timezone
 from .solar_terms import (
     DEFAULT_TZ_OFFSET_HOURS,
     solar_month_branch_for_datetime,
@@ -237,7 +238,7 @@ def bazi_from_gregorian(
     *,
     hour: Optional[int] = None,
     minute: int = 0,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
     zi_hour_day_rollover: bool = True,
 ) -> Dict[str, object]:
     """Return a Bazi chart from Gregorian date/time.
@@ -300,10 +301,73 @@ def bazi_from_gregorian(
     }
 
 
+def _optional_int(value: Any, field_name: str) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{field_name} must be an integer-compatible value") from error
+
+
+def _required_int(value: Any, field_name: str) -> int:
+    parsed = _optional_int(value, field_name)
+    if parsed is None:
+        raise ValueError(f"{field_name} is required")
+    return parsed
+
+
+def bazi_from_birth_info(
+    birth_info: Dict[str, Any],
+    *,
+    default_tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
+    zi_hour_day_rollover: bool = True,
+) -> Dict[str, object]:
+    """Return Bazi pillars from a benchmark ``birth_info`` object."""
+
+    year = _required_int(birth_info.get("year"), "year")
+    month = _required_int(birth_info.get("month"), "month")
+    day = _required_int(birth_info.get("day"), "day")
+    hour = _optional_int(birth_info.get("hour"), "hour")
+    minute = _optional_int(birth_info.get("minute"), "minute") or 0
+
+    timezone = resolve_timezone(
+        birth_info.get("location"),
+        country=birth_info.get("country"),
+        default_tz_offset_hours=default_tz_offset_hours,
+    )
+    chart = bazi_from_gregorian(
+        date(year, month, day),
+        hour=hour,
+        minute=minute,
+        tz_offset_hours=timezone.utc_offset_hours,
+        zi_hour_day_rollover=zi_hour_day_rollover,
+    )
+
+    warnings = list(chart["warnings"])
+    warnings.extend(timezone.warnings)
+    if birth_info.get("calendar_type") not in (None, "", "solar"):
+        warnings.append("non_solar_calendar_input_not_converted")
+
+    chart.update(
+        {
+            "input": {
+                "gender": birth_info.get("gender"),
+                "calendar_type": birth_info.get("calendar_type"),
+                "raw": birth_info.get("raw"),
+            },
+            "timezone": timezone.as_dict(),
+            "warnings": warnings,
+        }
+    )
+    return chart
+
+
 __all__ = [
     "REFERENCE_DAY",
     "REFERENCE_DAY_PILLAR",
     "bazi_from_gregorian",
+    "bazi_from_birth_info",
     "bazi_day_date_for_time",
     "day_pillar_for_datetime",
     "day_pillar_for_date",

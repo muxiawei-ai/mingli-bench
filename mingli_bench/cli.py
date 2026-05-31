@@ -7,8 +7,9 @@ import json
 import sys
 
 from .calendar import hour_branch, parse_bazi_pillars
-from .charts import get_chart_summary
-from .bazi import bazi_from_gregorian
+from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
+from .bazi import bazi_from_birth_info, bazi_from_gregorian
+from .locations import resolve_timezone
 from .models.factory import ModelFactory
 from .utils import get_logger
 from .data import DataLoader
@@ -42,6 +43,8 @@ Examples:
   python -m mingli_bench.cli --hour-branch 23
   python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
   python -m mingli_bench.cli --bazi-date 1974-04-28 --bazi-time 16:40
+  python -m mingli_bench.cli --bazi-date 1978-04-05 --bazi-time 18:00 --bazi-location 台湾
+  python -m mingli_bench.cli --bazi-case case_13
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -173,6 +176,22 @@ Examples:
     )
 
     parser.add_argument(
+        "--bazi-location",
+        help="Optional birth location used with --bazi-date, for example 台湾 or malaysia"
+    )
+
+    parser.add_argument(
+        "--bazi-country",
+        help="Optional birth country used with --bazi-date when location is broad"
+    )
+
+    parser.add_argument(
+        "--bazi-case",
+        metavar="CASE_ID",
+        help="Calculate Bazi from a benchmark case birth_info and compare fixture pillars"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -234,14 +253,59 @@ Examples:
                     raise ValueError("--bazi-time must use HH:MM format")
                 hour = int(time_parts[0])
                 minute = int(time_parts[1])
+            timezone = (
+                resolve_timezone(args.bazi_location, country=args.bazi_country)
+                if args.bazi_location or args.bazi_country
+                else None
+            )
+            chart = bazi_from_gregorian(
+                args.bazi_date,
+                hour=hour,
+                minute=minute,
+                tz_offset_hours=timezone.utc_offset_hours if timezone else 8.0,
+            )
+            if timezone:
+                chart["timezone"] = timezone.as_dict()
+                chart["warnings"] = list(chart["warnings"]) + list(timezone.warnings)
             print(json.dumps(
-                bazi_from_gregorian(args.bazi_date, hour=hour, minute=minute),
+                chart,
                 ensure_ascii=False,
                 indent=2,
             ))
             return 0
         except Exception as e:
             logger.error(f"Failed to calculate Bazi pillars: {e}")
+            return 1
+
+    if args.bazi_case:
+        try:
+            record = get_chart_record(args.bazi_case, path=args.fortune_data_path)
+            computed = bazi_from_birth_info(record.get("birth_info") or {})
+            fixture = extract_bazi_summary(record)
+            computed_pillars = " ".join(
+                [
+                    computed["year_pillar"],
+                    computed["month_pillar"],
+                    computed["day_pillar"],
+                    computed["hour_pillar"] or "",
+                ]
+            ).strip()
+            fixture_pillars = fixture["chinese_date"]
+            print(json.dumps(
+                {
+                    "case_id": args.bazi_case,
+                    "computed_bazi": computed,
+                    "fixture_bazi": fixture,
+                    "computed_pillars": computed_pillars,
+                    "fixture_pillars": fixture_pillars,
+                    "matches_fixture": computed_pillars == fixture_pillars,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to calculate Bazi for case: {e}")
             return 1
 
     if args.show_chart:

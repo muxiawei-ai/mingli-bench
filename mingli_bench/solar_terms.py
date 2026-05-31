@@ -14,7 +14,7 @@ from math import floor, radians, sin
 from typing import Dict, Iterable, List, Optional, Tuple
 
 
-DEFAULT_TZ_OFFSET_HOURS = 8
+DEFAULT_TZ_OFFSET_HOURS = 8.0
 
 
 @dataclass(frozen=True)
@@ -144,7 +144,7 @@ def solar_term_datetime(
     year: int,
     term_name: str,
     *,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
 ) -> datetime:
     """Return the local datetime when a solar term occurs.
 
@@ -168,7 +168,7 @@ def solar_terms_for_year(
     year: int,
     *,
     names: Optional[Iterable[str]] = None,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
 ) -> Dict[str, datetime]:
     """Return solar-term local datetimes for a Gregorian year."""
 
@@ -184,7 +184,7 @@ def solar_terms_for_year(
 def jie_boundaries_for_year(
     year: int,
     *,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
 ) -> List[Tuple[datetime, str, str]]:
     """Return the 12 major solar-term boundaries used for Bazi months."""
 
@@ -201,7 +201,7 @@ def jie_boundaries_for_year(
 def solar_month_branch_for_datetime(
     local_dt: datetime,
     *,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
 ) -> str:
     """Return the Bazi month branch for a local datetime."""
 

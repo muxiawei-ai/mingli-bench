@@ -2,7 +2,7 @@
 Data schema definitions for Fortune Telling Benchmark.
 """
 
-from typing import Dict, List, Optional, Any, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict, Union
 from dataclasses import dataclass
 
 
@@ -16,12 +16,13 @@ class BirthInfoDict(TypedDict):
     """Birth information structure."""
     raw: str
     gender: Optional[str]
-    year: Optional[str]
-    month: Optional[str]
-    day: Optional[str]
-    hour: Optional[str]
-    minute: Optional[str]
+    year: Optional[Union[int, str]]
+    month: Optional[Union[int, str]]
+    day: Optional[Union[int, str]]
+    hour: Optional[Union[int, str]]
+    minute: Optional[Union[int, str]]
     calendar_type: str
+    country: Optional[str]
     location: Optional[str]
 
 

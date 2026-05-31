@@ -4,6 +4,7 @@ from pathlib import Path
 
 from mingli_bench.bazi import (
     bazi_day_date_for_time,
+    bazi_from_birth_info,
     bazi_from_gregorian,
     day_pillar_for_datetime,
     hour_pillar_for_datetime,
@@ -63,6 +64,28 @@ class BaziCoreTests(unittest.TestCase):
                 # handling is implemented explicitly.
                 if int(solar_date[5:7]) > 2:
                     self.assertEqual(year_pillar_for_date(solar_date), year_pillar)
+
+    def test_birth_info_conversion_matches_chart_fixtures(self):
+        known_convention_differences = {"case_31"}
+        for record in self.records:
+            if record.get("status") != "success":
+                continue
+            chart = record["api_response"]["data"]["data"]
+            computed = bazi_from_birth_info(record.get("birth_info") or {})
+            computed_pillars = " ".join(
+                [
+                    computed["year_pillar"],
+                    computed["month_pillar"],
+                    computed["day_pillar"],
+                    computed["hour_pillar"] or "",
+                ]
+            ).strip()
+
+            with self.subTest(case_id=record["case_id"]):
+                if record["case_id"] in known_convention_differences:
+                    self.assertNotEqual(computed_pillars, chart["chineseDate"])
+                else:
+                    self.assertEqual(computed_pillars, chart["chineseDate"])
 
 
 if __name__ == "__main__":
