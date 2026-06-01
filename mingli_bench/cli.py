@@ -7,6 +7,7 @@ import json
 import sys
 
 from .calendar import hour_branch, parse_bazi_pillars
+from .chart_api import build_bazi_chart
 from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
 from .bazi import bazi_from_birth_info, bazi_from_gregorian
 from .locations import resolve_timezone
@@ -49,6 +50,7 @@ Examples:
   python -m mingli_bench.cli --lunar-date "一九八四年闰十月十七"
   python -m mingli_bench.cli --lunar-from-solar 1978-04-05
   python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
+  python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}'
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -214,6 +216,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--chart-input-json",
+        metavar="JSON",
+        help="Build a stable BaziChart from a ChartInput JSON object and exit"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -296,6 +304,18 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to look up Gregorian date: {e}")
+            return 1
+
+    if args.chart_input_json:
+        try:
+            payload = json.loads(args.chart_input_json)
+            if not isinstance(payload, dict):
+                raise ValueError("--chart-input-json must be a JSON object")
+            chart = build_bazi_chart(payload, fortune_data_path=args.fortune_data_path)
+            print(json.dumps(chart.as_dict(), ensure_ascii=False, indent=2))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to build Bazi chart: {e}")
             return 1
 
     if args.bazi_date:

@@ -14,12 +14,27 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
+from mingli_bench.chart_api import build_bazi_chart
 from mingli_bench.charts import get_chart_summary
 from mingli_bench.lunar import lunar_from_solar_date, parse_chinese_lunar_date
 
 
 def main() -> None:
     print("Hour branch for 23:00:", hour_branch(23))
+
+    stable_chart = build_bazi_chart(
+        {
+            "calendar_type": "solar",
+            "year": 1978,
+            "month": 4,
+            "day": 5,
+            "hour": 18,
+            "minute": 0,
+            "country": "中国",
+            "location": "台湾",
+        }
+    )
+    print("Stable BaziChart:", stable_chart.as_dict())
 
     bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
     print("Bazi:", bazi_chart)

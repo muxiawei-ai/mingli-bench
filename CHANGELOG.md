@@ -12,6 +12,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.solar_terms` approximate 24 solar-term calculation based on apparent solar longitude.
 - `mingli_bench.locations` timezone normalization for benchmark birth-place strings.
 - `mingli_bench.lunar` Chinese lunar-date parser and fixture-backed lunar/solar lookup.
+- `mingli_bench.chart_api` stable `ChartInput -> BaziChart` API for application and agent integrations.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,
@@ -28,8 +29,9 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
   - `--bazi-case`,
   - `--lunar-date`,
   - `--lunar-from-solar`,
-  - `--solar-from-lunar`.
-- Fixture regression tests for Bazi month/day/hour pillars, location normalization, and lunar-date lookup.
+  - `--solar-from-lunar`,
+  - `--chart-input-json`.
+- Fixture regression tests for Bazi month/day/hour pillars, location normalization, lunar-date lookup, and the stable chart API.
 
 ## [0.1.0] - 2026-05-31
 

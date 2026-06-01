@@ -28,6 +28,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
 - Twelve event categories: career, health, marriage, family, wealth, personality, and more.
 - Pre-computed Bazi and Ziwei chart data in `data/fortune_api_results.json`.
 - Pure utility functions for:
+  - stable `ChartInput -> BaziChart` API for app and agent integrations,
   - sexagenary cycle names and indexes,
   - earthly branch mapping for Chinese double-hours,
   - Bazi year/month/day/hour derivation from Gregorian date/time,
@@ -42,6 +43,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - hour branch lookup,
   - Bazi pillar analysis,
   - Gregorian date/time to Bazi chart output,
+  - `ChartInput` JSON to stable `BaziChart` JSON output,
   - chart summary lookup by `case_id`.
 - LLM evaluation CLI with OpenRouter, OpenAI, Anthropic, Google, DeepSeek, and Doubao support.
 
@@ -73,6 +75,7 @@ python -m mingli_bench.cli --bazi-case case_13
 python -m mingli_bench.cli --lunar-date "一九八四年闰十月十七"
 python -m mingli_bench.cli --lunar-from-solar 1978-04-05
 python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
+python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾","country":"中国"}'
 python -m mingli_bench.cli --show-chart case_1
 ```
 
@@ -104,10 +107,24 @@ OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and
 ```python
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
+from mingli_bench.chart_api import build_bazi_chart
 from mingli_bench.charts import get_chart_summary
 from mingli_bench.lunar import lunar_from_solar_date, parse_chinese_lunar_date
 
 print(hour_branch(23))  # 子
+
+chart = build_bazi_chart({
+    "calendar_type": "solar",
+    "year": 1978,
+    "month": 4,
+    "day": 5,
+    "hour": 18,
+    "minute": 0,
+    "country": "中国",
+    "location": "台湾",
+})
+print(chart.as_dict()["pillars_text"])  # 戊午 丙辰 丁酉 己酉
+print(chart.day_master)                 # 丁
 
 bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
 print(bazi_chart["year_pillar"])   # 甲寅
@@ -135,9 +152,9 @@ bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
 print(bazi["day_master"])  # 己
 print(bazi["five_elements_summary"])
 
-chart = get_chart_summary("case_1")
-print(chart["bazi"]["chinese_date"])
-print(chart["ziwei"]["palaces"][0])
+summary = get_chart_summary("case_1")
+print(summary["bazi"]["chinese_date"])
+print(summary["ziwei"]["palaces"][0])
 ```
 
 ## Dataset
@@ -165,6 +182,8 @@ The chart fixtures are generated externally and are treated as data fixtures in 
 
 The Bazi year pillar follows the Li Chun convention. Around January/February, this can differ from chart sources that label the year by Lunar New Year.
 
+`mingli_bench.chart_api` is the recommended application-facing API. It accepts solar or fixture-backed lunar `ChartInput` data and returns a stable `BaziChart` object with pillars, day master, five-element summary, timezone metadata, lunar metadata, source, and warnings.
+
 `mingli_bench.locations` currently uses a small auditable alias table rather than a full geocoder. Ambiguous inputs such as `usa` fall back to UTC+8 and return warnings so callers can ask for a state/city or pass an explicit offset in future integrations.
 
 `mingli_bench.lunar` currently parses Chinese lunar-date strings and provides fixture-backed lookup against `data/fortune_api_results.json`. It is not yet a full standalone lunar calendar conversion engine.
@@ -183,6 +202,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 
 ## Roadmap
 
+- Keep hardening the stable `ChartInput -> BaziChart` API contract.
 - Add a full standalone lunar / solar conversion engine.
 - Expand solar-term validation fixtures and boundary-case coverage.
 - Expand birthplace normalization beyond bundled fixture locations.

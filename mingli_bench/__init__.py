@@ -4,6 +4,7 @@ __version__ = "0.1.0"
 
 from .calendar import hour_branch, parse_bazi_pillars
 from .charts import get_chart_summary
+from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
 from .bazi import (
     bazi_from_birth_info,
     bazi_from_gregorian,
@@ -24,10 +25,14 @@ from .solar_terms import solar_month_branch_for_datetime, solar_term_datetime
 
 __all__ = [
     "FortuneTellingBenchmark",
+    "BaziChart",
+    "BaziPillars",
+    "ChartInput",
     "LunarDate",
     "ModelClient",
     "bazi_from_birth_info",
     "bazi_from_gregorian",
+    "build_bazi_chart",
     "day_pillar_for_date",
     "get_chart_summary",
     "hour_branch",
