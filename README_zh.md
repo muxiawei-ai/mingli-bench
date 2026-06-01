@@ -62,11 +62,19 @@ cd mingli-bench
 python -m pip install -e .
 ```
 
+如果要用 OpenRouter 跑 Agent 或 eval，可以只安装轻量 OpenRouter extra：
+
+```bash
+python -m pip install -e ".[openrouter]"
+```
+
 如果只想从源码目录运行：
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-openrouter.txt
 ```
+
+需要 Anthropic、Google 等原生 SDK 时，再使用 `requirements.txt`。
 
 ## CLI 使用
 
@@ -178,6 +186,8 @@ python -m mingli_bench.cli \
   --astro \
   --sample 10
 ```
+
+配置加载器同时支持 `OPENROUTER_API_KEY` 这类服务商专用变量，以及本地 Agent MVP 使用过的通用变量：`LLM_API_KEY`、`LLM_MODEL`、`LLM_BASE_URL`。
 
 当模型名包含 `/`，例如 `openai/gpt-4o`、`anthropic/claude-sonnet-4-6`、`google/gemini-2.5-pro`，CLI 会自动按 OpenRouter 模型 ID 处理。
 

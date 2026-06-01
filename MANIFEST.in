@@ -5,6 +5,7 @@ include CHANGELOG.md
 include CONTRIBUTING.md
 include ATTRIBUTION.md
 include requirements.txt
+include requirements-openrouter.txt
 recursive-include data *.json *.txt
 recursive-include examples *.py
 recursive-include tests *.py

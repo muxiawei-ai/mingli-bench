@@ -57,11 +57,19 @@ cd mingli-bench
 python -m pip install -e .
 ```
 
+For OpenRouter-backed agent/eval runs, install the lightweight OpenRouter extra:
+
+```bash
+python -m pip install -e ".[openrouter]"
+```
+
 If you only want to run from source without installing the package:
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-openrouter.txt
 ```
+
+Use `requirements.txt` when you need all native provider SDKs, including Anthropic and Google.
 
 ## CLI Usage
 
@@ -173,6 +181,8 @@ python -m mingli_bench.cli \
   --astro \
   --sample 10
 ```
+
+The config loader accepts both provider-specific variables such as `OPENROUTER_API_KEY` and generic local-agent variables: `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL`.
 
 OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and `google/gemini-2.5-pro` are routed through OpenRouter automatically when the model name contains `/`.
 
