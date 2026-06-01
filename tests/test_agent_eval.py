@@ -8,6 +8,7 @@ from mingli_bench.agent_eval import (
     EXPECTED_TRACE,
     evaluate_agent_questions,
     expected_intent_domain,
+    format_agent_eval_question,
     format_agent_eval_summary,
     load_agent_eval_questions,
     save_agent_eval,
@@ -38,6 +39,7 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("llm_not_called", summary["warning_counts"])
         self.assertEqual(summary["warning_counts"]["llm_not_called"], 2)
         self.assertEqual(records[0]["checks"]["trace_names"], EXPECTED_TRACE)
+        self.assertIn("选项", records[0]["agent_question"])
 
     def test_format_agent_eval_summary(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))
@@ -67,6 +69,19 @@ class AgentEvalTests(unittest.TestCase):
         self.assertEqual(expected_intent_domain("子女"), "家庭")
         self.assertEqual(expected_intent_domain("外貌"), "性格")
         self.assertEqual(expected_intent_domain("unknown"), "综合")
+
+    def test_format_agent_eval_question_includes_options(self):
+        question = {
+            "question": "发生何事？",
+            "options": [
+                {"letter": "A", "text": "工作升职"},
+                {"letter": "B", "text": "身体生病"},
+            ],
+        }
+        formatted = format_agent_eval_question(question)
+        self.assertIn("发生何事", formatted)
+        self.assertIn("A. 工作升职", formatted)
+        self.assertIn("B. 身体生病", formatted)
 
 
 if __name__ == "__main__":

@@ -111,6 +111,7 @@ def evaluate_agent_question(
         "benchmark_year": question.get("benchmark_year"),
         "category": question.get("category"),
         "question": question.get("question"),
+        "agent_question": None,
         "success": False,
         "error": None,
         "response_time": 0.0,
@@ -119,9 +120,11 @@ def evaluate_agent_question(
     }
     try:
         birth_info = question.get("birth_info") or {}
+        agent_question = format_agent_eval_question(question)
+        record["agent_question"] = agent_question
         result = agent.run(
             birth_info,
-            question=str(question.get("question") or ""),
+            question=agent_question,
             fortune_data_path=fortune_data_path,
         )
         agent_dict = result.as_dict()
@@ -152,6 +155,23 @@ def build_agent_checks(agent_result: Dict[str, Any]) -> Dict[str, Any]:
         and bool(interpretation.get("parsed_from_response")),
         "trace_names": trace_names,
     }
+
+
+def format_agent_eval_question(question: Dict[str, Any]) -> str:
+    """Format benchmark question text plus options as agent question context."""
+
+    lines = [str(question.get("question") or "").strip()]
+    options = question.get("options") or []
+    if options:
+        lines.append("选项：")
+        for option in options:
+            if isinstance(option, dict):
+                letter = option.get("letter") or "?"
+                text = option.get("text") or ""
+                lines.append(f"{letter}. {text}")
+            else:
+                lines.append(str(option))
+    return "\n".join(line for line in lines if line)
 
 
 def summarize_agent_eval(
@@ -330,6 +350,7 @@ __all__ = [
     "evaluate_agent_question",
     "evaluate_agent_questions",
     "format_agent_eval_summary",
+    "format_agent_eval_question",
     "load_agent_eval_questions",
     "save_agent_eval",
     "summarize_agent_eval",

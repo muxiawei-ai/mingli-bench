@@ -22,6 +22,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.intent` rule-based user-question routing for Agent domain hints.
 - `mingli_bench.agent_eval` and `eval-agent` CLI for pipeline-level Agent evaluation.
 - Intent/category alignment diagnostics in Agent evaluation summaries.
+- Benchmark-option-aware intent routing with expanded Chinese domain keywords.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,
