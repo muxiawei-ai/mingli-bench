@@ -7,6 +7,7 @@ from typing import Optional
 from openai import OpenAI
 
 from .base import ModelClient
+from .message_utils import describe_chat_response, extract_chat_message_text
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -45,9 +46,12 @@ class OpenAIClient(ModelClient):
         
         # Initialize client with timeout
         timeout_seconds = int(os.getenv("TIMEOUT", "30"))
+        self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
+        self.reasoning_effort = os.getenv("OPENROUTER_REASONING_EFFORT")
+        self.reasoning_exclude = _env_bool("OPENROUTER_REASONING_EXCLUDE")
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=base_url or os.getenv("OPENAI_BASE_URL"),
+            base_url=self.base_url,
             timeout=timeout_seconds
         )
         
@@ -77,6 +81,9 @@ class OpenAIClient(ModelClient):
                 ],
                 **gen_params
             }
+            extra_body = self._extra_body()
+            if extra_body:
+                params["extra_body"] = extra_body
             
             logger.debug(f"Making API call with model: {params['model']}")
             
@@ -84,7 +91,14 @@ class OpenAIClient(ModelClient):
             response = self.client.chat.completions.create(**params)
             
             # Extract text
-            text = response.choices[0].message.content.strip()
+            choice = response.choices[0]
+            try:
+                text = extract_chat_message_text(choice.message)
+            except ValueError as error:
+                detail = describe_chat_response(response)
+                raise ValueError(
+                    f"OpenAI-compatible response did not include text content: {detail}"
+                ) from error
             
             return text
             
@@ -106,3 +120,25 @@ class OpenAIClient(ModelClient):
         except Exception as e:
             logger.error(f"Invalid OpenAI API key: {e}")
             return False
+
+    def _extra_body(self) -> dict:
+        """Build provider-specific OpenRouter extras from environment settings."""
+
+        if not self._uses_openrouter():
+            return {}
+        reasoning = {}
+        if self.reasoning_effort:
+            reasoning["effort"] = self.reasoning_effort
+        if self.reasoning_exclude is not None:
+            reasoning["exclude"] = self.reasoning_exclude
+        return {"reasoning": reasoning} if reasoning else {}
+
+    def _uses_openrouter(self) -> bool:
+        return bool(self.base_url and "openrouter.ai" in self.base_url)
+
+
+def _env_bool(name: str) -> Optional[bool]:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return value.strip().lower() in {"1", "true", "yes", "on"}
