@@ -29,6 +29,7 @@ class InterpretationContractTests(unittest.TestCase):
         contract = interpretation_prompt_contract()
         self.assertIn(INTERPRETATION_SCHEMA_VERSION, contract)
         self.assertIn("sections", contract)
+        self.assertIn("answer_choice", contract)
 
     def test_build_local_interpretation(self):
         intent = parse_question_intent("分析事业")
@@ -47,6 +48,8 @@ class InterpretationContractTests(unittest.TestCase):
 {
   "schema_version": "mingli_interpretation.v1",
   "overview": "结构化解读",
+  "answer_choice": "B",
+  "answer_confidence": 0.72,
   "sections": [
     {"title": "事业", "summary": "稳健输出", "evidence": ["x"], "caveats": []}
   ],
@@ -60,6 +63,8 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertEqual(interpretation.mode, "llm_json")
         self.assertTrue(interpretation.parsed_from_response)
         self.assertEqual(interpretation.sections[0].title, "事业")
+        self.assertEqual(interpretation.answer_choice, "B")
+        self.assertEqual(interpretation.answer_confidence, 0.72)
 
     def test_parse_plain_text_response_falls_back(self):
         interpretation = parse_interpretation_response("普通文本解读", self.report)

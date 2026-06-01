@@ -44,6 +44,8 @@ class InterpretationResult:
     caveats: List[str]
     parsed_from_response: bool
     raw_response: Optional[str]
+    answer_choice: Optional[str] = None
+    answer_confidence: Optional[float] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -51,6 +53,8 @@ class InterpretationResult:
             "mode": self.mode,
             "question": self.question,
             "overview": self.overview,
+            "answer_choice": self.answer_choice,
+            "answer_confidence": self.answer_confidence,
             "sections": [section.as_dict() for section in self.sections],
             "follow_up_questions": self.follow_up_questions,
             "caveats": self.caveats,
@@ -65,6 +69,13 @@ class InterpretationResult:
             f"概览: {self.overview}",
             f"模式: {self.mode}",
         ]
+        if self.answer_choice:
+            confidence = (
+                f"；置信度: {self.answer_confidence:.2f}"
+                if self.answer_confidence is not None
+                else ""
+            )
+            lines.append(f"答案选项: {self.answer_choice}{confidence}")
         for section in self.sections:
             lines.extend(["", f"### {section.title}", section.summary])
             if section.evidence:
@@ -90,6 +101,8 @@ JSON 必须符合以下结构：
 {{
   "schema_version": "{INTERPRETATION_SCHEMA_VERSION}",
   "overview": "一句话总览，保持审慎",
+  "answer_choice": null,
+  "answer_confidence": null,
   "sections": [
     {{
       "title": "排盘摘要",
@@ -101,6 +114,8 @@ JSON 必须符合以下结构：
   "follow_up_questions": ["如果信息不足，需要追问的问题"],
   "caveats": ["整体限制和不确定性"]
 }}
+如果用户问题包含 A/B/C/D 选项，请在 answer_choice 中给出最终选择（"A"、"B"、"C" 或 "D"）。
+如果没有选项或无法判断，请使用 null。answer_confidence 为 0 到 1 之间的小数，表示对该选项的审慎置信度。
 """
 
 
@@ -219,6 +234,8 @@ def parse_interpretation_response(
         caveats=[str(item) for item in _as_list(payload.get("caveats"))],
         parsed_from_response=True,
         raw_response=response,
+        answer_choice=_normalize_answer_choice(payload.get("answer_choice")),
+        answer_confidence=_normalize_confidence(payload.get("answer_confidence")),
     )
 
 
@@ -276,6 +293,23 @@ def _as_list(value: Any) -> List[Any]:
     if isinstance(value, list):
         return value
     return [value]
+
+
+def _normalize_answer_choice(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip().upper()
+    return text if text in {"A", "B", "C", "D"} else None
+
+
+def _normalize_confidence(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return None
+    return min(max(confidence, 0.0), 1.0)
 
 
 __all__ = [

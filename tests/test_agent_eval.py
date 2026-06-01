@@ -6,8 +6,10 @@ from pathlib import Path
 from mingli_bench.agent_eval import (
     AgentEvalConfig,
     EXPECTED_TRACE,
+    answer_choice_matches,
     evaluate_agent_questions,
     expected_intent_domain,
+    extract_answer_choice,
     format_agent_eval_question,
     format_agent_eval_summary,
     load_agent_eval_questions,
@@ -35,6 +37,7 @@ class AgentEvalTests(unittest.TestCase):
         self.assertEqual(summary["interpretation_schema_rate"], 1.0)
         self.assertIn("intent_category_alignment_rate", summary)
         self.assertIn("intent_category_confusion", summary)
+        self.assertIn("answer_choice_accuracy", summary)
         self.assertIn("clarification_samples", summary)
         self.assertIn("llm_not_called", summary["warning_counts"])
         self.assertEqual(summary["warning_counts"]["llm_not_called"], 2)
@@ -48,6 +51,7 @@ class AgentEvalTests(unittest.TestCase):
         formatted = format_agent_eval_summary(summary)
         self.assertIn("Agent Evaluation Summary", formatted)
         self.assertIn("Intent/Category Alignment Rate", formatted)
+        self.assertIn("Answer Choice Accuracy", formatted)
         self.assertIn("Trace Complete Rate", formatted)
 
     def test_save_agent_eval(self):
@@ -82,6 +86,30 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("发生何事", formatted)
         self.assertIn("A. 工作升职", formatted)
         self.assertIn("B. 身体生病", formatted)
+
+    def test_extract_answer_choice_prefers_structured_field(self):
+        agent_result = {
+            "interpretation": {
+                "answer_choice": "b",
+                "overview": "选项A也可能。",
+                "sections": [],
+            }
+        }
+        self.assertEqual(extract_answer_choice(agent_result), "B")
+
+    def test_extract_answer_choice_from_text(self):
+        agent_result = {
+            "interpretation": {
+                "overview": "综合来看，选项C的契合度最高。",
+                "sections": [],
+            }
+        }
+        self.assertEqual(extract_answer_choice(agent_result), "C")
+
+    def test_answer_choice_matches(self):
+        self.assertTrue(answer_choice_matches("B", "b"))
+        self.assertFalse(answer_choice_matches("A", "D"))
+        self.assertIsNone(answer_choice_matches(None, "A"))
 
 
 if __name__ == "__main__":

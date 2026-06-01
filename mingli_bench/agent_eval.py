@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -111,7 +112,11 @@ def evaluate_agent_question(
         "benchmark_year": question.get("benchmark_year"),
         "category": question.get("category"),
         "question": question.get("question"),
+        "answer": question.get("answer"),
+        "has_answer": question.get("has_answer"),
         "agent_question": None,
+        "predicted_answer": None,
+        "answer_correct": None,
         "success": False,
         "error": None,
         "response_time": 0.0,
@@ -130,6 +135,11 @@ def evaluate_agent_question(
         agent_dict = result.as_dict()
         record["agent"] = agent_dict
         record["checks"] = build_agent_checks(agent_dict)
+        record["predicted_answer"] = extract_answer_choice(agent_dict)
+        record["answer_correct"] = answer_choice_matches(
+            record.get("answer"),
+            record.get("predicted_answer"),
+        )
         record["success"] = True
     except Exception as error:
         record["error"] = f"{error.__class__.__name__}: {error}"
@@ -174,6 +184,37 @@ def format_agent_eval_question(question: Dict[str, Any]) -> str:
     return "\n".join(line for line in lines if line)
 
 
+def extract_answer_choice(agent_result: Dict[str, Any]) -> Optional[str]:
+    """Extract a benchmark A-D answer choice from structured or text output."""
+
+    interpretation = agent_result.get("interpretation") or {}
+    explicit_choice = _normalize_answer_choice(interpretation.get("answer_choice"))
+    if explicit_choice:
+        return explicit_choice
+
+    text_parts = [
+        str(interpretation.get("overview") or ""),
+        str(interpretation.get("raw_response") or ""),
+    ]
+    for section in interpretation.get("sections") or []:
+        if isinstance(section, dict):
+            text_parts.append(str(section.get("title") or ""))
+            text_parts.append(str(section.get("summary") or ""))
+    return _extract_answer_choice_from_text("\n".join(text_parts))
+
+
+def answer_choice_matches(answer: Any, predicted_answer: Any) -> Optional[bool]:
+    """Return whether a predicted A-D answer matches the benchmark answer."""
+
+    normalized_answer = _normalize_answer_choice(answer)
+    if not normalized_answer:
+        return None
+    normalized_prediction = _normalize_answer_choice(predicted_answer)
+    if not normalized_prediction:
+        return False
+    return normalized_answer == normalized_prediction
+
+
 def summarize_agent_eval(
     records: List[Dict[str, Any]],
     *,
@@ -192,6 +233,11 @@ def summarize_agent_eval(
     intent_category_confusion: Counter[tuple] = Counter()
     intent_alignment_total = 0
     intent_alignment_correct = 0
+    answer_total = 0
+    answer_parsed = 0
+    answer_correct = 0
+    answer_choice_confusion: Counter[tuple] = Counter()
+    answer_error_samples = []
     clarification_samples = []
 
     for record in successes:
@@ -206,6 +252,26 @@ def summarize_agent_eval(
         intent_alignment_total += 1
         if expected_domain == primary_domain:
             intent_alignment_correct += 1
+        expected_answer = _normalize_answer_choice(record.get("answer"))
+        predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
+        if expected_answer:
+            answer_total += 1
+            if predicted_answer:
+                answer_parsed += 1
+                answer_choice_confusion.update([(expected_answer, predicted_answer)])
+                if predicted_answer == expected_answer:
+                    answer_correct += 1
+            if predicted_answer != expected_answer and len(answer_error_samples) < 10:
+                answer_error_samples.append(
+                    {
+                        "question_id": record.get("question_id"),
+                        "case_id": record.get("case_id"),
+                        "category": category,
+                        "answer": expected_answer,
+                        "predicted_answer": predicted_answer,
+                        "question": record.get("question"),
+                    }
+                )
         if intent.get("needs_clarification") and len(clarification_samples) < 10:
             clarification_samples.append(
                 {
@@ -241,6 +307,12 @@ def summarize_agent_eval(
             intent_alignment_correct,
             intent_alignment_total,
         ),
+        "answer_choice_total": answer_total,
+        "answer_choice_parse_rate": _ratio(answer_parsed, answer_total),
+        "answer_choice_accuracy": _ratio(answer_correct, answer_total),
+        "answer_choice_accuracy_on_parsed": _ratio(answer_correct, answer_parsed),
+        "answer_choice_confusion": _nested_confusion(answer_choice_confusion),
+        "answer_error_samples": answer_error_samples,
         "average_response_time": sum(response_times) / len(response_times)
         if response_times
         else 0.0,
@@ -299,6 +371,8 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
         f"Chart Success Rate: {summary['chart_success_rate']:.2%}",
         f"Intent Success Rate: {summary['intent_success_rate']:.2%}",
         f"Intent/Category Alignment Rate: {summary['intent_category_alignment_rate']:.2%}",
+        f"Answer Choice Parse Rate: {summary['answer_choice_parse_rate']:.2%}",
+        f"Answer Choice Accuracy: {summary['answer_choice_accuracy']:.2%}",
         f"Trace Complete Rate: {summary['trace_complete_rate']:.2%}",
         f"Interpretation Schema Rate: {summary['interpretation_schema_rate']:.2%}",
         f"LLM JSON Parse Rate: {summary['llm_json_parse_rate']:.2%}",
@@ -325,6 +399,26 @@ def _ratio(numerator: int, denominator: int) -> float:
     return numerator / denominator if denominator else 0.0
 
 
+def _normalize_answer_choice(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip().upper()
+    return text if text in {"A", "B", "C", "D"} else None
+
+
+def _extract_answer_choice_from_text(text: str) -> Optional[str]:
+    patterns = [
+        r"(?:最终|答案|选择|倾向于|最(?:可能|符合|吻合|接近)|概率最高|契合度最高).*?(?:选项)?\s*([A-D])",
+        r"(?:选项|option)\s*([A-D]).{0,20}(?:最(?:可能|符合|吻合|接近)|概率最高|契合度最高)",
+        r"([A-D])\s*(?:选项|option).{0,20}(?:最(?:可能|符合|吻合|接近)|概率最高|契合度最高)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            return _normalize_answer_choice(match.group(1))
+    return None
+
+
 def expected_intent_domain(category: str) -> str:
     """Map benchmark categories to the closest agent intent domain."""
 
@@ -346,9 +440,11 @@ __all__ = [
     "AgentEvalConfig",
     "EXPECTED_TRACE",
     "expected_intent_domain",
+    "answer_choice_matches",
     "build_agent_checks",
     "evaluate_agent_question",
     "evaluate_agent_questions",
+    "extract_answer_choice",
     "format_agent_eval_summary",
     "format_agent_eval_question",
     "load_agent_eval_questions",

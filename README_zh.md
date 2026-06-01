@@ -127,6 +127,8 @@ mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
 - `summary.json`：整体指标、分布和错误样例。
 - `records.jsonl`：每条 case 的完整 Agent 结果。
 
+对于带 A-D 标准答案的 benchmark 问题，summary 也会报告答案选项解析率和答案准确率。
+
 可用 `--no-save` 只在终端查看摘要。
 
 ## 本地 HTTP API

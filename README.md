@@ -122,6 +122,8 @@ By default it saves:
 - `summary.json`: aggregate metrics, distributions, and error samples.
 - `records.jsonl`: one full agent result per benchmark case.
 
+For benchmark questions with A-D answers, the summary also reports answer-choice parse rate and answer-choice accuracy.
+
 Use `--no-save` to print only the terminal summary.
 
 ## Local HTTP API
