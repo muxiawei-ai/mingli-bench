@@ -17,6 +17,23 @@ from .models.base import ModelClient
 
 
 EXPECTED_TRACE = ["input", "intent", "chart", "report", "prompt", "llm", "interpretation"]
+SUPPORTED_INTENT_DOMAINS = {
+    "事业",
+    "财运",
+    "婚姻",
+    "健康",
+    "性格",
+    "学业",
+    "家庭",
+    "运势",
+    "综合",
+}
+CATEGORY_TO_INTENT_DOMAIN = {
+    "子女": "家庭",
+    "外貌": "性格",
+    "灾劫": "运势",
+    "官非": "运势",
+}
 
 
 @dataclass(frozen=True)
@@ -152,12 +169,34 @@ def summarize_agent_eval(
     intent_counts: Counter[str] = Counter()
     interpretation_mode_counts: Counter[str] = Counter()
     category_counts: Counter[str] = Counter()
+    intent_category_confusion: Counter[tuple] = Counter()
+    intent_alignment_total = 0
+    intent_alignment_correct = 0
+    clarification_samples = []
 
     for record in successes:
         agent_result = record.get("agent") or {}
-        category_counts.update([str(record.get("category") or "unknown")])
+        category = str(record.get("category") or "unknown")
+        category_counts.update([category])
         intent = agent_result.get("intent") or {}
-        intent_counts.update([str(intent.get("primary_domain") or "unknown")])
+        primary_domain = str(intent.get("primary_domain") or "unknown")
+        expected_domain = expected_intent_domain(category)
+        intent_counts.update([primary_domain])
+        intent_category_confusion.update([(expected_domain, primary_domain)])
+        intent_alignment_total += 1
+        if expected_domain == primary_domain:
+            intent_alignment_correct += 1
+        if intent.get("needs_clarification") and len(clarification_samples) < 10:
+            clarification_samples.append(
+                {
+                    "question_id": record.get("question_id"),
+                    "case_id": record.get("case_id"),
+                    "category": category,
+                    "expected_domain": expected_domain,
+                    "primary_domain": primary_domain,
+                    "question": record.get("question"),
+                }
+            )
         interpretation = agent_result.get("interpretation") or {}
         interpretation_mode_counts.update([str(interpretation.get("mode") or "unknown")])
         record_warnings = set(str(item) for item in agent_result.get("warnings") or [])
@@ -178,10 +217,16 @@ def summarize_agent_eval(
         "trace_complete_rate": _check_rate(checks, "trace_complete"),
         "interpretation_schema_rate": _check_rate(checks, "interpretation_schema_ok"),
         "llm_json_parse_rate": _check_rate(checks, "llm_json_parsed"),
+        "intent_category_alignment_rate": _ratio(
+            intent_alignment_correct,
+            intent_alignment_total,
+        ),
         "average_response_time": sum(response_times) / len(response_times)
         if response_times
         else 0.0,
         "intent_distribution": dict(intent_counts),
+        "intent_category_confusion": _nested_confusion(intent_category_confusion),
+        "clarification_samples": clarification_samples,
         "interpretation_mode_distribution": dict(interpretation_mode_counts),
         "category_distribution": dict(category_counts),
         "warning_counts": dict(warning_counts),
@@ -233,6 +278,7 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
         f"Success Rate: {summary['success_rate']:.2%}",
         f"Chart Success Rate: {summary['chart_success_rate']:.2%}",
         f"Intent Success Rate: {summary['intent_success_rate']:.2%}",
+        f"Intent/Category Alignment Rate: {summary['intent_category_alignment_rate']:.2%}",
         f"Trace Complete Rate: {summary['trace_complete_rate']:.2%}",
         f"Interpretation Schema Rate: {summary['interpretation_schema_rate']:.2%}",
         f"LLM JSON Parse Rate: {summary['llm_json_parse_rate']:.2%}",
@@ -259,9 +305,27 @@ def _ratio(numerator: int, denominator: int) -> float:
     return numerator / denominator if denominator else 0.0
 
 
+def expected_intent_domain(category: str) -> str:
+    """Map benchmark categories to the closest agent intent domain."""
+
+    if category in CATEGORY_TO_INTENT_DOMAIN:
+        return CATEGORY_TO_INTENT_DOMAIN[category]
+    if category in SUPPORTED_INTENT_DOMAINS:
+        return category
+    return "综合"
+
+
+def _nested_confusion(counter: Counter[tuple]) -> Dict[str, Dict[str, int]]:
+    nested: Dict[str, Dict[str, int]] = {}
+    for (expected, actual), count in counter.items():
+        nested.setdefault(str(expected), {})[str(actual)] = count
+    return nested
+
+
 __all__ = [
     "AgentEvalConfig",
     "EXPECTED_TRACE",
+    "expected_intent_domain",
     "build_agent_checks",
     "evaluate_agent_question",
     "evaluate_agent_questions",

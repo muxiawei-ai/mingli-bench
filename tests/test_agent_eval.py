@@ -7,6 +7,7 @@ from mingli_bench.agent_eval import (
     AgentEvalConfig,
     EXPECTED_TRACE,
     evaluate_agent_questions,
+    expected_intent_domain,
     format_agent_eval_summary,
     load_agent_eval_questions,
     save_agent_eval,
@@ -31,6 +32,9 @@ class AgentEvalTests(unittest.TestCase):
         self.assertEqual(summary["chart_success_rate"], 1.0)
         self.assertEqual(summary["trace_complete_rate"], 1.0)
         self.assertEqual(summary["interpretation_schema_rate"], 1.0)
+        self.assertIn("intent_category_alignment_rate", summary)
+        self.assertIn("intent_category_confusion", summary)
+        self.assertIn("clarification_samples", summary)
         self.assertIn("llm_not_called", summary["warning_counts"])
         self.assertEqual(summary["warning_counts"]["llm_not_called"], 2)
         self.assertEqual(records[0]["checks"]["trace_names"], EXPECTED_TRACE)
@@ -41,6 +45,7 @@ class AgentEvalTests(unittest.TestCase):
         summary = summarize_agent_eval(records)
         formatted = format_agent_eval_summary(summary)
         self.assertIn("Agent Evaluation Summary", formatted)
+        self.assertIn("Intent/Category Alignment Rate", formatted)
         self.assertIn("Trace Complete Rate", formatted)
 
     def test_save_agent_eval(self):
@@ -56,6 +61,12 @@ class AgentEvalTests(unittest.TestCase):
             parsed = json.loads(summary_path.read_text(encoding="utf-8"))
             self.assertEqual(parsed["total_questions"], 1)
             self.assertEqual(len(records_path.read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_expected_intent_domain(self):
+        self.assertEqual(expected_intent_domain("事业"), "事业")
+        self.assertEqual(expected_intent_domain("子女"), "家庭")
+        self.assertEqual(expected_intent_domain("外貌"), "性格")
+        self.assertEqual(expected_intent_domain("unknown"), "综合")
 
 
 if __name__ == "__main__":

@@ -97,7 +97,7 @@ Add `--show-prompt` when you want to inspect the full prompt sent to the model.
 
 ## Agent Evaluation
 
-`eval-agent` runs benchmark cases through the local agent pipeline. By default it does not call an LLM, making it useful for checking chart generation, intent routing, trace completeness, and interpretation schema compliance:
+`eval-agent` runs benchmark cases through the local agent pipeline. By default it does not call an LLM, making it useful for checking chart generation, intent routing, intent/category alignment, trace completeness, and interpretation schema compliance:
 
 ```bash
 mingli-bench eval-agent --sample 10

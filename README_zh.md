@@ -102,7 +102,7 @@ Agent JSON 结果会包含 `trace` 字段，用于审计输入、排盘、报告
 
 ## Agent 评测
 
-`eval-agent` 用已有 benchmark case 批量检查 Agent 管线质量。默认不调用 LLM，适合快速验证排盘、intent、trace 和 interpretation schema：
+`eval-agent` 用已有 benchmark case 批量检查 Agent 管线质量。默认不调用 LLM，适合快速验证排盘、intent、intent/类别对齐率、trace 和 interpretation schema：
 
 ```bash
 mingli-bench eval-agent --sample 10
