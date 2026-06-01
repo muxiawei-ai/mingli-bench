@@ -46,6 +46,7 @@ class InterpretationResult:
     raw_response: Optional[str]
     answer_choice: Optional[str] = None
     answer_confidence: Optional[float] = None
+    option_scores: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -55,6 +56,7 @@ class InterpretationResult:
             "overview": self.overview,
             "answer_choice": self.answer_choice,
             "answer_confidence": self.answer_confidence,
+            "option_scores": self.option_scores,
             "sections": [section.as_dict() for section in self.sections],
             "follow_up_questions": self.follow_up_questions,
             "caveats": self.caveats,
@@ -103,6 +105,7 @@ JSON 必须符合以下结构：
   "overview": "一句话总览，保持审慎",
   "answer_choice": null,
   "answer_confidence": null,
+  "option_scores": null,
   "sections": [
     {{
       "title": "排盘摘要",
@@ -116,6 +119,8 @@ JSON 必须符合以下结构：
 }}
 如果用户问题包含 A/B/C/D 选项，请在 answer_choice 中给出最终选择（"A"、"B"、"C" 或 "D"）。
 如果没有选项或无法判断，请使用 null。answer_confidence 为 0 到 1 之间的小数，表示对该选项的审慎置信度。
+如果用户问题包含 A/B/C/D 选项，请在 option_scores 中为每个选项给出 0 到 1 的分数和一句理由，例如：
+{{"A": {{"score": 0.2, "rationale": "与流年证据较弱"}}, "B": {{"score": 0.7, "rationale": "与夫妻宫证据较强"}}}}
 """
 
 
@@ -236,6 +241,7 @@ def parse_interpretation_response(
         raw_response=response,
         answer_choice=_normalize_answer_choice(payload.get("answer_choice")),
         answer_confidence=_normalize_confidence(payload.get("answer_confidence")),
+        option_scores=_normalize_option_scores(payload.get("option_scores")),
     )
 
 
@@ -310,6 +316,27 @@ def _normalize_confidence(value: Any) -> Optional[float]:
     except (TypeError, ValueError):
         return None
     return min(max(confidence, 0.0), 1.0)
+
+
+def _normalize_option_scores(value: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(value, dict):
+        return None
+    normalized: Dict[str, Any] = {}
+    for raw_key, raw_item in value.items():
+        key = _normalize_answer_choice(raw_key)
+        if not key:
+            continue
+        if isinstance(raw_item, dict):
+            normalized[key] = {
+                "score": _normalize_confidence(raw_item.get("score")),
+                "rationale": str(raw_item.get("rationale") or ""),
+            }
+        else:
+            normalized[key] = {
+                "score": _normalize_confidence(raw_item),
+                "rationale": "",
+            }
+    return normalized or None
 
 
 __all__ = [

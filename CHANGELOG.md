@@ -26,6 +26,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - Generic `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL` env var compatibility for local Agent setups.
 - `requirements-openrouter.txt` and optional OpenRouter dependency extra for lighter LLM eval installs.
 - Answer-choice extraction, parse-rate, and accuracy metrics for benchmark-backed Agent evaluations.
+- Option-score interpretation contract fields and option-by-option prompt guidance for A-D benchmark questions.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,

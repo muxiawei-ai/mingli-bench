@@ -57,6 +57,8 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("JSON 输出契约", prompt)
         self.assertIn("mingli_interpretation.v1", prompt)
         self.assertIn("不要重新发明或猜测四柱", prompt)
+        self.assertIn("逐项比较所有选项", prompt)
+        self.assertIn("answer_confidence", prompt)
 
     def test_agent_without_model_returns_prompt_only(self):
         result = MingLiAgent().run(
