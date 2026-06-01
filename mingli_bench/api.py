@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from .agent import DEFAULT_AGENT_QUESTION, MingLiAgent
 from .chart_api import build_bazi_chart
 from .models.base import ModelClient
+from .web_ui import render_index_html
 
 
 MAX_REQUEST_BYTES = 1024 * 1024
@@ -86,13 +87,16 @@ class MingLiApiHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
+        if path in {"/", "/app"}:
+            self._send_html(200, render_index_html(self._model_name()))
+            return
         if path == "/health":
             self._send_json(
                 200,
                 {
                     "status": "ok",
                     "service": "mingli-bench",
-                    "endpoints": ["/health", "/chart", "/agent"],
+                    "endpoints": ["/", "/health", "/chart", "/agent"],
                     "model": self._model_name(),
                 },
             )
@@ -182,6 +186,14 @@ class MingLiApiHandler(BaseHTTPRequestHandler):
         if encoded:
             self.wfile.write(encoded)
 
+    def _send_html(self, status: int, html: str) -> None:
+        encoded = html.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
 
 def create_server(
     host: str = "127.0.0.1",
@@ -226,12 +238,12 @@ def run_server(
         model_client=model_client,
     )
     actual_host, actual_port = server.server_address
-    print(f"MingLi API server running at http://{actual_host}:{actual_port}")
-    print("Endpoints: GET /health, POST /chart, POST /agent")
+    print(f"MingLi API server running at http://{actual_host}:{actual_port}", flush=True)
+    print("Open the web UI or use: GET /health, POST /chart, POST /agent", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nMingLi API server stopped.")
+        print("\nMingLi API server stopped.", flush=True)
     finally:
         server.server_close()
 

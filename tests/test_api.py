@@ -48,6 +48,12 @@ class LocalApiTests(unittest.TestCase):
             with urllib.request.urlopen(f"{base_url}/health", timeout=5) as response:
                 health = json.loads(response.read().decode("utf-8"))
             self.assertEqual(health["status"], "ok")
+            self.assertIn("/", health["endpoints"])
+
+            with urllib.request.urlopen(f"{base_url}/", timeout=5) as response:
+                html = response.read().decode("utf-8")
+            self.assertIn("MingLi Agent", html)
+            self.assertIn("agentForm", html)
 
             body = json.dumps(
                 {

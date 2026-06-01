@@ -103,6 +103,12 @@ python -m mingli_bench.cli --show-chart case_1
 mingli-bench serve --port 8765
 ```
 
+然后打开：
+
+```text
+http://127.0.0.1:8765/
+```
+
 默认不会调用 LLM。需要让 `/agent` 调用模型时，启动时指定模型：
 
 ```bash
@@ -121,6 +127,7 @@ curl -X POST http://127.0.0.1:8765/agent \
 
 可用端点：
 
+- `GET /`：本地网页界面。
 - `GET /health`：服务健康检查。
 - `POST /chart`：输入 `ChartInput`，返回稳定 `BaziChart` JSON。
 - `POST /agent`：输入 `chart_input` 和可选 `question`，返回命盘、结构化 report、prompt 和可选 LLM 解读。

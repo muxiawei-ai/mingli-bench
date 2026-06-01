@@ -98,6 +98,12 @@ Start the local API server:
 mingli-bench serve --port 8765
 ```
 
+Then open:
+
+```text
+http://127.0.0.1:8765/
+```
+
 By default, `/agent` stays fully local and does not call an LLM. To enable LLM interpretation, start the server with a model:
 
 ```bash
@@ -116,6 +122,7 @@ curl -X POST http://127.0.0.1:8765/agent \
 
 Endpoints:
 
+- `GET /`: local web UI.
 - `GET /health`: service health check.
 - `POST /chart`: accepts `ChartInput` and returns stable `BaziChart` JSON.
 - `POST /agent`: accepts `chart_input` and optional `question`, then returns the chart, deterministic report, prompt, and optional LLM response.
