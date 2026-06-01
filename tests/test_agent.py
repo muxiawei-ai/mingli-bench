@@ -51,6 +51,8 @@ class MingLiAgentTests(unittest.TestCase):
         prompt = build_interpretation_prompt(chart, "分析事业")
         self.assertIn("分析事业", prompt)
         self.assertIn("戊午", prompt)
+        self.assertIn("问题 intent JSON", prompt)
+        self.assertIn("primary_domain", prompt)
         self.assertIn("本地 report JSON", prompt)
         self.assertIn("JSON 输出契约", prompt)
         self.assertIn("mingli_interpretation.v1", prompt)
@@ -74,14 +76,17 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("llm_not_called", result.warnings)
         self.assertEqual(result.chart.pillars.display(), "戊午 丙辰 丁酉 己酉")
         self.assertEqual(result.report.summary["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertEqual(result.intent.primary_domain, "性格")
         self.assertIn("report", result.as_dict())
         self.assertEqual(
             [stage.name for stage in result.trace],
-            ["input", "chart", "report", "prompt", "llm", "interpretation"],
+            ["input", "intent", "chart", "report", "prompt", "llm", "interpretation"],
         )
         self.assertEqual(result.trace[-2].status, "skipped")
         self.assertEqual(result.interpretation.mode, "local")
+        self.assertIn("性格问题路由", result.interpretation.to_markdown())
         self.assertIn("trace", result.as_dict())
+        self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())
 
     def test_agent_with_model_returns_response(self):
@@ -139,6 +144,7 @@ class MingLiAgentTests(unittest.TestCase):
             question="分析事业",
         )
         trace = {stage.name: stage.as_dict() for stage in result.trace}
+        self.assertEqual(trace["intent"]["data"]["primary_domain"], "事业")
         self.assertEqual(trace["chart"]["data"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
         self.assertGreater(trace["prompt"]["data"]["prompt_chars"], 1000)
         self.assertEqual(trace["llm"]["warnings"], ["llm_not_called"])

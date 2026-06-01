@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .intent import QuestionIntent
 from .report import ChartReport
 
 
@@ -103,7 +104,10 @@ JSON 必须符合以下结构：
 """
 
 
-def build_local_interpretation(report: ChartReport) -> InterpretationResult:
+def build_local_interpretation(
+    report: ChartReport,
+    intent: Optional[QuestionIntent] = None,
+) -> InterpretationResult:
     """Build a deterministic local interpretation scaffold without LLM claims."""
 
     summary = report.summary
@@ -141,6 +145,25 @@ def build_local_interpretation(report: ChartReport) -> InterpretationResult:
             caveats=list(report.caveats),
         ),
     ]
+    if intent is not None:
+        sections.append(
+            InterpretationSection(
+                title=f"{intent.primary_domain}问题路由",
+                summary=(
+                    f"用户问题被归入 {intent.primary_domain} 方向；"
+                    f"建议围绕 {'、'.join(intent.section_hints)} 展开。"
+                ),
+                evidence=[
+                    "domains=" + ",".join(intent.domains),
+                    f"confidence={intent.confidence}",
+                ],
+                caveats=(
+                    ["问题方向较宽，建议先追问具体关注点。"]
+                    if intent.needs_clarification
+                    else []
+                ),
+            )
+        )
     return InterpretationResult(
         schema_version=INTERPRETATION_SCHEMA_VERSION,
         mode="local",
@@ -157,12 +180,13 @@ def build_local_interpretation(report: ChartReport) -> InterpretationResult:
 def parse_interpretation_response(
     response: str,
     report: ChartReport,
+    intent: Optional[QuestionIntent] = None,
 ) -> InterpretationResult:
     """Parse an LLM response into the interpretation contract when possible."""
 
     payload = _load_json_object(response)
     if payload is None:
-        fallback = build_local_interpretation(report)
+        fallback = build_local_interpretation(report, intent)
         return InterpretationResult(
             schema_version=fallback.schema_version,
             mode="llm_text",
@@ -180,7 +204,7 @@ def parse_interpretation_response(
         for section in _as_list(payload.get("sections"))
     ]
     if not sections:
-        sections = build_local_interpretation(report).sections
+        sections = build_local_interpretation(report, intent).sections
     return InterpretationResult(
         schema_version=str(
             payload.get("schema_version") or INTERPRETATION_SCHEMA_VERSION

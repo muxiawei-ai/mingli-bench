@@ -7,6 +7,7 @@ from mingli_bench.interpretation import (
     interpretation_prompt_contract,
     parse_interpretation_response,
 )
+from mingli_bench.intent import parse_question_intent
 from mingli_bench.report import build_chart_report
 
 
@@ -30,12 +31,14 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertIn("sections", contract)
 
     def test_build_local_interpretation(self):
-        interpretation = build_local_interpretation(self.report)
+        intent = parse_question_intent("分析事业")
+        interpretation = build_local_interpretation(self.report, intent)
         self.assertEqual(interpretation.mode, "local")
         self.assertFalse(interpretation.parsed_from_response)
         self.assertEqual(interpretation.schema_version, INTERPRETATION_SCHEMA_VERSION)
-        self.assertGreaterEqual(len(interpretation.sections), 3)
+        self.assertGreaterEqual(len(interpretation.sections), 4)
         self.assertIn("本地模式", interpretation.overview)
+        self.assertIn("事业问题路由", interpretation.to_markdown())
 
     def test_parse_json_interpretation_response(self):
         interpretation = parse_interpretation_response(

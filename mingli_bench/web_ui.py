@@ -484,7 +484,7 @@ INDEX_HTML = """<!doctype html>
             <div class="metric"><span>四柱</span><strong id="pillarsText">-</strong></div>
             <div class="metric"><span>日主</span><strong id="dayMaster">-</strong></div>
             <div class="metric"><span>时辰</span><strong id="hourBranch">-</strong></div>
-            <div class="metric"><span>时区</span><strong id="timezone">-</strong></div>
+            <div class="metric"><span>问题方向</span><strong id="intentDomain">-</strong></div>
           </div>
 
           <section class="panel">
@@ -641,15 +641,18 @@ INDEX_HTML = """<!doctype html>
       const report = data.report;
       const summary = report.summary;
       const inputQuality = report.input_quality;
+      const intent = data.intent || {};
       document.getElementById("pillarsText").textContent = summary.pillars_text || "-";
       document.getElementById("dayMaster").textContent = `${summary.day_master || "-"} (${summary.day_master_element || "未知"})`;
       document.getElementById("hourBranch").textContent = summary.hour_branch || "未知";
-      document.getElementById("timezone").textContent = inputQuality.timezone || "-";
+      document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
       renderElements(report.element_profile || []);
       renderTags("signalTags", [
         ...(report.strongest_elements || []).map((item) => `相对较多：${item}`),
         ...(report.missing_elements || []).map((item) => `未见：${item}`),
+        `问题方向：${intent.primary_domain || "-"}`,
+        `置信度：${intent.confidence ?? "-"}`,
         `历法来源：${inputQuality.calendar_source || "-"}`
       ]);
       renderTags("caveats", [

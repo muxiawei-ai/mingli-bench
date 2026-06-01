@@ -36,6 +36,7 @@ class LocalApiTests(unittest.TestCase):
             }
         )
         self.assertEqual(response["report"]["summary"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertEqual(response["intent"]["primary_domain"], "事业")
         self.assertIn("llm_not_called", response["warnings"])
         trace = {stage["name"]: stage for stage in response["trace"]}
         self.assertEqual(trace["llm"]["status"], "skipped")
@@ -81,7 +82,8 @@ class LocalApiTests(unittest.TestCase):
                 agent = json.loads(response.read().decode("utf-8"))
             self.assertEqual(agent["chart"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
             self.assertEqual(agent["report"]["question"], "分析事业")
-            self.assertEqual(agent["trace"][1]["name"], "chart")
+            self.assertEqual(agent["trace"][1]["name"], "intent")
+            self.assertEqual(agent["trace"][2]["name"], "chart")
             self.assertIn("interpretation", agent)
         finally:
             server.shutdown()

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .chart_api import BaziChart, ChartInputLike, build_bazi_chart
+from .intent import QuestionIntent, parse_question_intent
 from .interpretation import (
     InterpretationResult,
     build_local_interpretation,
@@ -50,6 +51,7 @@ class AgentResult:
     """JSON-friendly result returned by the MingLi agent."""
 
     chart: BaziChart
+    intent: QuestionIntent
     report: ChartReport
     interpretation: InterpretationResult
     question: str
@@ -62,6 +64,7 @@ class AgentResult:
     def as_dict(self) -> Dict[str, Any]:
         return {
             "chart": self.chart.as_dict(),
+            "intent": self.intent.as_dict(),
             "report": self.report.as_dict(),
             "interpretation": self.interpretation.as_dict(),
             "question": self.question,
@@ -77,10 +80,13 @@ def build_interpretation_prompt(
     chart: BaziChart,
     question: str = DEFAULT_AGENT_QUESTION,
     report: Optional[ChartReport] = None,
+    intent: Optional[QuestionIntent] = None,
 ) -> str:
     """Build the prompt sent to an LLM for chart interpretation."""
 
     report = report or build_chart_report(chart, question)
+    intent = intent or parse_question_intent(question)
+    intent_json = json.dumps(intent.as_dict(), ensure_ascii=False, indent=2)
     report_json = json.dumps(report.as_dict(), ensure_ascii=False, indent=2)
     chart_json = json.dumps(chart.as_dict(), ensure_ascii=False, indent=2)
     return f"""你是一个中文命理分析 Agent。
@@ -88,6 +94,7 @@ def build_interpretation_prompt(
 请只基于下方 JSON 中的结构化排盘结果进行分析，不要重新发明或猜测四柱。
 如果 warnings 中提示地点、历法或时区存在不确定性，请先说明该限制。
 本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
+intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_domain 和 section_hints 组织回答。
 
 输出要求：
 1. 遵守下方 JSON 输出契约。
@@ -101,6 +108,9 @@ JSON 输出契约：
 
 用户问题：
 {question}
+
+问题 intent JSON：
+{intent_json}
 
 本地 report JSON：
 {report_json}
@@ -135,6 +145,21 @@ class MingLiAgent:
                 warnings=[],
             )
         ]
+        intent = parse_question_intent(question)
+        trace.append(
+            AgentStage(
+                name="intent",
+                status="completed",
+                summary="Parsed user-question intent.",
+                data={
+                    "primary_domain": intent.primary_domain,
+                    "domains": list(intent.domains),
+                    "confidence": intent.confidence,
+                    "needs_clarification": intent.needs_clarification,
+                },
+                warnings=["intent_needs_clarification"] if intent.needs_clarification else [],
+            )
+        )
         chart = build_bazi_chart(chart_input, fortune_data_path=fortune_data_path)
         trace.append(
             AgentStage(
@@ -165,7 +190,7 @@ class MingLiAgent:
                 warnings=[],
             )
         )
-        prompt = build_interpretation_prompt(chart, question, report)
+        prompt = build_interpretation_prompt(chart, question, report, intent)
         trace.append(
             AgentStage(
                 name="prompt",
@@ -201,9 +226,9 @@ class MingLiAgent:
                 )
             )
         if response:
-            interpretation = parse_interpretation_response(response, report)
+            interpretation = parse_interpretation_response(response, report, intent)
         else:
-            interpretation = build_local_interpretation(report)
+            interpretation = build_local_interpretation(report, intent)
         trace.append(
             AgentStage(
                 name="interpretation",
@@ -227,6 +252,7 @@ class MingLiAgent:
             warnings.append("llm_not_called")
         return AgentResult(
             chart=chart,
+            intent=intent,
             report=report,
             interpretation=interpretation,
             question=question,
