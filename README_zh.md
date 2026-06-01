@@ -86,6 +86,8 @@ python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
+mingli-bench eval-agent --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
 mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
@@ -97,6 +99,27 @@ Agent JSON 结果会包含 `trace` 字段，用于审计输入、排盘、报告
 
 `mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行并输出结构化命盘报告，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
 需要查看发给模型的完整 prompt 时，可以加 `--show-prompt`。
+
+## Agent 评测
+
+`eval-agent` 用已有 benchmark case 批量检查 Agent 管线质量。默认不调用 LLM，适合快速验证排盘、intent、trace 和 interpretation schema：
+
+```bash
+mingli-bench eval-agent --sample 10
+```
+
+如需评测真实模型的结构化输出解析率：
+
+```bash
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+```
+
+默认会保存：
+
+- `summary.json`：整体指标、分布和错误样例。
+- `records.jsonl`：每条 case 的完整 Agent 结果。
+
+可用 `--no-save` 只在终端查看摘要。
 
 ## 本地 HTTP API
 

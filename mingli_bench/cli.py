@@ -7,6 +7,14 @@ import json
 import sys
 
 from .agent import MingLiAgent
+from .agent_eval import (
+    AgentEvalConfig,
+    evaluate_agent_questions,
+    format_agent_eval_summary,
+    load_agent_eval_questions,
+    save_agent_eval,
+    summarize_agent_eval,
+)
 from .api import run_server
 from .calendar import hour_branch, parse_bazi_pillars
 from .chart_api import build_bazi_chart
@@ -59,6 +67,8 @@ Examples:
   python -m mingli_bench.cli agent --no-llm
   python -m mingli_bench.cli agent --no-llm --show-prompt
   mingli-bench agent --model google/gemini-2.5-pro
+  mingli-bench eval-agent --sample 10
+  mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
   mingli-bench serve --port 8765
   mingli-bench serve --model google/gemini-2.5-pro
   python -m mingli_bench.cli --show-chart case_1
@@ -68,8 +78,11 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["agent", "serve"],
-        help="Optional command. Use 'agent' for the interactive CLI or 'serve' for the local HTTP API."
+        choices=["agent", "serve", "eval-agent"],
+        help=(
+            "Optional command. Use 'agent' for the interactive CLI, "
+            "'serve' for the local HTTP API, or 'eval-agent' for agent pipeline evaluation."
+        )
     )
     
     # Model selection
@@ -361,6 +374,49 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to run MingLi API server: {e}")
+            return 1
+
+    if args.command == "eval-agent":
+        try:
+            model_name = args.agent_model or args.model
+            model_client = None
+            if model_name:
+                from .utils.config import load_config
+
+                config_data = load_config(args.env_file)
+                model_client = ModelFactory.create(
+                    model_name,
+                    provider=args.platform,
+                    config=config_data,
+                )
+            config = AgentEvalConfig(
+                sample_size=args.sample,
+                year=args.year,
+                categories=args.categories,
+                data_path=args.data_path,
+                fortune_data_path=args.fortune_data_path,
+                model_name=model_name,
+                output_dir=args.output_dir,
+                save=not args.no_save,
+            )
+            questions = load_agent_eval_questions(config)
+            records = evaluate_agent_questions(
+                questions,
+                model_client=model_client,
+                fortune_data_path=args.fortune_data_path,
+            )
+            summary = summarize_agent_eval(records, config=config)
+            saved_paths = {}
+            if config.save:
+                saved_paths = save_agent_eval(summary, output_dir=args.output_dir)
+            print(format_agent_eval_summary(summary))
+            if saved_paths:
+                print("\nSaved:")
+                print(f"  Summary: {saved_paths['summary']}")
+                print(f"  Records: {saved_paths['records']}")
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to evaluate MingLi agent: {e}")
             return 1
     
     # Handle special actions

@@ -81,6 +81,8 @@ python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
+mingli-bench eval-agent --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
 mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
@@ -92,6 +94,27 @@ They also include an `intent` field that routes the user question into coarse do
 
 `mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local with a structured chart report, `--model` to call an LLM, and `--json` for machine-readable output.
 Add `--show-prompt` when you want to inspect the full prompt sent to the model.
+
+## Agent Evaluation
+
+`eval-agent` runs benchmark cases through the local agent pipeline. By default it does not call an LLM, making it useful for checking chart generation, intent routing, trace completeness, and interpretation schema compliance:
+
+```bash
+mingli-bench eval-agent --sample 10
+```
+
+To evaluate real model output parsing:
+
+```bash
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+```
+
+By default it saves:
+
+- `summary.json`: aggregate metrics, distributions, and error samples.
+- `records.jsonl`: one full agent result per benchmark case.
+
+Use `--no-save` to print only the terminal summary.
 
 ## Local HTTP API
 
