@@ -660,11 +660,39 @@ INDEX_HTML = """<!doctype html>
       const llmPanel = document.getElementById("llmPanel");
       if (data.response) {
         llmPanel.hidden = false;
-        document.getElementById("llmResponse").textContent = data.response;
+        document.getElementById("llmResponse").textContent = formatInterpretation(data.interpretation);
       } else {
         llmPanel.hidden = true;
       }
       document.getElementById("rawJson").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function formatInterpretation(interpretation) {
+      if (!interpretation) {
+        return "";
+      }
+      const lines = [
+        `概览：${interpretation.overview || ""}`,
+        `模式：${interpretation.mode || ""}`
+      ];
+      (interpretation.sections || []).forEach((section) => {
+        lines.push("", `【${section.title || "未命名段落"}】`, section.summary || "");
+        if (section.evidence?.length) {
+          lines.push(`依据：${section.evidence.join("；")}`);
+        }
+        if (section.caveats?.length) {
+          lines.push(`限制：${section.caveats.join("；")}`);
+        }
+      });
+      if (interpretation.follow_up_questions?.length) {
+        lines.push("", "建议追问：");
+        interpretation.follow_up_questions.forEach((item) => lines.push(`- ${item}`));
+      }
+      if (interpretation.caveats?.length) {
+        lines.push("", "整体限制：");
+        interpretation.caveats.forEach((item) => lines.push(`- ${item}`));
+      }
+      return lines.join("\\n");
     }
 
     function renderElements(profile) {

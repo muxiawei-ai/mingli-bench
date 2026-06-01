@@ -140,7 +140,7 @@ def format_agent_result(
     if result.warnings:
         lines.append(f"Warnings: {', '.join(result.warnings)}")
     if result.response:
-        lines.extend(["", "=== LLM 解读 ===", result.response])
+        lines.extend(["", "=== 结构化解读 ===", result.interpretation.to_markdown()])
     elif show_prompt:
         lines.extend(["", "=== Prompt Preview ===", result.prompt])
     return "\n".join(lines)

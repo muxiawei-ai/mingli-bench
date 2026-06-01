@@ -12,6 +12,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .chart_api import BaziChart, ChartInputLike, build_bazi_chart
+from .interpretation import (
+    InterpretationResult,
+    build_local_interpretation,
+    interpretation_prompt_contract,
+    parse_interpretation_response,
+)
 from .models.base import ModelClient
 from .report import ChartReport, build_chart_report
 
@@ -45,6 +51,7 @@ class AgentResult:
 
     chart: BaziChart
     report: ChartReport
+    interpretation: InterpretationResult
     question: str
     prompt: str
     response: Optional[str]
@@ -56,6 +63,7 @@ class AgentResult:
         return {
             "chart": self.chart.as_dict(),
             "report": self.report.as_dict(),
+            "interpretation": self.interpretation.as_dict(),
             "question": self.question,
             "prompt": self.prompt,
             "response": self.response,
@@ -82,10 +90,14 @@ def build_interpretation_prompt(
 本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
 
 输出要求：
-1. 先给出排盘摘要：四柱、日主、五行概况。
-2. 再回答用户问题。
-3. 保持审慎，不要把命理分析说成确定事实。
-4. 如果信息不足，列出需要追问的关键问题。
+1. 遵守下方 JSON 输出契约。
+2. 先给出排盘摘要：四柱、日主、五行概况。
+3. 再回答用户问题。
+4. 保持审慎，不要把命理分析说成确定事实。
+5. 如果信息不足，列出需要追问的关键问题。
+
+JSON 输出契约：
+{interpretation_prompt_contract()}
 
 用户问题：
 {question}
@@ -188,12 +200,35 @@ class MingLiAgent:
                     warnings=["llm_not_called"],
                 )
             )
+        if response:
+            interpretation = parse_interpretation_response(response, report)
+        else:
+            interpretation = build_local_interpretation(report)
+        trace.append(
+            AgentStage(
+                name="interpretation",
+                status="completed",
+                summary="Built structured interpretation contract.",
+                data={
+                    "mode": interpretation.mode,
+                    "schema_version": interpretation.schema_version,
+                    "section_count": len(interpretation.sections),
+                    "parsed_from_response": interpretation.parsed_from_response,
+                },
+                warnings=[
+                    caveat
+                    for caveat in interpretation.caveats
+                    if caveat.startswith("llm_response_")
+                ],
+            )
+        )
         warnings = list(chart.warnings)
         if self.model_client is None:
             warnings.append("llm_not_called")
         return AgentResult(
             chart=chart,
             report=report,
+            interpretation=interpretation,
             question=question,
             prompt=prompt,
             response=response,

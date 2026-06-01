@@ -18,6 +18,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.api` lightweight local HTTP API with `/health`, `/chart`, and `/agent`.
 - Local web UI served at `/` by `mingli-bench serve`.
 - Agent run trace metadata for input, chart, report, prompt, and LLM stages.
+- `mingli_bench.interpretation` structured `mingli_interpretation.v1` contract for local and LLM interpretations.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,
