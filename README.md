@@ -33,6 +33,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - Bazi year/month/day/hour derivation from Gregorian date/time,
   - approximate 24 solar-term calculation for month boundaries,
   - benchmark birth-place normalization to timezone offsets,
+  - Chinese lunar-date parsing and fixture-backed lunar/solar lookup,
   - Bazi four-pillar parsing,
   - five-element counting,
   - compact chart summary extraction.
@@ -69,6 +70,9 @@ python -m mingli_bench.cli --analyze-pillars "甲寅 戊辰 己亥 壬申"
 python -m mingli_bench.cli --bazi-date 1974-04-28 --bazi-time 16:40
 python -m mingli_bench.cli --bazi-date 1978-04-05 --bazi-time 18:00 --bazi-location 台湾
 python -m mingli_bench.cli --bazi-case case_13
+python -m mingli_bench.cli --lunar-date "一九八四年闰十月十七"
+python -m mingli_bench.cli --lunar-from-solar 1978-04-05
+python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
 python -m mingli_bench.cli --show-chart case_1
 ```
 
@@ -101,6 +105,7 @@ OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.charts import get_chart_summary
+from mingli_bench.lunar import lunar_from_solar_date, parse_chinese_lunar_date
 
 print(hour_branch(23))  # 子
 
@@ -121,6 +126,10 @@ birth_info_chart = bazi_from_birth_info({
     "calendar_type": "solar",
 })
 print(birth_info_chart["timezone"]["timezone"])  # Asia/Taipei
+
+lunar = parse_chinese_lunar_date("一九八四年闰十月十七")
+print(lunar.as_dict())
+print(lunar_from_solar_date("1978-04-05")["lunar_date"])  # 一九七八年二月廿八
 
 bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
 print(bazi["day_master"])  # 己
@@ -152,11 +161,13 @@ The chart fixtures are generated externally and are treated as data fixtures in 
 - hour pillar from day stem and time.
 - birth-place normalization for the locations present in the benchmark fixtures.
 
-`mingli_bench.solar_terms` provides deterministic approximate solar-term datetimes by searching apparent solar longitude. It is suitable for developer tooling and regression tests, but it is not a high-precision ephemeris. Historical timezone/DST handling and lunar/solar date conversion remain future work.
+`mingli_bench.solar_terms` provides deterministic approximate solar-term datetimes by searching apparent solar longitude. It is suitable for developer tooling and regression tests, but it is not a high-precision ephemeris. Historical timezone/DST handling and full standalone lunar/solar conversion remain future work.
 
 The Bazi year pillar follows the Li Chun convention. Around January/February, this can differ from chart sources that label the year by Lunar New Year.
 
 `mingli_bench.locations` currently uses a small auditable alias table rather than a full geocoder. Ambiguous inputs such as `usa` fall back to UTC+8 and return warnings so callers can ask for a state/city or pass an explicit offset in future integrations.
+
+`mingli_bench.lunar` currently parses Chinese lunar-date strings and provides fixture-backed lookup against `data/fortune_api_results.json`. It is not yet a full standalone lunar calendar conversion engine.
 
 ## Attribution
 
@@ -172,7 +183,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 
 ## Roadmap
 
-- Add pure lunar / solar date conversion utilities.
+- Add a full standalone lunar / solar conversion engine.
 - Expand solar-term validation fixtures and boundary-case coverage.
 - Expand birthplace normalization beyond bundled fixture locations.
 - Add explicit timezone-offset override and historical DST policy hooks.

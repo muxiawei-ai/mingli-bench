@@ -14,6 +14,8 @@ class ChartUtilityTests(unittest.TestCase):
         self.assertEqual(summary["case_id"], "case_1")
         self.assertEqual(summary["bazi"]["chinese_date"], "甲寅 戊辰 己亥 壬申")
         self.assertEqual(summary["bazi"]["hour_pillar"], "壬申")
+        self.assertEqual(summary["bazi"]["lunar"]["month"], 4)
+        self.assertEqual(summary["bazi"]["lunar"]["day"], 7)
         self.assertGreaterEqual(len(summary["ziwei"]["palaces"]), 12)
 
 

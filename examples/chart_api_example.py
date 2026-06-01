@@ -15,6 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.charts import get_chart_summary
+from mingli_bench.lunar import lunar_from_solar_date, parse_chinese_lunar_date
 
 
 def main() -> None:
@@ -38,6 +39,8 @@ def main() -> None:
         }
     )
     print("Bazi from birth_info:", birth_info_chart["timezone"], birth_info_chart["month_pillar"])
+    print("Parsed lunar date:", parse_chinese_lunar_date("一九八四年闰十月十七").as_dict())
+    print("Fixture lunar lookup:", lunar_from_solar_date("1978-04-05"))
 
     bazi = parse_bazi_pillars("甲寅 戊辰 己亥 壬申")
     print("Day master:", bazi["day_master"])

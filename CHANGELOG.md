@@ -11,6 +11,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - GitHub Actions CI for Python 3.9-3.12.
 - `mingli_bench.solar_terms` approximate 24 solar-term calculation based on apparent solar longitude.
 - `mingli_bench.locations` timezone normalization for benchmark birth-place strings.
+- `mingli_bench.lunar` Chinese lunar-date parser and fixture-backed lunar/solar lookup.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,
@@ -24,8 +25,11 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
   - `--bazi-time`,
   - `--bazi-location`,
   - `--bazi-country`,
-  - `--bazi-case`.
-- Fixture regression tests for Bazi month/day/hour pillars and location normalization.
+  - `--bazi-case`,
+  - `--lunar-date`,
+  - `--lunar-from-solar`,
+  - `--solar-from-lunar`.
+- Fixture regression tests for Bazi month/day/hour pillars, location normalization, and lunar-date lookup.
 
 ## [0.1.0] - 2026-05-31
 

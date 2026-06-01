@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from .calendar import parse_bazi_pillars
+from .lunar import parse_chinese_lunar_date
 from .utils.path_utils import find_data_file
 
 
@@ -72,6 +73,11 @@ def extract_bazi_summary(record: Dict[str, Any]) -> Dict[str, Any]:
     summary.update({
         "solar_date": chart.get("solarDate"),
         "lunar_date": chart.get("lunarDate"),
+        "lunar": (
+            parse_chinese_lunar_date(chart["lunarDate"]).as_dict()
+            if chart.get("lunarDate")
+            else None
+        ),
         "time": chart.get("time"),
         "zodiac": chart.get("zodiac"),
         "five_elements_class": chart.get("fiveElementsClass"),

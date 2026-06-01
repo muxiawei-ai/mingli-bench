@@ -10,6 +10,7 @@ from .calendar import hour_branch, parse_bazi_pillars
 from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
 from .bazi import bazi_from_birth_info, bazi_from_gregorian
 from .locations import resolve_timezone
+from .lunar import lunar_from_solar_date, parse_chinese_lunar_date, solar_from_lunar_date
 from .models.factory import ModelFactory
 from .utils import get_logger
 from .data import DataLoader
@@ -45,6 +46,9 @@ Examples:
   python -m mingli_bench.cli --bazi-date 1974-04-28 --bazi-time 16:40
   python -m mingli_bench.cli --bazi-date 1978-04-05 --bazi-time 18:00 --bazi-location 台湾
   python -m mingli_bench.cli --bazi-case case_13
+  python -m mingli_bench.cli --lunar-date "一九八四年闰十月十七"
+  python -m mingli_bench.cli --lunar-from-solar 1978-04-05
+  python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -192,6 +196,24 @@ Examples:
     )
 
     parser.add_argument(
+        "--lunar-date",
+        metavar="LUNAR_DATE",
+        help='Parse a Chinese lunar date such as "一九八四年闰十月十七" and exit'
+    )
+
+    parser.add_argument(
+        "--lunar-from-solar",
+        metavar="YYYY-MM-DD",
+        help="Look up fixture-backed lunar date for a Gregorian date and exit"
+    )
+
+    parser.add_argument(
+        "--solar-from-lunar",
+        metavar="LUNAR_DATE",
+        help="Look up fixture-backed Gregorian date for a Chinese lunar date and exit"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -241,6 +263,39 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to analyze Bazi pillars: {e}")
+            return 1
+
+    if args.lunar_date:
+        try:
+            lunar = parse_chinese_lunar_date(args.lunar_date)
+            print(json.dumps(lunar.as_dict(), ensure_ascii=False, indent=2))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to parse lunar date: {e}")
+            return 1
+
+    if args.lunar_from_solar:
+        try:
+            print(json.dumps(
+                lunar_from_solar_date(args.lunar_from_solar, path=args.fortune_data_path),
+                ensure_ascii=False,
+                indent=2,
+            ))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to look up lunar date: {e}")
+            return 1
+
+    if args.solar_from_lunar:
+        try:
+            print(json.dumps(
+                solar_from_lunar_date(args.solar_from_lunar, path=args.fortune_data_path),
+                ensure_ascii=False,
+                indent=2,
+            ))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to look up Gregorian date: {e}")
             return 1
 
     if args.bazi_date:

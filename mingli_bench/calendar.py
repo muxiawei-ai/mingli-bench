@@ -1,8 +1,8 @@
 """Calendar and Ganzhi helpers used by MingLi-Bench.
 
 This module intentionally focuses on small, testable primitives. Solar-term
-helpers live in ``mingli_bench.solar_terms``; lunar conversion remains future
-work.
+helpers live in ``mingli_bench.solar_terms``; lunar parsing helpers live in
+``mingli_bench.lunar``. Full standalone lunar conversion remains future work.
 """
 
 from __future__ import annotations

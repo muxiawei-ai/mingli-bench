@@ -14,10 +14,17 @@ from .bazi import (
     year_pillar_for_datetime,
 )
 from .locations import resolve_timezone
+from .lunar import (
+    LunarDate,
+    lunar_from_solar_date,
+    parse_chinese_lunar_date,
+    solar_from_lunar_date,
+)
 from .solar_terms import solar_month_branch_for_datetime, solar_term_datetime
 
 __all__ = [
     "FortuneTellingBenchmark",
+    "LunarDate",
     "ModelClient",
     "bazi_from_birth_info",
     "bazi_from_gregorian",
@@ -27,9 +34,12 @@ __all__ = [
     "hour_pillar_for_datetime",
     "month_pillar_for_datetime",
     "parse_bazi_pillars",
+    "parse_chinese_lunar_date",
     "resolve_timezone",
+    "lunar_from_solar_date",
     "solar_month_branch_for_datetime",
     "solar_term_datetime",
+    "solar_from_lunar_date",
     "year_pillar_for_date",
     "year_pillar_for_datetime",
 ]
