@@ -86,6 +86,7 @@ python -m mingli_bench.cli --show-chart case_1
 ```
 
 `--agent-input-json` runs locally by default and returns the chart, a deterministic local report, and the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
+Agent JSON results include a `trace` field for auditing input, chart building, local reporting, prompt construction, and LLM call/skip stages.
 
 `mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local with a structured chart report, `--model` to call an LLM, and `--json` for machine-readable output.
 Add `--show-prompt` when you want to inspect the full prompt sent to the model.

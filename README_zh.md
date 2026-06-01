@@ -91,6 +91,7 @@ python -m mingli_bench.cli --show-chart case_1
 ```
 
 `--agent-input-json` 默认只在本地运行，返回命盘、本地结构化 report 和准备给 LLM 的 prompt。加上 `--agent-model google/gemini-2.5-pro` 或其他支持模型后，才会读取 `.env` 并调用真实 LLM。
+Agent JSON 结果会包含 `trace` 字段，用于审计输入、排盘、报告、prompt 和 LLM 调用/跳过等阶段。
 
 `mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行并输出结构化命盘报告，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
 需要查看发给模型的完整 prompt 时，可以加 `--show-prompt`。

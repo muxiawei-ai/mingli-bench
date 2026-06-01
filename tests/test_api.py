@@ -37,6 +37,7 @@ class LocalApiTests(unittest.TestCase):
         )
         self.assertEqual(response["report"]["summary"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
         self.assertIn("llm_not_called", response["warnings"])
+        self.assertEqual(response["trace"][-1]["status"], "skipped")
 
     def test_http_health_and_agent_endpoints(self):
         server = create_server("127.0.0.1", 0)
@@ -78,6 +79,7 @@ class LocalApiTests(unittest.TestCase):
                 agent = json.loads(response.read().decode("utf-8"))
             self.assertEqual(agent["chart"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
             self.assertEqual(agent["report"]["question"], "分析事业")
+            self.assertEqual(agent["trace"][1]["name"], "chart")
         finally:
             server.shutdown()
             thread.join(timeout=5)

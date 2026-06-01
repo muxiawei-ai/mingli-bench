@@ -20,6 +20,26 @@ DEFAULT_AGENT_QUESTION = "请基于这个八字命盘，给出结构化、审慎
 
 
 @dataclass(frozen=True)
+class AgentStage:
+    """One auditable step in a MingLi agent run."""
+
+    name: str
+    status: str
+    summary: str
+    data: Dict[str, Any]
+    warnings: List[str]
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "status": self.status,
+            "summary": self.summary,
+            "data": self.data,
+            "warnings": self.warnings,
+        }
+
+
+@dataclass(frozen=True)
 class AgentResult:
     """JSON-friendly result returned by the MingLi agent."""
 
@@ -30,6 +50,7 @@ class AgentResult:
     response: Optional[str]
     model: Optional[str]
     warnings: List[str]
+    trace: List[AgentStage]
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -40,6 +61,7 @@ class AgentResult:
             "response": self.response,
             "model": self.model,
             "warnings": self.warnings,
+            "trace": [stage.as_dict() for stage in self.trace],
         }
 
 
@@ -89,10 +111,83 @@ class MingLiAgent:
         question: str = DEFAULT_AGENT_QUESTION,
         fortune_data_path: Optional[str] = None,
     ) -> AgentResult:
+        trace = [
+            AgentStage(
+                name="input",
+                status="completed",
+                summary="Received chart input and user question.",
+                data={
+                    "input_type": type(chart_input).__name__,
+                    "question_chars": len(question),
+                },
+                warnings=[],
+            )
+        ]
         chart = build_bazi_chart(chart_input, fortune_data_path=fortune_data_path)
+        trace.append(
+            AgentStage(
+                name="chart",
+                status="completed",
+                summary="Built deterministic Bazi chart.",
+                data={
+                    "pillars_text": chart.pillars.display(),
+                    "day_master": chart.day_master,
+                    "source": chart.source,
+                    "timezone": chart.timezone.get("timezone"),
+                },
+                warnings=list(chart.warnings),
+            )
+        )
         report = build_chart_report(chart, question)
+        trace.append(
+            AgentStage(
+                name="report",
+                status="completed",
+                summary="Built deterministic local report.",
+                data={
+                    "strongest_elements": list(report.strongest_elements),
+                    "missing_elements": list(report.missing_elements),
+                    "caveat_count": len(report.caveats),
+                    "follow_up_count": len(report.follow_up_questions),
+                },
+                warnings=[],
+            )
+        )
         prompt = build_interpretation_prompt(chart, question, report)
-        response = self.model_client.generate(prompt) if self.model_client else None
+        trace.append(
+            AgentStage(
+                name="prompt",
+                status="completed",
+                summary="Built LLM interpretation prompt.",
+                data={"prompt_chars": len(prompt)},
+                warnings=[],
+            )
+        )
+        response = None
+        if self.model_client:
+            response = self.model_client.generate(prompt)
+            trace.append(
+                AgentStage(
+                    name="llm",
+                    status="completed",
+                    summary="Called model client for interpretation.",
+                    data={
+                        "model": self.model_client.model_name,
+                        "response_chars": len(response),
+                    },
+                    warnings=[],
+                )
+            )
+        else:
+            trace.append(
+                AgentStage(
+                    name="llm",
+                    status="skipped",
+                    summary="No model client configured; returned local chart, report, and prompt only.",
+                    data={"model": None},
+                    warnings=["llm_not_called"],
+                )
+            )
         warnings = list(chart.warnings)
         if self.model_client is None:
             warnings.append("llm_not_called")
@@ -104,11 +199,13 @@ class MingLiAgent:
             response=response,
             model=self.model_client.model_name if self.model_client else None,
             warnings=warnings,
+            trace=trace,
         )
 
 
 __all__ = [
     "AgentResult",
+    "AgentStage",
     "DEFAULT_AGENT_QUESTION",
     "MingLiAgent",
     "build_interpretation_prompt",

@@ -50,6 +50,12 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.chart.pillars.display(), "戊午 丙辰 丁酉 己酉")
         self.assertEqual(result.report.summary["pillars_text"], "戊午 丙辰 丁酉 己酉")
         self.assertIn("report", result.as_dict())
+        self.assertEqual(
+            [stage.name for stage in result.trace],
+            ["input", "chart", "report", "prompt", "llm"],
+        )
+        self.assertEqual(result.trace[-1].status, "skipped")
+        self.assertIn("trace", result.as_dict())
 
     def test_agent_with_model_returns_response(self):
         model = FakeModelClient()
@@ -68,6 +74,26 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.model, "fake-model")
         self.assertNotIn("llm_not_called", result.warnings)
         self.assertIn("本地 report JSON", model.prompt)
+        self.assertEqual(result.trace[-1].status, "completed")
+        self.assertEqual(result.trace[-1].data["model"], "fake-model")
+
+    def test_agent_trace_contains_chart_and_prompt_metadata(self):
+        result = MingLiAgent().run(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+                "country": "中国",
+            },
+            question="分析事业",
+        )
+        trace = {stage.name: stage.as_dict() for stage in result.trace}
+        self.assertEqual(trace["chart"]["data"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertGreater(trace["prompt"]["data"]["prompt_chars"], 1000)
+        self.assertEqual(trace["llm"]["warnings"], ["llm_not_called"])
 
 
 if __name__ == "__main__":
