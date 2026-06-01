@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from .agent import AgentResult, MingLiAgent, build_interpretation_prompt
 from .calendar import hour_branch, parse_bazi_pillars
 from .charts import get_chart_summary
 from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
@@ -29,10 +30,13 @@ __all__ = [
     "BaziPillars",
     "ChartInput",
     "LunarDate",
+    "AgentResult",
     "ModelClient",
+    "MingLiAgent",
     "bazi_from_birth_info",
     "bazi_from_gregorian",
     "build_bazi_chart",
+    "build_interpretation_prompt",
     "day_pillar_for_date",
     "get_chart_summary",
     "hour_branch",

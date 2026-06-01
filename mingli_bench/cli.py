@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 
+from .agent import MingLiAgent
 from .calendar import hour_branch, parse_bazi_pillars
 from .chart_api import build_bazi_chart
 from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
@@ -51,6 +52,8 @@ Examples:
   python -m mingli_bench.cli --lunar-from-solar 1978-04-05
   python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
   python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}'
+  python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
+  python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-model google/gemini-2.5-pro
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -222,6 +225,23 @@ Examples:
     )
 
     parser.add_argument(
+        "--agent-input-json",
+        metavar="JSON",
+        help="Run the local MingLi agent from a ChartInput JSON object and exit"
+    )
+
+    parser.add_argument(
+        "--agent-question",
+        default="请基于这个八字命盘，给出结构化、审慎的中文命理分析。",
+        help="Question or task for --agent-input-json"
+    )
+
+    parser.add_argument(
+        "--agent-model",
+        help="Optional model name for --agent-input-json. If omitted, returns chart and prompt only."
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -316,6 +336,32 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to build Bazi chart: {e}")
+            return 1
+
+    if args.agent_input_json:
+        try:
+            payload = json.loads(args.agent_input_json)
+            if not isinstance(payload, dict):
+                raise ValueError("--agent-input-json must be a JSON object")
+            model_client = None
+            if args.agent_model:
+                from .utils.config import load_config
+
+                config = load_config(args.env_file)
+                model_client = ModelFactory.create(
+                    args.agent_model,
+                    provider=args.platform,
+                    config=config,
+                )
+            result = MingLiAgent(model_client).run(
+                payload,
+                question=args.agent_question,
+                fortune_data_path=args.fortune_data_path,
+            )
+            print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to run MingLi agent: {e}")
             return 1
 
     if args.bazi_date:

@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from mingli_bench.agent import MingLiAgent
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.chart_api import build_bazi_chart
@@ -35,6 +36,19 @@ def main() -> None:
         }
     )
     print("Stable BaziChart:", stable_chart.as_dict())
+
+    agent_result = MingLiAgent().run(
+        {
+            "calendar_type": "solar",
+            "year": 1978,
+            "month": 4,
+            "day": 5,
+            "hour": 18,
+            "location": "台湾",
+        },
+        question="分析事业和性格",
+    )
+    print("Agent prompt preview:", agent_result.prompt[:200])
 
     bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
     print("Bazi:", bazi_chart)

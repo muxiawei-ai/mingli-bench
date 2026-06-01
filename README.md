@@ -29,6 +29,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
 - Pre-computed Bazi and Ziwei chart data in `data/fortune_api_results.json`.
 - Pure utility functions for:
   - stable `ChartInput -> BaziChart` API for app and agent integrations,
+  - lightweight local `MingLiAgent` service layer with optional LLM calls,
   - sexagenary cycle names and indexes,
   - earthly branch mapping for Chinese double-hours,
   - Bazi year/month/day/hour derivation from Gregorian date/time,
@@ -44,6 +45,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - Bazi pillar analysis,
   - Gregorian date/time to Bazi chart output,
   - `ChartInput` JSON to stable `BaziChart` JSON output,
+  - local agent prompt generation and optional LLM interpretation,
   - chart summary lookup by `case_id`.
 - LLM evaluation CLI with OpenRouter, OpenAI, Anthropic, Google, DeepSeek, and Doubao support.
 
@@ -76,8 +78,11 @@ python -m mingli_bench.cli --lunar-date "一九八四年闰十月十七"
 python -m mingli_bench.cli --lunar-from-solar 1978-04-05
 python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
 python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾","country":"中国"}'
+python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
 python -m mingli_bench.cli --show-chart case_1
 ```
+
+`--agent-input-json` runs locally by default and returns the chart plus the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
 
 Installed command form:
 
@@ -105,6 +110,7 @@ OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and
 ## Python API Examples
 
 ```python
+from mingli_bench.agent import MingLiAgent
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.chart_api import build_bazi_chart
@@ -125,6 +131,19 @@ chart = build_bazi_chart({
 })
 print(chart.as_dict()["pillars_text"])  # 戊午 丙辰 丁酉 己酉
 print(chart.day_master)                 # 丁
+
+agent_result = MingLiAgent().run(
+    {
+        "calendar_type": "solar",
+        "year": 1978,
+        "month": 4,
+        "day": 5,
+        "hour": 18,
+        "location": "台湾",
+    },
+    question="分析事业和性格",
+)
+print(agent_result.prompt)  # Local prompt, no LLM call unless a model client is provided.
 
 bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
 print(bazi_chart["year_pillar"])   # 甲寅
@@ -184,6 +203,8 @@ The Bazi year pillar follows the Li Chun convention. Around January/February, th
 
 `mingli_bench.chart_api` is the recommended application-facing API. It accepts solar or fixture-backed lunar `ChartInput` data and returns a stable `BaziChart` object with pillars, day master, five-element summary, timezone metadata, lunar metadata, source, and warnings.
 
+`mingli_bench.agent` is the recommended first integration point for an actual fortune-telling agent. It keeps deterministic chart calculation local, then optionally calls an LLM for interpretation when a model client is configured.
+
 `mingli_bench.locations` currently uses a small auditable alias table rather than a full geocoder. Ambiguous inputs such as `usa` fall back to UTC+8 and return warnings so callers can ask for a state/city or pass an explicit offset in future integrations.
 
 `mingli_bench.lunar` currently parses Chinese lunar-date strings and provides fixture-backed lookup against `data/fortune_api_results.json`. It is not yet a full standalone lunar calendar conversion engine.
@@ -203,6 +224,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 ## Roadmap
 
 - Keep hardening the stable `ChartInput -> BaziChart` API contract.
+- Add higher-level agent conversation memory and follow-up question handling.
 - Add a full standalone lunar / solar conversion engine.
 - Expand solar-term validation fixtures and boundary-case coverage.
 - Expand birthplace normalization beyond bundled fixture locations.
