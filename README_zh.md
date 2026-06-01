@@ -86,6 +86,7 @@ python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
+mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
 
@@ -93,6 +94,36 @@ python -m mingli_bench.cli --show-chart case_1
 
 `mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行并输出结构化命盘报告，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
 需要查看发给模型的完整 prompt 时，可以加 `--show-prompt`。
+
+## 本地 HTTP API
+
+启动本地服务：
+
+```bash
+mingli-bench serve --port 8765
+```
+
+默认不会调用 LLM。需要让 `/agent` 调用模型时，启动时指定模型：
+
+```bash
+mingli-bench serve --model google/gemini-2.5-pro
+```
+
+调用示例：
+
+```bash
+curl http://127.0.0.1:8765/health
+
+curl -X POST http://127.0.0.1:8765/agent \
+  -H 'Content-Type: application/json' \
+  -d '{"chart_input":{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"},"question":"分析事业和性格"}'
+```
+
+可用端点：
+
+- `GET /health`：服务健康检查。
+- `POST /chart`：输入 `ChartInput`，返回稳定 `BaziChart` JSON。
+- `POST /agent`：输入 `chart_input` 和可选 `question`，返回命盘、结构化 report、prompt 和可选 LLM 解读。
 
 安装后也可以使用命令：
 

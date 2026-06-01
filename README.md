@@ -81,6 +81,7 @@ python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
+mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
 
@@ -88,6 +89,36 @@ python -m mingli_bench.cli --show-chart case_1
 
 `mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local with a structured chart report, `--model` to call an LLM, and `--json` for machine-readable output.
 Add `--show-prompt` when you want to inspect the full prompt sent to the model.
+
+## Local HTTP API
+
+Start the local API server:
+
+```bash
+mingli-bench serve --port 8765
+```
+
+By default, `/agent` stays fully local and does not call an LLM. To enable LLM interpretation, start the server with a model:
+
+```bash
+mingli-bench serve --model google/gemini-2.5-pro
+```
+
+Example requests:
+
+```bash
+curl http://127.0.0.1:8765/health
+
+curl -X POST http://127.0.0.1:8765/agent \
+  -H 'Content-Type: application/json' \
+  -d '{"chart_input":{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"},"question":"分析事业和性格"}'
+```
+
+Endpoints:
+
+- `GET /health`: service health check.
+- `POST /chart`: accepts `ChartInput` and returns stable `BaziChart` JSON.
+- `POST /agent`: accepts `chart_input` and optional `question`, then returns the chart, deterministic report, prompt, and optional LLM response.
 
 Installed command form:
 

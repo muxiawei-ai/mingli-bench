@@ -7,6 +7,7 @@ import json
 import sys
 
 from .agent import MingLiAgent
+from .api import run_server
 from .calendar import hour_branch, parse_bazi_pillars
 from .chart_api import build_bazi_chart
 from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
@@ -58,6 +59,8 @@ Examples:
   python -m mingli_bench.cli agent --no-llm
   python -m mingli_bench.cli agent --no-llm --show-prompt
   mingli-bench agent --model google/gemini-2.5-pro
+  mingli-bench serve --port 8765
+  mingli-bench serve --model google/gemini-2.5-pro
   python -m mingli_bench.cli --show-chart case_1
         """
     )
@@ -65,8 +68,8 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["agent"],
-        help="Optional command. Use 'agent' for the interactive local MingLi agent."
+        choices=["agent", "serve"],
+        help="Optional command. Use 'agent' for the interactive CLI or 'serve' for the local HTTP API."
     )
     
     # Model selection
@@ -271,6 +274,24 @@ Examples:
     )
 
     parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="For 'serve': API host address (default: 127.0.0.1)"
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="For 'serve': API port (default: 8765)"
+    )
+
+    parser.add_argument(
+        "--api-model",
+        help="For 'serve': optional model name for /agent. Defaults to --model when provided."
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -325,6 +346,21 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to run interactive MingLi agent: {e}")
+            return 1
+
+    if args.command == "serve":
+        try:
+            run_server(
+                host=args.host,
+                port=args.port,
+                fortune_data_path=args.fortune_data_path,
+                model_name=args.api_model or args.model,
+                provider=args.platform,
+                env_file=args.env_file,
+            )
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to run MingLi API server: {e}")
             return 1
     
     # Handle special actions
