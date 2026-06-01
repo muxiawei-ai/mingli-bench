@@ -80,6 +80,22 @@ class InteractiveAgentTests(unittest.TestCase):
         )
         formatted = format_agent_result(result)
         self.assertIn("四柱: 戊午 丙辰 丁酉 己酉", formatted)
+        self.assertIn("本地结构化报告", formatted)
+        self.assertNotIn("Prompt Preview", formatted)
+
+    def test_format_agent_result_can_show_prompt(self):
+        result = MingLiAgent().run(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+            },
+            question="分析事业",
+        )
+        formatted = format_agent_result(result, show_prompt=True)
         self.assertIn("Prompt Preview", formatted)
 
 

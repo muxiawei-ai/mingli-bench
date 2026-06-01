@@ -122,26 +122,26 @@ def prompt_for_model_choice(
     )
 
 
-def format_agent_result(result: AgentResult, *, as_json: bool = False) -> str:
+def format_agent_result(
+    result: AgentResult,
+    *,
+    as_json: bool = False,
+    show_prompt: bool = False,
+) -> str:
     """Format an ``AgentResult`` for terminal output."""
 
     if as_json:
         return json.dumps(result.as_dict(), ensure_ascii=False, indent=2)
 
-    chart = result.chart
     lines = [
         "=== MingLi Agent Result ===",
-        f"四柱: {chart.pillars.display()}",
-        f"日主: {chart.day_master} ({chart.day_master_element})",
-        f"五行: {json.dumps(chart.five_elements_summary, ensure_ascii=False)}",
-        f"时区: {chart.timezone.get('timezone')} ({chart.timezone.get('normalized_location')})",
-        f"问题: {result.question}",
+        result.report.to_markdown(),
     ]
     if result.warnings:
         lines.append(f"Warnings: {', '.join(result.warnings)}")
     if result.response:
         lines.extend(["", "=== LLM 解读 ===", result.response])
-    else:
+    elif show_prompt:
         lines.extend(["", "=== Prompt Preview ===", result.prompt])
     return "\n".join(lines)
 

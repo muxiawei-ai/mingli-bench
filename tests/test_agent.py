@@ -28,6 +28,7 @@ class MingLiAgentTests(unittest.TestCase):
         prompt = build_interpretation_prompt(chart, "分析事业")
         self.assertIn("分析事业", prompt)
         self.assertIn("戊午", prompt)
+        self.assertIn("本地 report JSON", prompt)
         self.assertIn("不要重新发明或猜测四柱", prompt)
 
     def test_agent_without_model_returns_prompt_only(self):
@@ -47,6 +48,8 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIsNone(result.model)
         self.assertIn("llm_not_called", result.warnings)
         self.assertEqual(result.chart.pillars.display(), "戊午 丙辰 丁酉 己酉")
+        self.assertEqual(result.report.summary["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertIn("report", result.as_dict())
 
     def test_agent_with_model_returns_response(self):
         model = FakeModelClient()
@@ -64,6 +67,7 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.response, "这是一个测试解释。")
         self.assertEqual(result.model, "fake-model")
         self.assertNotIn("llm_not_called", result.warnings)
+        self.assertIn("本地 report JSON", model.prompt)
 
 
 if __name__ == "__main__":

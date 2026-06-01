@@ -56,6 +56,7 @@ Examples:
   python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
   python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-model google/gemini-2.5-pro
   python -m mingli_bench.cli agent --no-llm
+  python -m mingli_bench.cli agent --no-llm --show-prompt
   mingli-bench agent --model google/gemini-2.5-pro
   python -m mingli_bench.cli --show-chart case_1
         """
@@ -264,6 +265,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--show-prompt",
+        action="store_true",
+        help="For 'agent': include the generated LLM prompt in readable output"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
@@ -308,7 +315,13 @@ Examples:
                 question=question,
                 fortune_data_path=args.fortune_data_path,
             )
-            print(format_agent_result(result, as_json=args.json))
+            print(
+                format_agent_result(
+                    result,
+                    as_json=args.json,
+                    show_prompt=args.show_prompt,
+                )
+            )
             return 0
         except Exception as e:
             logger.error(f"Failed to run interactive MingLi agent: {e}")

@@ -89,9 +89,10 @@ mingli-bench agent --model google/gemini-2.5-pro
 python -m mingli_bench.cli --show-chart case_1
 ```
 
-`--agent-input-json` 默认只在本地运行，返回命盘和准备给 LLM 的 prompt。加上 `--agent-model google/gemini-2.5-pro` 或其他支持模型后，才会读取 `.env` 并调用真实 LLM。
+`--agent-input-json` 默认只在本地运行，返回命盘、本地结构化 report 和准备给 LLM 的 prompt。加上 `--agent-model google/gemini-2.5-pro` 或其他支持模型后，才会读取 `.env` 并调用真实 LLM。
 
-`mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
+`mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行并输出结构化命盘报告，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
+需要查看发给模型的完整 prompt 时，可以加 `--show-prompt`。
 
 安装后也可以使用命令：
 
@@ -153,6 +154,7 @@ agent_result = MingLiAgent().run(
     question="分析事业和性格",
 )
 print(agent_result.prompt)  # 本地生成 prompt；除非提供 model client，否则不会调用 LLM。
+print(agent_result.report.to_markdown())  # 本地结构化命盘报告。
 
 bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
 print(bazi_chart["year_pillar"])   # 甲寅

@@ -14,6 +14,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.lunar` Chinese lunar-date parser and fixture-backed lunar/solar lookup.
 - `mingli_bench.chart_api` stable `ChartInput -> BaziChart` API for application and agent integrations.
 - `mingli_bench.agent` lightweight local agent layer with optional LLM interpretation.
+- `mingli_bench.report` deterministic local report layer for chart summaries, five-element profiles, caveats, and follow-up questions.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,
@@ -35,7 +36,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
   - `--agent-input-json`,
   - `--agent-question`,
   - `--agent-model`,
-  - interactive `agent` command with `--no-llm` and `--json`.
+  - interactive `agent` command with `--no-llm`, `--json`, and `--show-prompt`.
 - Fixture regression tests for Bazi month/day/hour pillars, location normalization, lunar-date lookup, the stable chart API, and the local agent layer.
 
 ## [0.1.0] - 2026-05-31

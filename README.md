@@ -84,9 +84,10 @@ mingli-bench agent --model google/gemini-2.5-pro
 python -m mingli_bench.cli --show-chart case_1
 ```
 
-`--agent-input-json` runs locally by default and returns the chart plus the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
+`--agent-input-json` runs locally by default and returns the chart, a deterministic local report, and the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
 
-`mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local, `--model` to call an LLM, and `--json` for machine-readable output.
+`mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local with a structured chart report, `--model` to call an LLM, and `--json` for machine-readable output.
+Add `--show-prompt` when you want to inspect the full prompt sent to the model.
 
 Installed command form:
 
@@ -148,6 +149,7 @@ agent_result = MingLiAgent().run(
     question="分析事业和性格",
 )
 print(agent_result.prompt)  # Local prompt, no LLM call unless a model client is provided.
+print(agent_result.report.to_markdown())  # Deterministic local chart report.
 
 bazi_chart = bazi_from_gregorian("1974-04-28", hour=16, minute=40)
 print(bazi_chart["year_pillar"])   # 甲寅

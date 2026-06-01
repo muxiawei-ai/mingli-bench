@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from .chart_api import BaziChart, ChartInputLike, build_bazi_chart
 from .models.base import ModelClient
+from .report import ChartReport, build_chart_report
 
 
 DEFAULT_AGENT_QUESTION = "请基于这个八字命盘，给出结构化、审慎的中文命理分析。"
@@ -23,6 +24,7 @@ class AgentResult:
     """JSON-friendly result returned by the MingLi agent."""
 
     chart: BaziChart
+    report: ChartReport
     question: str
     prompt: str
     response: Optional[str]
@@ -32,6 +34,7 @@ class AgentResult:
     def as_dict(self) -> Dict[str, Any]:
         return {
             "chart": self.chart.as_dict(),
+            "report": self.report.as_dict(),
             "question": self.question,
             "prompt": self.prompt,
             "response": self.response,
@@ -40,14 +43,21 @@ class AgentResult:
         }
 
 
-def build_interpretation_prompt(chart: BaziChart, question: str = DEFAULT_AGENT_QUESTION) -> str:
+def build_interpretation_prompt(
+    chart: BaziChart,
+    question: str = DEFAULT_AGENT_QUESTION,
+    report: Optional[ChartReport] = None,
+) -> str:
     """Build the prompt sent to an LLM for chart interpretation."""
 
+    report = report or build_chart_report(chart, question)
+    report_json = json.dumps(report.as_dict(), ensure_ascii=False, indent=2)
     chart_json = json.dumps(chart.as_dict(), ensure_ascii=False, indent=2)
     return f"""你是一个中文命理分析 Agent。
 
 请只基于下方 JSON 中的结构化排盘结果进行分析，不要重新发明或猜测四柱。
 如果 warnings 中提示地点、历法或时区存在不确定性，请先说明该限制。
+本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
 
 输出要求：
 1. 先给出排盘摘要：四柱、日主、五行概况。
@@ -57,6 +67,9 @@ def build_interpretation_prompt(chart: BaziChart, question: str = DEFAULT_AGENT_
 
 用户问题：
 {question}
+
+本地 report JSON：
+{report_json}
 
 结构化排盘 JSON：
 {chart_json}
@@ -77,13 +90,15 @@ class MingLiAgent:
         fortune_data_path: Optional[str] = None,
     ) -> AgentResult:
         chart = build_bazi_chart(chart_input, fortune_data_path=fortune_data_path)
-        prompt = build_interpretation_prompt(chart, question)
+        report = build_chart_report(chart, question)
+        prompt = build_interpretation_prompt(chart, question, report)
         response = self.model_client.generate(prompt) if self.model_client else None
         warnings = list(chart.warnings)
         if self.model_client is None:
             warnings.append("llm_not_called")
         return AgentResult(
             chart=chart,
+            report=report,
             question=question,
             prompt=prompt,
             response=response,
