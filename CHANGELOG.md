@@ -34,7 +34,8 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
   - `--chart-input-json`,
   - `--agent-input-json`,
   - `--agent-question`,
-  - `--agent-model`.
+  - `--agent-model`,
+  - interactive `agent` command with `--no-llm` and `--json`.
 - Fixture regression tests for Bazi month/day/hour pillars, location normalization, lunar-date lookup, the stable chart API, and the local agent layer.
 
 ## [0.1.0] - 2026-05-31

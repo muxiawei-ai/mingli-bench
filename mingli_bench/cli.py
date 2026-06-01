@@ -13,6 +13,7 @@ from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
 from .bazi import bazi_from_birth_info, bazi_from_gregorian
 from .locations import resolve_timezone
 from .lunar import lunar_from_solar_date, parse_chinese_lunar_date, solar_from_lunar_date
+from .interactive import collect_agent_input, format_agent_result, prompt_for_model_choice
 from .models.factory import ModelFactory
 from .utils import get_logger
 from .data import DataLoader
@@ -54,8 +55,17 @@ Examples:
   python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}'
   python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
   python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-model google/gemini-2.5-pro
+  python -m mingli_bench.cli agent --no-llm
+  mingli-bench agent --model google/gemini-2.5-pro
   python -m mingli_bench.cli --show-chart case_1
         """
+    )
+
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["agent"],
+        help="Optional command. Use 'agent' for the interactive local MingLi agent."
     )
     
     # Model selection
@@ -242,12 +252,67 @@ Examples:
     )
 
     parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="For 'agent': do not ask for or call an LLM"
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="For 'agent': output JSON instead of a readable terminal summary"
+    )
+
+    parser.add_argument(
         "--show-chart",
         metavar="CASE_ID",
         help="Print a normalized Bazi/Ziwei chart summary for a benchmark case_id and exit"
     )
     
     args = parser.parse_args()
+
+    if args.command == "agent":
+        try:
+            model_prompt_input = input
+            if args.json:
+                def input_on_stderr(prompt_text: str) -> str:
+                    sys.stderr.write(prompt_text)
+                    sys.stderr.flush()
+                    return sys.stdin.readline()
+
+                model_prompt_input = input_on_stderr
+                output_func = lambda line: print(line, file=sys.stderr)
+                payload, question = collect_agent_input(
+                    input_func=input_on_stderr,
+                    output_func=output_func,
+                )
+            else:
+                payload, question = collect_agent_input()
+            model_name = None
+            if not args.no_llm:
+                model_name = args.agent_model or args.model or prompt_for_model_choice(
+                    input_func=model_prompt_input,
+                )
+            model_client = None
+            if model_name:
+                from .utils.config import load_config
+
+                config = load_config(args.env_file)
+                model_client = ModelFactory.create(
+                    model_name,
+                    provider=args.platform,
+                    config=config,
+                )
+            result = MingLiAgent(model_client).run(
+                payload,
+                question=question,
+                fortune_data_path=args.fortune_data_path,
+            )
+            print(format_agent_result(result, as_json=args.json))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to run interactive MingLi agent: {e}")
+            return 1
     
     # Handle special actions
     if args.list_models:

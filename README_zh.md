@@ -84,10 +84,14 @@ python -m mingli_bench.cli --lunar-from-solar 1978-04-05
 python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
 python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾","country":"中国"}'
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
+python -m mingli_bench.cli agent --no-llm
+mingli-bench agent --model google/gemini-2.5-pro
 python -m mingli_bench.cli --show-chart case_1
 ```
 
 `--agent-input-json` 默认只在本地运行，返回命盘和准备给 LLM 的 prompt。加上 `--agent-model google/gemini-2.5-pro` 或其他支持模型后，才会读取 `.env` 并调用真实 LLM。
+
+`mingli-bench agent` 会启动交互式本地 Agent。使用 `--no-llm` 可以保持完全本地运行，使用 `--model` 可以调用 LLM，使用 `--json` 可以输出机器可读 JSON。
 
 安装后也可以使用命令：
 

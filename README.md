@@ -79,10 +79,14 @@ python -m mingli_bench.cli --lunar-from-solar 1978-04-05
 python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
 python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾","country":"中国"}'
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
+python -m mingli_bench.cli agent --no-llm
+mingli-bench agent --model google/gemini-2.5-pro
 python -m mingli_bench.cli --show-chart case_1
 ```
 
 `--agent-input-json` runs locally by default and returns the chart plus the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
+
+`mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local, `--model` to call an LLM, and `--json` for machine-readable output.
 
 Installed command form:
 
