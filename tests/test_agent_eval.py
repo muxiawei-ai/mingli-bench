@@ -272,6 +272,10 @@ class AgentEvalTests(unittest.TestCase):
             {"movement_weighted": 1},
         )
         self.assertEqual(
+            summary["candidate_year_focus_variant_top_choice_accuracy"],
+            {"marriage_timing": {"default": 0.0, "movement_weighted": 1.0}},
+        )
+        self.assertEqual(
             summary["candidate_year_diagnostic_samples"][0]["top_candidate_year_choice"],
             "A",
         )
@@ -288,6 +292,7 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("Candidate Year Diagnostics", format_agent_eval_summary(summary))
         self.assertIn("Answer Rank Distribution: 2: 1", format_agent_eval_summary(summary))
         self.assertIn("movement_weighted: 100.00%", format_agent_eval_summary(summary))
+        self.assertIn("Focus Variant Top Accuracy", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

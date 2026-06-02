@@ -40,7 +40,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - five-element counting,
   - deterministic event-year branch-interaction diagnostics,
   - text-derived A-D option semantic diagnostics,
-  - local candidate-year scoring diagnostics for timing questions,
+  - local candidate-year scoring diagnostics and scoring variants for timing questions,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,
@@ -125,7 +125,7 @@ By default it saves:
 - `summary.json`: aggregate metrics, distributions, and error samples.
 - `records.jsonl`: one full agent result per benchmark case, appended incrementally as each case finishes.
 
-For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions.
+For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions, including focus-level scoring variant accuracy.
 
 Use `--no-save` to print only the terminal summary.
 

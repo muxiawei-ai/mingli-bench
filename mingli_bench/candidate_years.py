@@ -25,7 +25,9 @@ INTERACTION_WEIGHTS = {
 
 FOCUS_POSITION_WEIGHTS = {
     "marriage_timing": {"day": 1.2, "hour": 0.3},
+    "children_birth_timing": {"hour": 1.2, "day": 0.4},
     "children_timing": {"hour": 1.2, "day": 0.4},
+    "family_loss_timing": {"year": 0.8, "month": 0.8, "day": 0.4, "hour": 0.2},
     "health_timing": {"day": 0.7, "month": 0.7},
     "general_timing": {"day": 0.5, "month": 0.5, "hour": 0.5, "year": 0.3},
 }
@@ -84,6 +86,21 @@ SCORING_VARIANTS = {
         },
         focus_position_weights=FOCUS_POSITION_WEIGHTS,
     ),
+    "activation_weighted": CandidateYearScoringVariant(
+        name="activation_weighted",
+        interaction_weights={
+            **INTERACTION_WEIGHTS,
+            "same_branch": 0.3,
+            "six_harmony": 0.7,
+            "six_clash": 2.0,
+            "three_harmony_partial": 0.8,
+            "three_meeting_partial": 0.8,
+            "three_harmony_complete": 1.0,
+            "three_meeting_complete": 1.0,
+        },
+        focus_position_weights=FOCUS_POSITION_WEIGHTS,
+        branch_relation_weight=0.0,
+    ),
 }
 
 
@@ -91,14 +108,26 @@ def infer_timing_focus(question: str) -> str:
     """Infer a coarse timing focus from question text."""
 
     text = question or ""
+    family_keywords = ["父亲", "母亲", "父母", "爸爸", "妈妈", "家人", "亲人"]
+    loss_keywords = ["仙逝", "去世", "过世", "离世", "死亡", "亡故"]
+    if any(keyword in text for keyword in family_keywords) and any(
+        keyword in text for keyword in loss_keywords
+    ):
+        return "family_loss_timing"
     if any(
         keyword in text
         for keyword in ["结婚", "婚姻", "妻", "夫", "伴侣", "感情"]
     ):
         return "marriage_timing"
+    child_keywords = ["子女", "女儿", "儿子", "孩子", "生子", "怀孕"]
+    birth_keywords = ["出生", "诞生", "生产", "生育"]
+    if any(keyword in text for keyword in child_keywords) and any(
+        keyword in text for keyword in birth_keywords
+    ):
+        return "children_birth_timing"
     if any(
         keyword in text
-        for keyword in ["子女", "女儿", "儿子", "孩子", "出生", "生子", "怀孕"]
+        for keyword in [*child_keywords, *birth_keywords]
     ):
         return "children_timing"
     if any(

@@ -257,6 +257,11 @@ def summarize_agent_eval(
     )
     candidate_year_best_rank_variant_counts: Counter[str] = Counter()
     candidate_year_variants_seen = set()
+    candidate_year_focus_totals: Counter[str] = Counter()
+    candidate_year_focus_variants_seen: defaultdict[str, set] = defaultdict(set)
+    candidate_year_focus_variant_top_correct: defaultdict[str, Counter[str]] = defaultdict(
+        Counter
+    )
     candidate_year_diagnostic_samples = []
     answer_error_samples = []
     clarification_samples = []
@@ -284,6 +289,7 @@ def summarize_agent_eval(
                 predicted_candidate = candidate_year_choice(record, predicted_answer)
                 focus = _candidate_year_scores(record)[0].get("focus") or "unknown"
                 candidate_year_focus_counts.update([str(focus)])
+                candidate_year_focus_totals.update([str(focus)])
                 if answer_candidate:
                     candidate_year_answer_candidate += 1
                     candidate_year_variants_seen.update(
@@ -300,6 +306,14 @@ def summarize_agent_eval(
                         candidate_year_variant_top_correct,
                         candidate_year_variant_answer_rank_counts,
                         candidate_year_best_rank_variant_counts,
+                    )
+                    _update_candidate_year_focus_variant_diagnostics(
+                        record,
+                        expected_answer,
+                        str(focus),
+                        answer_candidate,
+                        candidate_year_focus_variants_seen,
+                        candidate_year_focus_variant_top_correct,
                     )
                 else:
                     candidate_year_answer_rank_counts.update(["not_candidate"])
@@ -422,6 +436,16 @@ def summarize_agent_eval(
         "candidate_year_best_rank_variant_distribution": dict(
             candidate_year_best_rank_variant_counts
         ),
+        "candidate_year_focus_variant_top_choice_accuracy": {
+            focus: {
+                variant: _ratio(
+                    candidate_year_focus_variant_top_correct[focus].get(variant, 0),
+                    candidate_year_focus_totals[focus],
+                )
+                for variant in sorted(candidate_year_focus_variants_seen[focus])
+            }
+            for focus in sorted(candidate_year_focus_totals)
+        },
         "candidate_year_diagnostic_samples": candidate_year_diagnostic_samples,
         "answer_score_diagnostics": _summarize_answer_score_diagnostics(
             answer_score_diagnostics
@@ -563,6 +587,16 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
                 )
             )
             lines.append(f"  - Variant Top Accuracy: {variant_text}")
+        if summary.get("candidate_year_focus_variant_top_choice_accuracy"):
+            lines.append("  - Focus Variant Top Accuracy:")
+            for focus, accuracies in sorted(
+                summary["candidate_year_focus_variant_top_choice_accuracy"].items()
+            ):
+                focus_variant_text = ", ".join(
+                    f"{variant}: {accuracy:.2%}"
+                    for variant, accuracy in sorted(accuracies.items())
+                )
+                lines.append(f"    - {focus}: {focus_variant_text}")
     diagnostics = summary.get("answer_score_diagnostics") or {}
     if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
         lines.extend(["", "Answer Score Diagnostics:"])
@@ -818,6 +852,21 @@ def _update_candidate_year_variant_diagnostics(
     for variant, rank in numeric_ranks.items():
         if rank == best_rank:
             best_rank_variant_counts.update([variant])
+
+
+def _update_candidate_year_focus_variant_diagnostics(
+    record: Dict[str, Any],
+    expected_answer: str,
+    focus: str,
+    answer_candidate: Dict[str, Any],
+    focus_variants_seen: defaultdict[str, set],
+    focus_variant_top_correct: defaultdict[str, Counter[str]],
+) -> None:
+    for variant in answer_candidate.get("variant_ranks") or {}:
+        variant_name = str(variant)
+        focus_variants_seen[focus].add(variant_name)
+        if candidate_year_variant_top_choice(record, variant_name) == expected_answer:
+            focus_variant_top_correct[focus].update([variant_name])
 
 
 def candidate_year_variant_top_choice(

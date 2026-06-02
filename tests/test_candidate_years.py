@@ -10,7 +10,8 @@ from mingli_bench.candidate_years import (
 class CandidateYearScoringTests(unittest.TestCase):
     def test_infer_timing_focus(self):
         self.assertEqual(infer_timing_focus("此命何年结婚？"), "marriage_timing")
-        self.assertEqual(infer_timing_focus("女儿于何年出生？"), "children_timing")
+        self.assertEqual(infer_timing_focus("女儿于何年出生？"), "children_birth_timing")
+        self.assertEqual(infer_timing_focus("父亲哪一年仙逝？"), "family_loss_timing")
         self.assertEqual(infer_timing_focus("2020年生病？"), "health_timing")
         self.assertEqual(infer_timing_focus("何年发生大事？"), "general_timing")
 
@@ -65,7 +66,7 @@ class CandidateYearScoringTests(unittest.TestCase):
         by_letter = {item["letter"]: item for item in scores}
 
         self.assertEqual([item["letter"] for item in scores], ["A", "B"])
-        self.assertEqual(by_letter["A"]["focus"], "children_timing")
+        self.assertEqual(by_letter["A"]["focus"], "children_birth_timing")
         self.assertEqual(by_letter["A"]["year_pillar"], "丁亥")
         self.assertIn("hour", by_letter["A"]["matched_positions"])
         self.assertGreater(by_letter["B"]["score"], 0)
@@ -80,6 +81,7 @@ class CandidateYearScoringTests(unittest.TestCase):
         )
         self.assertEqual(by_letter["A"]["score"], by_letter["A"]["variant_scores"]["default"])
         self.assertEqual(by_letter["A"]["rank"], by_letter["A"]["variant_ranks"]["default"])
+        self.assertEqual(by_letter["A"]["variant_ranks"]["activation_weighted"], 1)
 
 
 if __name__ == "__main__":
