@@ -60,6 +60,26 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("逐项比较所有选项", prompt)
         self.assertIn("answer_confidence", prompt)
         self.assertIn("report.event_years", prompt)
+        self.assertIn("branch_interactions", prompt)
+        self.assertIn("不要自行编造三合、三会、六合、六冲名称", prompt)
+
+    def test_build_interpretation_prompt_includes_event_branch_interactions(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        prompt = build_interpretation_prompt(chart, "此命1996年发生何事？")
+        self.assertIn('"year_pillar": "丙子"', prompt)
+        self.assertIn('"label": "申子辰三合水局"', prompt)
+        self.assertIn('"type": "three_harmony_complete"', prompt)
 
     def test_agent_without_model_returns_prompt_only(self):
         result = MingLiAgent().run(
@@ -91,6 +111,23 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("trace", result.as_dict())
         self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())
+
+    def test_agent_without_model_includes_event_year_relation_section(self):
+        result = MingLiAgent().run(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            },
+            question="此命1996年发生何事？",
+        )
+        self.assertIn("题目年份关系", result.interpretation.to_markdown())
+        self.assertIn("申子辰三合水局", result.interpretation.to_markdown())
 
     def test_agent_with_model_returns_response(self):
         model = FakeModelClient()

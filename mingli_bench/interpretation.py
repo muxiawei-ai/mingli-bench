@@ -154,6 +154,19 @@ def build_local_interpretation(
             ],
             caveats=["这是基于四柱显性天干地支的数量统计，不等同于完整格局判断。"],
         ),
+    ]
+    if report.event_years:
+        sections.append(
+            InterpretationSection(
+                title="题目年份关系",
+                summary=_event_years_summary(report),
+                evidence=_event_years_evidence(report),
+                caveats=[
+                    "这是本地规则检出的流年干支与原局地支关系，不等同于最终事件判断。",
+                ],
+            )
+        )
+    sections.append(
         InterpretationSection(
             title="输入质量",
             summary=_input_quality_summary(report),
@@ -163,8 +176,8 @@ def build_local_interpretation(
                 f"has_birth_time={report.input_quality.get('has_birth_time')}",
             ],
             caveats=list(report.caveats),
-        ),
-    ]
+        )
+    )
     if intent is not None:
         sections.append(
             InterpretationSection(
@@ -257,6 +270,38 @@ def _input_quality_summary(report: ChartReport) -> str:
         f"历法来源为 {report.input_quality.get('calendar_source')}，"
         f"时区为 {report.input_quality.get('timezone')}，出生时间{time_text}。"
     )
+
+
+def _event_years_summary(report: ChartReport) -> str:
+    parts = []
+    for item in report.event_years:
+        labels = [
+            interaction.get("label")
+            for interaction in item.get("branch_interactions") or []
+            if interaction.get("label")
+        ]
+        label_text = "、".join(labels) if labels else "未检出主要冲合会合"
+        age_text = (
+            f"，实岁约{item['age']}岁"
+            if item.get("age") is not None
+            else ""
+        )
+        parts.append(
+            f"{item.get('year')}年为{item.get('year_pillar')}流年{age_text}；"
+            f"地支关系：{label_text}。"
+        )
+    return " ".join(parts)
+
+
+def _event_years_evidence(report: ChartReport) -> List[str]:
+    evidence = []
+    for item in report.event_years:
+        evidence.append(f"event_year={item.get('year')}:{item.get('year_pillar')}")
+        for interaction in item.get("branch_interactions") or []:
+            label = interaction.get("label")
+            if label:
+                evidence.append(f"branch_interaction={label}")
+    return evidence
 
 
 def _load_json_object(text: str) -> Optional[Dict[str, Any]]:

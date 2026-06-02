@@ -38,6 +38,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - Chinese lunar-date parsing and fixture-backed lunar/solar lookup,
   - Bazi four-pillar parsing,
   - five-element counting,
+  - deterministic event-year branch-interaction diagnostics,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

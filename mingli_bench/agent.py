@@ -95,6 +95,7 @@ def build_interpretation_prompt(
 如果 warnings 中提示地点、历法或时区存在不确定性，请先说明该限制。
 本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
 如果本地 report.event_years 提供了题目年份的 year_pillar，请直接使用该流年干支，不要自行重算或猜测年份干支。
+如果本地 report.event_years 提供了 branch_interactions，请直接引用其中的 label，不要自行编造三合、三会、六合、六冲名称。
 intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_domain 和 section_hints 组织回答。
 
 输出要求：
@@ -107,6 +108,7 @@ intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_doma
 7. answer_confidence 必须与证据强弱一致；若出生时间、地点、时区或题意有不确定性，不要给出高置信度。
 8. 不要因为某个选项文字更戏剧化就选择它；必须说明它和四柱、流年、宫位、十神或本地 report 证据的对应关系。
 9. 对题目中出现的年份，优先引用本地 report.event_years 中的 year_pillar、age 和 nominal_age；不要把 1996、2008、2020 等年份误写成其他干支。
+10. 对流年地支关系，优先引用本地 report.event_years.branch_interactions 中的 label 和 element；如果没有对应关系，请说明本地规则未检出主要冲合会合。
 
 JSON 输出契约：
 {interpretation_prompt_contract()}

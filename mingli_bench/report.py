@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .bazi import year_pillar_for_date
+from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
+from .relations import analyze_branch_interactions
 
 
 ELEMENT_ORDER = ["木", "火", "土", "金", "水"]
@@ -116,6 +118,12 @@ class ChartReport:
                 lines.append(
                     f"- {item['year']}: {item['year_pillar']} 流年{age_text}"
                 )
+                interactions = [
+                    interaction["label"]
+                    for interaction in item.get("branch_interactions") or []
+                ]
+                if interactions:
+                    lines.append(f"  - 地支关系: {'；'.join(interactions)}")
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -225,10 +233,12 @@ def _build_event_years(chart: BaziChart, question: str) -> List[Dict[str, Any]]:
     event_years = []
     for year in years:
         age = year - birth_year if birth_year is not None else None
+        year_pillar = year_pillar_for_date(f"{year}-07-01")
         event_years.append(
             {
                 "year": year,
-                "year_pillar": year_pillar_for_date(f"{year}-07-01"),
+                "year_pillar": year_pillar,
+                **_build_event_year_relation(chart, year_pillar),
                 "age": age if age is None or age >= 0 else None,
                 "nominal_age": age + 1 if age is not None and age >= 0 else None,
                 "source": "question_text",
@@ -236,6 +246,38 @@ def _build_event_years(chart: BaziChart, question: str) -> List[Dict[str, Any]]:
             }
         )
     return event_years
+
+
+def _build_event_year_relation(
+    chart: BaziChart,
+    year_pillar: str,
+) -> Dict[str, Any]:
+    stem = year_pillar[0]
+    branch = year_pillar[1]
+    stem_element = STEM_TO_ELEMENT.get(stem)
+    branch_element = BRANCH_TO_ELEMENT.get(branch)
+    natal_branches = {
+        "year": chart.pillars.year[1],
+        "month": chart.pillars.month[1],
+        "day": chart.pillars.day[1],
+        "hour": chart.pillars.hour[1] if chart.pillars.hour else "",
+    }
+    return {
+        "stem": stem,
+        "branch": branch,
+        "stem_element": stem_element,
+        "branch_element": branch_element,
+        "stem_relation_to_day_master": relation_to_day_master(
+            stem_element or "",
+            chart.day_master_element,
+        ),
+        "branch_relation_to_day_master": relation_to_day_master(
+            branch_element or "",
+            chart.day_master_element,
+        ),
+        "natal_branches": natal_branches,
+        "branch_interactions": analyze_branch_interactions(branch, natal_branches),
+    }
 
 
 def _extract_years(text: str) -> List[int]:

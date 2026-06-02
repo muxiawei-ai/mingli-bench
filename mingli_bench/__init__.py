@@ -22,6 +22,7 @@ from .lunar import (
     parse_chinese_lunar_date,
     solar_from_lunar_date,
 )
+from .relations import analyze_branch_interactions
 from .solar_terms import solar_month_branch_for_datetime, solar_term_datetime
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "AgentResult",
     "ModelClient",
     "MingLiAgent",
+    "analyze_branch_interactions",
     "bazi_from_birth_info",
     "bazi_from_gregorian",
     "build_bazi_chart",

@@ -73,28 +73,28 @@ class ChartReportTests(unittest.TestCase):
             chart,
             "此命1996年发生何事？选项：A. 2008年 B. 1996年",
         )
+        self.assertEqual([item["year"] for item in report.event_years], [1996, 2008])
+        self.assertEqual(report.event_years[0]["year_pillar"], "丙子")
+        self.assertEqual(report.event_years[0]["age"], 22)
+        self.assertEqual(report.event_years[0]["nominal_age"], 23)
+        self.assertEqual(report.event_years[0]["stem_element"], "火")
+        self.assertEqual(report.event_years[0]["branch_element"], "水")
         self.assertEqual(
-            report.event_years,
-            [
-                {
-                    "year": 1996,
-                    "year_pillar": "丙子",
-                    "age": 22,
-                    "nominal_age": 23,
-                    "source": "question_text",
-                    "note": "流年干支由本地算法按该公历年立春后年柱计算。",
-                },
-                {
-                    "year": 2008,
-                    "year_pillar": "戊子",
-                    "age": 34,
-                    "nominal_age": 35,
-                    "source": "question_text",
-                    "note": "流年干支由本地算法按该公历年立春后年柱计算。",
-                },
-            ],
+            report.event_years[0]["stem_relation_to_day_master"],
+            "generates_day_master",
         )
+        self.assertEqual(
+            report.event_years[0]["branch_relation_to_day_master"],
+            "controlled_by_day_master",
+        )
+        labels = [
+            interaction["label"]
+            for interaction in report.event_years[0]["branch_interactions"]
+        ]
+        self.assertIn("申子辰三合水局", labels)
+        self.assertEqual(report.event_years[1]["year_pillar"], "戊子")
         self.assertIn("1996: 丙子", report.to_markdown())
+        self.assertIn("申子辰三合水局", report.to_markdown())
 
     def test_report_followups_for_missing_time_and_location(self):
         chart = build_bazi_chart(
