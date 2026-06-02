@@ -7,6 +7,7 @@ diagnostic aid, not a prediction and not a benchmark answer.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 
@@ -27,6 +28,62 @@ FOCUS_POSITION_WEIGHTS = {
     "children_timing": {"hour": 1.2, "day": 0.4},
     "health_timing": {"day": 0.7, "month": 0.7},
     "general_timing": {"day": 0.5, "month": 0.5, "hour": 0.5, "year": 0.3},
+}
+
+BRANCH_RELATION_WEIGHT = 0.4
+
+
+@dataclass(frozen=True)
+class CandidateYearScoringVariant:
+    """One local scoring hypothesis for candidate-year diagnostics."""
+
+    name: str
+    interaction_weights: Dict[str, float]
+    focus_position_weights: Dict[str, Dict[str, float]]
+    branch_relation_weight: float = BRANCH_RELATION_WEIGHT
+
+
+SCORING_VARIANTS = {
+    "default": CandidateYearScoringVariant(
+        name="default",
+        interaction_weights=INTERACTION_WEIGHTS,
+        focus_position_weights=FOCUS_POSITION_WEIGHTS,
+    ),
+    "movement_weighted": CandidateYearScoringVariant(
+        name="movement_weighted",
+        interaction_weights={
+            **INTERACTION_WEIGHTS,
+            "same_branch": 0.4,
+            "six_harmony": 0.8,
+            "six_clash": 2.0,
+            "three_harmony_complete": 1.2,
+            "three_meeting_complete": 1.2,
+        },
+        focus_position_weights=FOCUS_POSITION_WEIGHTS,
+    ),
+    "focus_palace_weighted": CandidateYearScoringVariant(
+        name="focus_palace_weighted",
+        interaction_weights=INTERACTION_WEIGHTS,
+        focus_position_weights={
+            **FOCUS_POSITION_WEIGHTS,
+            "marriage_timing": {"day": 1.8, "hour": 0.2},
+            "children_timing": {"hour": 1.8, "day": 0.4},
+            "health_timing": {"day": 1.0, "month": 1.0},
+        },
+    ),
+    "balanced_groups": CandidateYearScoringVariant(
+        name="balanced_groups",
+        interaction_weights={
+            **INTERACTION_WEIGHTS,
+            "same_branch": 0.5,
+            "six_clash": 1.4,
+            "three_harmony_partial": 0.9,
+            "three_meeting_partial": 0.9,
+            "three_harmony_complete": 1.1,
+            "three_meeting_complete": 1.1,
+        },
+        focus_position_weights=FOCUS_POSITION_WEIGHTS,
+    ),
 }
 
 
@@ -73,12 +130,9 @@ def build_candidate_year_scores(
                 focus,
             )
         )
-    ranked = sorted(candidates, key=lambda item: item["score"], reverse=True)
-    rank_by_letter = {
-        item["letter"]: index for index, item in enumerate(ranked, start=1)
-    }
+    _assign_variant_ranks(candidates)
     return [
-        {**item, "rank": rank_by_letter[item["letter"]]}
+        {**item, "rank": item["variant_ranks"]["default"]}
         for item in candidates
     ]
 
@@ -88,13 +142,14 @@ def _score_candidate_year(
     event_year: Dict[str, Any],
     focus: str,
 ) -> Dict[str, Any]:
+    default_variant = SCORING_VARIANTS["default"]
     score = 0.0
     signals = []
     interaction_labels = []
     matched_positions = []
     for interaction in event_year.get("branch_interactions") or []:
         interaction_type = str(interaction.get("type") or "")
-        weight = INTERACTION_WEIGHTS.get(interaction_type, 0.0)
+        weight = default_variant.interaction_weights.get(interaction_type, 0.0)
         if weight:
             score += weight
             label = str(interaction.get("label") or interaction_type)
@@ -109,7 +164,9 @@ def _score_candidate_year(
         positions = _interaction_positions(interaction)
         matched_positions.extend(positions)
         for position in positions:
-            position_weight = FOCUS_POSITION_WEIGHTS.get(focus, {}).get(position, 0.0)
+            position_weight = (
+                default_variant.focus_position_weights.get(focus, {}).get(position, 0.0)
+            )
             if position_weight:
                 score += position_weight
                 signals.append(
@@ -122,14 +179,18 @@ def _score_candidate_year(
                 )
     branch_relation = event_year.get("branch_relation_to_day_master")
     if branch_relation in {"controls_day_master", "controlled_by_day_master"}:
-        score += 0.4
+        score += default_variant.branch_relation_weight
         signals.append(
             {
                 "type": "branch_relation_to_day_master",
                 "label": branch_relation,
-                "weight": 0.4,
+                "weight": default_variant.branch_relation_weight,
             }
         )
+    variant_scores = {
+        name: _score_with_variant(event_year, focus, variant)
+        for name, variant in SCORING_VARIANTS.items()
+    }
     return {
         "letter": option.get("letter"),
         "text": option.get("text"),
@@ -137,11 +198,41 @@ def _score_candidate_year(
         "year_pillar": event_year.get("year_pillar"),
         "focus": focus,
         "score": round(score, 4),
+        "variant_scores": variant_scores,
+        "variant_ranks": {},
         "interaction_labels": interaction_labels,
         "matched_positions": sorted(set(matched_positions)),
         "signals": signals,
         "note": "candidate_year_score_is_diagnostic_not_gold_label",
     }
+
+
+def _score_with_variant(
+    event_year: Dict[str, Any],
+    focus: str,
+    variant: CandidateYearScoringVariant,
+) -> float:
+    score = 0.0
+    for interaction in event_year.get("branch_interactions") or []:
+        interaction_type = str(interaction.get("type") or "")
+        score += variant.interaction_weights.get(interaction_type, 0.0)
+        for position in _interaction_positions(interaction):
+            score += variant.focus_position_weights.get(focus, {}).get(position, 0.0)
+    branch_relation = event_year.get("branch_relation_to_day_master")
+    if branch_relation in {"controls_day_master", "controlled_by_day_master"}:
+        score += variant.branch_relation_weight
+    return round(score, 4)
+
+
+def _assign_variant_ranks(candidates: List[Dict[str, Any]]) -> None:
+    for variant_name in SCORING_VARIANTS:
+        ranked = sorted(
+            candidates,
+            key=lambda item: item["variant_scores"].get(variant_name, 0.0),
+            reverse=True,
+        )
+        for rank, item in enumerate(ranked, start=1):
+            item["variant_ranks"][variant_name] = rank
 
 
 def _interaction_positions(interaction: Dict[str, Any]) -> List[str]:
@@ -163,5 +254,7 @@ def _option_year(text: Any) -> Optional[int]:
 
 __all__ = [
     "build_candidate_year_scores",
+    "CandidateYearScoringVariant",
     "infer_timing_focus",
+    "SCORING_VARIANTS",
 ]

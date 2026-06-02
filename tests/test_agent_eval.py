@@ -9,6 +9,7 @@ from mingli_bench.agent_eval import (
     append_agent_eval_record,
     answer_choice_matches,
     candidate_year_choice,
+    candidate_year_variant_top_choice,
     evaluate_agent_questions,
     expected_intent_domain,
     extract_answer_choice,
@@ -199,6 +200,14 @@ class AgentEvalTests(unittest.TestCase):
                             "score": 4.8,
                             "rank": 1,
                             "focus": "marriage_timing",
+                            "variant_scores": {
+                                "default": 4.8,
+                                "movement_weighted": 2.7,
+                            },
+                            "variant_ranks": {
+                                "default": 1,
+                                "movement_weighted": 2,
+                            },
                             "interaction_labels": ["寅卯辰三会木局"],
                             "matched_positions": ["year", "month"],
                         },
@@ -209,6 +218,14 @@ class AgentEvalTests(unittest.TestCase):
                             "score": 3.2,
                             "rank": 2,
                             "focus": "marriage_timing",
+                            "variant_scores": {
+                                "default": 3.2,
+                                "movement_weighted": 4.0,
+                            },
+                            "variant_ranks": {
+                                "default": 2,
+                                "movement_weighted": 1,
+                            },
                             "interaction_labels": ["辰戌冲"],
                             "matched_positions": ["month"],
                         },
@@ -222,6 +239,7 @@ class AgentEvalTests(unittest.TestCase):
 
         self.assertEqual(candidate_year_choice(record, "C")["rank"], 2)
         self.assertEqual(top_candidate_year_choice(record), "A")
+        self.assertEqual(candidate_year_variant_top_choice(record, "movement_weighted"), "C")
         summary = summarize_agent_eval([record])
 
         self.assertEqual(summary["candidate_year_score_total"], 1)
@@ -242,6 +260,18 @@ class AgentEvalTests(unittest.TestCase):
             {"marriage_timing": 1},
         )
         self.assertEqual(
+            summary["candidate_year_variant_top_choice_accuracy"],
+            {"default": 0.0, "movement_weighted": 1.0},
+        )
+        self.assertEqual(
+            summary["candidate_year_variant_answer_rank_distribution"],
+            {"default": {"2": 1}, "movement_weighted": {"1": 1}},
+        )
+        self.assertEqual(
+            summary["candidate_year_best_rank_variant_distribution"],
+            {"movement_weighted": 1},
+        )
+        self.assertEqual(
             summary["candidate_year_diagnostic_samples"][0]["top_candidate_year_choice"],
             "A",
         )
@@ -249,8 +279,15 @@ class AgentEvalTests(unittest.TestCase):
             summary["candidate_year_diagnostic_samples"][0]["answer_candidate_rank"],
             2,
         )
+        self.assertEqual(
+            summary["candidate_year_diagnostic_samples"][0]["candidate_year_scores"][1][
+                "variant_ranks"
+            ],
+            {"default": 2, "movement_weighted": 1},
+        )
         self.assertIn("Candidate Year Diagnostics", format_agent_eval_summary(summary))
         self.assertIn("Answer Rank Distribution: 2: 1", format_agent_eval_summary(summary))
+        self.assertIn("movement_weighted: 100.00%", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

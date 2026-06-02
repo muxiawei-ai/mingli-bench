@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -251,6 +251,12 @@ def summarize_agent_eval(
     candidate_year_answer_rank_counts: Counter[str] = Counter()
     candidate_year_model_rank_counts: Counter[str] = Counter()
     candidate_year_focus_counts: Counter[str] = Counter()
+    candidate_year_variant_top_correct: Counter[str] = Counter()
+    candidate_year_variant_answer_rank_counts: defaultdict[str, Counter[str]] = defaultdict(
+        Counter
+    )
+    candidate_year_best_rank_variant_counts: Counter[str] = Counter()
+    candidate_year_variants_seen = set()
     candidate_year_diagnostic_samples = []
     answer_error_samples = []
     clarification_samples = []
@@ -280,8 +286,20 @@ def summarize_agent_eval(
                 candidate_year_focus_counts.update([str(focus)])
                 if answer_candidate:
                     candidate_year_answer_candidate += 1
+                    candidate_year_variants_seen.update(
+                        str(variant)
+                        for variant in (answer_candidate.get("variant_ranks") or {})
+                    )
                     candidate_year_answer_rank_counts.update(
                         [str(answer_candidate.get("rank") or "unknown")]
+                    )
+                    _update_candidate_year_variant_diagnostics(
+                        record,
+                        expected_answer,
+                        answer_candidate,
+                        candidate_year_variant_top_correct,
+                        candidate_year_variant_answer_rank_counts,
+                        candidate_year_best_rank_variant_counts,
                     )
                 else:
                     candidate_year_answer_rank_counts.update(["not_candidate"])
@@ -388,6 +406,22 @@ def summarize_agent_eval(
             candidate_year_model_rank_counts
         ),
         "candidate_year_focus_distribution": dict(candidate_year_focus_counts),
+        "candidate_year_variant_top_choice_accuracy": {
+            variant: _ratio(
+                candidate_year_variant_top_correct.get(variant, 0),
+                candidate_year_total,
+            )
+            for variant in sorted(candidate_year_variants_seen)
+        },
+        "candidate_year_variant_answer_rank_distribution": {
+            variant: dict(counts)
+            for variant, counts in sorted(
+                candidate_year_variant_answer_rank_counts.items()
+            )
+        },
+        "candidate_year_best_rank_variant_distribution": dict(
+            candidate_year_best_rank_variant_counts
+        ),
         "candidate_year_diagnostic_samples": candidate_year_diagnostic_samples,
         "answer_score_diagnostics": _summarize_answer_score_diagnostics(
             answer_score_diagnostics
@@ -521,6 +555,14 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
                 )
             )
             lines.append(f"  - Answer Rank Distribution: {rank_text}")
+        if summary.get("candidate_year_variant_top_choice_accuracy"):
+            variant_text = ", ".join(
+                f"{variant}: {accuracy:.2%}"
+                for variant, accuracy in sorted(
+                    summary["candidate_year_variant_top_choice_accuracy"].items()
+                )
+            )
+            lines.append(f"  - Variant Top Accuracy: {variant_text}")
     diagnostics = summary.get("answer_score_diagnostics") or {}
     if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
         lines.extend(["", "Answer Score Diagnostics:"])
@@ -739,12 +781,62 @@ def candidate_year_diagnostic_sample(record: Dict[str, Any]) -> Dict[str, Any]:
                 "score": item.get("score"),
                 "rank": item.get("rank"),
                 "focus": item.get("focus"),
+                "variant_scores": item.get("variant_scores") or {},
+                "variant_ranks": item.get("variant_ranks") or {},
                 "interaction_labels": item.get("interaction_labels") or [],
                 "matched_positions": item.get("matched_positions") or [],
             }
             for item in scores
         ],
     }
+
+
+def _update_candidate_year_variant_diagnostics(
+    record: Dict[str, Any],
+    expected_answer: str,
+    answer_candidate: Dict[str, Any],
+    variant_top_correct: Counter[str],
+    variant_answer_rank_counts: defaultdict[str, Counter[str]],
+    best_rank_variant_counts: Counter[str],
+) -> None:
+    variant_ranks = answer_candidate.get("variant_ranks") or {}
+    if not variant_ranks:
+        return
+    for variant, rank in variant_ranks.items():
+        variant_answer_rank_counts[str(variant)].update([str(rank or "unknown")])
+        if candidate_year_variant_top_choice(record, str(variant)) == expected_answer:
+            variant_top_correct.update([str(variant)])
+
+    numeric_ranks = {
+        str(variant): int(rank)
+        for variant, rank in variant_ranks.items()
+        if _looks_like_int(rank)
+    }
+    if not numeric_ranks:
+        return
+    best_rank = min(numeric_ranks.values())
+    for variant, rank in numeric_ranks.items():
+        if rank == best_rank:
+            best_rank_variant_counts.update([variant])
+
+
+def candidate_year_variant_top_choice(
+    record: Dict[str, Any],
+    variant: str,
+) -> Optional[str]:
+    """Return the top candidate-year letter for one scoring variant."""
+
+    scores = _candidate_year_scores(record)
+    if not scores:
+        return None
+    ranked = sorted(
+        scores,
+        key=lambda item: (
+            int((item.get("variant_ranks") or {}).get(variant) or 999),
+            -float((item.get("variant_scores") or {}).get(variant) or 0.0),
+        ),
+    )
+    return _normalize_answer_choice(ranked[0].get("letter"))
 
 
 def _candidate_year_scores(record: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -770,6 +862,14 @@ def _candidate_score(item: Optional[Dict[str, Any]]) -> Optional[float]:
         return float(item.get("score"))
     except (TypeError, ValueError):
         return None
+
+
+def _looks_like_int(value: Any) -> bool:
+    try:
+        int(value)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _answer_diagnostic_sample(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -909,6 +1009,7 @@ __all__ = [
     "EXPECTED_TRACE",
     "append_agent_eval_record",
     "candidate_year_choice",
+    "candidate_year_variant_top_choice",
     "expected_intent_domain",
     "answer_choice_matches",
     "build_answer_score_diagnostic",

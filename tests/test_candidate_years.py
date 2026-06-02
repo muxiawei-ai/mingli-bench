@@ -1,6 +1,7 @@
 import unittest
 
 from mingli_bench.candidate_years import (
+    SCORING_VARIANTS,
     build_candidate_year_scores,
     infer_timing_focus,
 )
@@ -69,6 +70,16 @@ class CandidateYearScoringTests(unittest.TestCase):
         self.assertIn("hour", by_letter["A"]["matched_positions"])
         self.assertGreater(by_letter["B"]["score"], 0)
         self.assertIn("rank", by_letter["B"])
+        self.assertEqual(
+            set(by_letter["A"]["variant_scores"]),
+            set(SCORING_VARIANTS),
+        )
+        self.assertEqual(
+            set(by_letter["A"]["variant_ranks"]),
+            set(SCORING_VARIANTS),
+        )
+        self.assertEqual(by_letter["A"]["score"], by_letter["A"]["variant_scores"]["default"])
+        self.assertEqual(by_letter["A"]["rank"], by_letter["A"]["variant_ranks"]["default"])
 
 
 if __name__ == "__main__":
