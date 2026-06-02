@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .bazi import year_pillar_for_date
 from .chart_api import BaziChart
 
 
@@ -41,6 +43,7 @@ class ChartReport:
     strongest_elements: List[str]
     missing_elements: List[str]
     input_quality: Dict[str, Any]
+    event_years: List[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
 
@@ -52,6 +55,7 @@ class ChartReport:
             "strongest_elements": self.strongest_elements,
             "missing_elements": self.missing_elements,
             "input_quality": self.input_quality,
+            "event_years": self.event_years,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
         }
@@ -100,6 +104,18 @@ class ChartReport:
         if self.caveats:
             for caveat in self.caveats:
                 lines.append(f"- {caveat}")
+
+        if self.event_years:
+            lines.extend(["", "### 题目年份"])
+            for item in self.event_years:
+                age_text = (
+                    f", 实岁约 {item['age']} 岁"
+                    if item.get("age") is not None
+                    else ""
+                )
+                lines.append(
+                    f"- {item['year']}: {item['year_pillar']} 流年{age_text}"
+                )
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -187,6 +203,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         "has_birth_time": chart.input.hour is not None,
         "warnings": list(chart.warnings),
     }
+    event_years = _build_event_years(chart, question)
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(
@@ -196,9 +213,47 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         strongest_elements=strongest_elements,
         missing_elements=missing_elements,
         input_quality=input_quality,
+        event_years=event_years,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )
+
+
+def _build_event_years(chart: BaziChart, question: str) -> List[Dict[str, Any]]:
+    birth_year = _birth_year(chart)
+    years = _extract_years(question)
+    event_years = []
+    for year in years:
+        age = year - birth_year if birth_year is not None else None
+        event_years.append(
+            {
+                "year": year,
+                "year_pillar": year_pillar_for_date(f"{year}-07-01"),
+                "age": age if age is None or age >= 0 else None,
+                "nominal_age": age + 1 if age is not None and age >= 0 else None,
+                "source": "question_text",
+                "note": "流年干支由本地算法按该公历年立春后年柱计算。",
+            }
+        )
+    return event_years
+
+
+def _extract_years(text: str) -> List[int]:
+    years = []
+    seen = set()
+    for match in re.finditer(r"(?<!\d)((?:19|20)\d{2})(?!\d)", text or ""):
+        year = int(match.group(1))
+        if year not in seen:
+            seen.add(year)
+            years.append(year)
+    return years
+
+
+def _birth_year(chart: BaziChart) -> Optional[int]:
+    try:
+        return int(str(chart.solar_date)[:4])
+    except (TypeError, ValueError):
+        return None
 
 
 def _build_caveats(chart: BaziChart) -> List[str]:

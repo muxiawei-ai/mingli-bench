@@ -56,6 +56,46 @@ class ChartReportTests(unittest.TestCase):
         self.assertTrue(report.input_quality["has_birth_time"])
         self.assertIn("本地报告只整理排盘结构", report.to_markdown())
 
+    def test_build_chart_report_extracts_event_years(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "此命1996年发生何事？选项：A. 2008年 B. 1996年",
+        )
+        self.assertEqual(
+            report.event_years,
+            [
+                {
+                    "year": 1996,
+                    "year_pillar": "丙子",
+                    "age": 22,
+                    "nominal_age": 23,
+                    "source": "question_text",
+                    "note": "流年干支由本地算法按该公历年立春后年柱计算。",
+                },
+                {
+                    "year": 2008,
+                    "year_pillar": "戊子",
+                    "age": 34,
+                    "nominal_age": 35,
+                    "source": "question_text",
+                    "note": "流年干支由本地算法按该公历年立春后年柱计算。",
+                },
+            ],
+        )
+        self.assertIn("1996: 丙子", report.to_markdown())
+
     def test_report_followups_for_missing_time_and_location(self):
         chart = build_bazi_chart(
             {
