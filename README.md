@@ -137,6 +137,16 @@ mingli-bench analyze-agent-eval --run-dir logs/agent_eval_YYYYMMDD_HHMMSS
 
 The report summarizes category accuracy, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
 
+Compare two saved runs to inspect prompt or model changes:
+
+```bash
+mingli-bench compare-agent-evals \
+  --base-run-dir logs/baseline_run \
+  --candidate-run-dir logs/experimental_run
+```
+
+The comparison highlights accuracy deltas, parse-rate deltas, response-time changes, improvements, regressions, changed predictions, and category-level deltas.
+
 Use `--no-save` to print only the terminal summary.
 
 ## Local HTTP API

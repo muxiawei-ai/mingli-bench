@@ -19,6 +19,8 @@ from .agent_eval import (
 )
 from .agent_eval_report import (
     build_agent_eval_analysis,
+    compare_agent_eval_runs,
+    format_agent_eval_comparison,
     format_agent_eval_analysis,
     load_agent_eval_run,
 )
@@ -85,11 +87,18 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["agent", "serve", "eval-agent", "analyze-agent-eval"],
+        choices=[
+            "agent",
+            "serve",
+            "eval-agent",
+            "analyze-agent-eval",
+            "compare-agent-evals",
+        ],
         help=(
             "Optional command. Use 'agent' for the interactive CLI, "
             "'serve' for the local HTTP API, 'eval-agent' for agent pipeline "
-            "evaluation, or 'analyze-agent-eval' for saved eval reports."
+            "evaluation, 'analyze-agent-eval' for saved eval reports, "
+            "or 'compare-agent-evals' for A/B run comparisons."
         )
     )
     
@@ -159,6 +168,16 @@ Examples:
     parser.add_argument(
         "--run-dir",
         help="For 'analyze-agent-eval': directory containing summary.json and records.jsonl."
+    )
+
+    parser.add_argument(
+        "--base-run-dir",
+        help="For 'compare-agent-evals': baseline run directory.",
+    )
+
+    parser.add_argument(
+        "--candidate-run-dir",
+        help="For 'compare-agent-evals': candidate run directory.",
     )
     
     parser.add_argument(
@@ -478,6 +497,27 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to analyze MingLi agent eval run: {e}")
+            return 1
+
+    if args.command == "compare-agent-evals":
+        try:
+            if not args.base_run_dir:
+                raise ValueError("--base-run-dir is required for compare-agent-evals")
+            if not args.candidate_run_dir:
+                raise ValueError(
+                    "--candidate-run-dir is required for compare-agent-evals"
+                )
+            comparison = compare_agent_eval_runs(
+                load_agent_eval_run(args.base_run_dir),
+                load_agent_eval_run(args.candidate_run_dir),
+            )
+            if args.json:
+                print(json.dumps(comparison, ensure_ascii=False, indent=2))
+            else:
+                print(format_agent_eval_comparison(comparison))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to compare MingLi agent eval runs: {e}")
             return 1
     
     # Handle special actions

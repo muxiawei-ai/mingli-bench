@@ -165,6 +165,141 @@ def format_agent_eval_analysis(analysis: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def compare_agent_eval_runs(
+    base: Dict[str, Any],
+    candidate: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Compare two loaded eval-agent runs on shared question IDs."""
+
+    base_summary = base["summary"]
+    candidate_summary = candidate["summary"]
+    base_records = _records_by_question_id(base["records"])
+    candidate_records = _records_by_question_id(candidate["records"])
+    shared_ids = sorted(set(base_records) & set(candidate_records))
+    improvements = []
+    regressions = []
+    changed_predictions = []
+    category_totals: Counter[str] = Counter()
+    base_category_correct: Counter[str] = Counter()
+    candidate_category_correct: Counter[str] = Counter()
+
+    for question_id in shared_ids:
+        base_record = base_records[question_id]
+        candidate_record = candidate_records[question_id]
+        category = str(candidate_record.get("category") or base_record.get("category") or "unknown")
+        category_totals.update([category])
+        if base_record.get("answer_correct") is True:
+            base_category_correct.update([category])
+        if candidate_record.get("answer_correct") is True:
+            candidate_category_correct.update([category])
+
+        base_correct = base_record.get("answer_correct") is True
+        candidate_correct = candidate_record.get("answer_correct") is True
+        if not base_correct and candidate_correct:
+            improvements.append(_comparison_sample(base_record, candidate_record))
+        if base_correct and not candidate_correct:
+            regressions.append(_comparison_sample(base_record, candidate_record))
+        if base_record.get("predicted_answer") != candidate_record.get("predicted_answer"):
+            changed_predictions.append(_comparison_sample(base_record, candidate_record))
+
+    base_accuracy = base_summary.get("answer_choice_accuracy")
+    candidate_accuracy = candidate_summary.get("answer_choice_accuracy")
+    return {
+        "base_run_dir": base.get("run_dir"),
+        "candidate_run_dir": candidate.get("run_dir"),
+        "shared_question_count": len(shared_ids),
+        "base_accuracy": base_accuracy,
+        "candidate_accuracy": candidate_accuracy,
+        "accuracy_delta": _optional_delta(candidate_accuracy, base_accuracy),
+        "base_llm_json_parse_rate": base_summary.get("llm_json_parse_rate"),
+        "candidate_llm_json_parse_rate": candidate_summary.get("llm_json_parse_rate"),
+        "llm_json_parse_delta": _optional_delta(
+            candidate_summary.get("llm_json_parse_rate"),
+            base_summary.get("llm_json_parse_rate"),
+        ),
+        "base_average_response_time": base_summary.get("average_response_time"),
+        "candidate_average_response_time": candidate_summary.get("average_response_time"),
+        "average_response_time_delta": _optional_delta(
+            candidate_summary.get("average_response_time"),
+            base_summary.get("average_response_time"),
+        ),
+        "improvement_count": len(improvements),
+        "regression_count": len(regressions),
+        "changed_prediction_count": len(changed_predictions),
+        "category_deltas": [
+            {
+                "category": category,
+                "total": total,
+                "base_correct": base_category_correct.get(category, 0),
+                "candidate_correct": candidate_category_correct.get(category, 0),
+                "base_accuracy": _ratio(base_category_correct.get(category, 0), total),
+                "candidate_accuracy": _ratio(
+                    candidate_category_correct.get(category, 0),
+                    total,
+                ),
+                "accuracy_delta": _ratio(
+                    candidate_category_correct.get(category, 0),
+                    total,
+                )
+                - _ratio(base_category_correct.get(category, 0), total),
+            }
+            for category, total in sorted(category_totals.items())
+        ],
+        "improvements": improvements,
+        "regressions": regressions,
+        "changed_predictions": changed_predictions,
+    }
+
+
+def format_agent_eval_comparison(comparison: Dict[str, Any]) -> str:
+    """Render an A/B eval comparison for terminal output."""
+
+    lines = [
+        "Agent Eval Comparison",
+        "=====================",
+        f"Base: {comparison.get('base_run_dir')}",
+        f"Candidate: {comparison.get('candidate_run_dir')}",
+        f"Shared Questions: {comparison.get('shared_question_count')}",
+        "Accuracy: "
+        f"{_format_rate(comparison.get('base_accuracy'))} -> "
+        f"{_format_rate(comparison.get('candidate_accuracy'))} "
+        f"(delta={_format_signed_rate(comparison.get('accuracy_delta'))})",
+        "LLM JSON Parse: "
+        f"{_format_rate(comparison.get('base_llm_json_parse_rate'))} -> "
+        f"{_format_rate(comparison.get('candidate_llm_json_parse_rate'))} "
+        f"(delta={_format_signed_rate(comparison.get('llm_json_parse_delta'))})",
+        "Average Response Time: "
+        f"{_format_float(comparison.get('base_average_response_time'))}s -> "
+        f"{_format_float(comparison.get('candidate_average_response_time'))}s "
+        f"(delta={_format_signed_float(comparison.get('average_response_time_delta'))}s)",
+        f"Improvements: {comparison.get('improvement_count')}",
+        f"Regressions: {comparison.get('regression_count')}",
+        f"Changed Predictions: {comparison.get('changed_prediction_count')}",
+        "",
+        "Category Deltas:",
+    ]
+    for item in comparison.get("category_deltas") or []:
+        lines.append(
+            "  - "
+            f"{item['category']}: "
+            f"{item['base_correct']}/{item['total']} -> "
+            f"{item['candidate_correct']}/{item['total']} "
+            f"(delta={_format_signed_rate(item['accuracy_delta'])})"
+        )
+
+    if comparison.get("improvements"):
+        lines.extend(["", "Improvements:"])
+        for item in comparison["improvements"]:
+            lines.append(_format_comparison_sample(item))
+
+    if comparison.get("regressions"):
+        lines.extend(["", "Regressions:"])
+        for item in comparison["regressions"]:
+            lines.append(_format_comparison_sample(item))
+
+    return "\n".join(lines)
+
+
 def _wrong_answer_sample(record: Dict[str, Any]) -> Dict[str, Any]:
     diagnostic = build_answer_score_diagnostic(record) or {}
     interpretation = ((record.get("agent") or {}).get("interpretation") or {})
@@ -185,6 +320,52 @@ def _wrong_answer_sample(record: Dict[str, Any]) -> Dict[str, Any]:
         "predicted_score": diagnostic.get("predicted_score"),
         "score_gap_to_expected": diagnostic.get("score_gap_to_expected"),
     }
+
+
+def _records_by_question_id(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    return {
+        str(record.get("question_id")): record
+        for record in records
+        if record.get("question_id")
+    }
+
+
+def _comparison_sample(
+    base_record: Dict[str, Any],
+    candidate_record: Dict[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "question_id": candidate_record.get("question_id"),
+        "category": candidate_record.get("category") or base_record.get("category"),
+        "question": candidate_record.get("question") or base_record.get("question"),
+        "answer": candidate_record.get("answer") or base_record.get("answer"),
+        "base_predicted_answer": base_record.get("predicted_answer"),
+        "candidate_predicted_answer": candidate_record.get("predicted_answer"),
+        "base_correct": base_record.get("answer_correct"),
+        "candidate_correct": candidate_record.get("answer_correct"),
+        "base_confidence": (
+            ((base_record.get("agent") or {}).get("interpretation") or {}).get(
+                "answer_confidence"
+            )
+        ),
+        "candidate_confidence": (
+            ((candidate_record.get("agent") or {}).get("interpretation") or {}).get(
+                "answer_confidence"
+            )
+        ),
+    }
+
+
+def _format_comparison_sample(item: Dict[str, Any]) -> str:
+    return (
+        "  - "
+        f"{item['question_id']} [{item['category']}]: "
+        f"answer={item['answer']}, "
+        f"base={item['base_predicted_answer']} "
+        f"({_format_rate(item.get('base_confidence'))}), "
+        f"candidate={item['candidate_predicted_answer']} "
+        f"({_format_rate(item.get('candidate_confidence'))})"
+    )
 
 
 def _candidate_year_case(
@@ -223,8 +404,28 @@ def _format_float(value: Any) -> str:
     return f"{float(value):.3f}"
 
 
+def _format_signed_rate(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):+.2%}"
+
+
+def _format_signed_float(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):+.3f}"
+
+
+def _optional_delta(candidate_value: Any, base_value: Any) -> Optional[float]:
+    if candidate_value is None or base_value is None:
+        return None
+    return float(candidate_value) - float(base_value)
+
+
 __all__ = [
     "build_agent_eval_analysis",
+    "compare_agent_eval_runs",
+    "format_agent_eval_comparison",
     "format_agent_eval_analysis",
     "load_agent_eval_run",
 ]

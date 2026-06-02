@@ -5,6 +5,8 @@ from pathlib import Path
 
 from mingli_bench.agent_eval_report import (
     build_agent_eval_analysis,
+    compare_agent_eval_runs,
+    format_agent_eval_comparison,
     format_agent_eval_analysis,
     load_agent_eval_run,
 )
@@ -58,6 +60,48 @@ class AgentEvalReportTests(unittest.TestCase):
 
             self.assertEqual(loaded["summary"]["total_questions"], 1)
             self.assertEqual(loaded["records"][0]["question_id"], "q1")
+
+    def test_compare_agent_eval_runs(self):
+        base = {
+            "run_dir": "base",
+            "summary": {
+                "answer_choice_accuracy": 0.5,
+                "llm_json_parse_rate": 1.0,
+                "average_response_time": 10.0,
+            },
+            "records": [
+                _record("q1", "健康", "A", "C", False, confidence=0.7),
+                _record("q2", "婚姻", "B", "B", True, confidence=0.6),
+            ],
+        }
+        candidate = {
+            "run_dir": "candidate",
+            "summary": {
+                "answer_choice_accuracy": 0.5,
+                "llm_json_parse_rate": 0.9,
+                "average_response_time": 12.5,
+            },
+            "records": [
+                _record("q1", "健康", "A", "A", True, confidence=0.5),
+                _record("q2", "婚姻", "B", "A", False, confidence=0.8),
+            ],
+        }
+
+        comparison = compare_agent_eval_runs(base, candidate)
+
+        self.assertEqual(comparison["shared_question_count"], 2)
+        self.assertEqual(comparison["accuracy_delta"], 0.0)
+        self.assertAlmostEqual(comparison["llm_json_parse_delta"], -0.1)
+        self.assertEqual(comparison["average_response_time_delta"], 2.5)
+        self.assertEqual(comparison["improvement_count"], 1)
+        self.assertEqual(comparison["regression_count"], 1)
+        self.assertEqual(comparison["changed_prediction_count"], 2)
+
+        formatted = format_agent_eval_comparison(comparison)
+        self.assertIn("Agent Eval Comparison", formatted)
+        self.assertIn("delta=+0.00%", formatted)
+        self.assertIn("q1", formatted)
+        self.assertIn("q2", formatted)
 
 
 def _candidate_year_record():
@@ -134,6 +178,32 @@ def _wrong_health_record():
                     "C": {"score": 0.7},
                 },
             },
+        },
+    }
+
+
+def _record(
+    question_id,
+    category,
+    answer,
+    predicted_answer,
+    answer_correct,
+    *,
+    confidence,
+):
+    return {
+        "question_id": question_id,
+        "case_id": f"case_{question_id}",
+        "category": category,
+        "question": f"question {question_id}",
+        "answer": answer,
+        "predicted_answer": predicted_answer,
+        "answer_correct": answer_correct,
+        "success": True,
+        "agent": {
+            "interpretation": {
+                "answer_confidence": confidence,
+            }
         },
     }
 
