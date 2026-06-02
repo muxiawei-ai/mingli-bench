@@ -9,11 +9,13 @@ import sys
 from .agent import MingLiAgent
 from .agent_eval import (
     AgentEvalConfig,
+    append_agent_eval_record,
     evaluate_agent_questions,
     format_agent_eval_summary,
     load_agent_eval_questions,
-    save_agent_eval,
+    start_agent_eval_run,
     summarize_agent_eval,
+    write_agent_eval_summary,
 )
 from .api import run_server
 from .calendar import hour_branch, parse_bazi_pillars
@@ -400,15 +402,24 @@ Examples:
                 save=not args.no_save,
             )
             questions = load_agent_eval_questions(config)
+            saved_paths = {}
+            record_callback = None
+            if config.save:
+                saved_paths = start_agent_eval_run(args.output_dir)
+                print(f"Saving incremental records to: {saved_paths['records']}")
+
+                def record_callback(record):
+                    append_agent_eval_record(record, saved_paths["records"])
+
             records = evaluate_agent_questions(
                 questions,
                 model_client=model_client,
                 fortune_data_path=args.fortune_data_path,
+                record_callback=record_callback,
             )
             summary = summarize_agent_eval(records, config=config)
-            saved_paths = {}
             if config.save:
-                saved_paths = save_agent_eval(summary, output_dir=args.output_dir)
+                write_agent_eval_summary(summary, saved_paths["summary"])
             print(format_agent_eval_summary(summary))
             if saved_paths:
                 print("\nSaved:")

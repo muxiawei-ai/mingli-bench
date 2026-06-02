@@ -28,6 +28,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - Answer-choice extraction, parse-rate, and accuracy metrics for benchmark-backed Agent evaluations.
 - Option-score interpretation contract fields and option-by-option prompt guidance for A-D benchmark questions.
 - More robust OpenAI-compatible response text extraction, including empty-content diagnostics and optional OpenRouter reasoning controls.
+- Incremental Agent evaluation JSONL writes so slow model runs keep completed records if interrupted.
 - `mingli_bench.bazi` Bazi derivation:
   - Gregorian date/time to year pillar with calculated Li Chun boundary,
   - Gregorian date/time to month pillar with major solar-term boundaries,

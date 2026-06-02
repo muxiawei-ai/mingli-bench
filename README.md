@@ -120,7 +120,7 @@ mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
 By default it saves:
 
 - `summary.json`: aggregate metrics, distributions, and error samples.
-- `records.jsonl`: one full agent result per benchmark case.
+- `records.jsonl`: one full agent result per benchmark case, appended incrementally as each case finishes.
 
 For benchmark questions with A-D answers, the summary also reports answer-choice parse rate and answer-choice accuracy.
 

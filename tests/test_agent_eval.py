@@ -6,6 +6,7 @@ from pathlib import Path
 from mingli_bench.agent_eval import (
     AgentEvalConfig,
     EXPECTED_TRACE,
+    append_agent_eval_record,
     answer_choice_matches,
     evaluate_agent_questions,
     expected_intent_domain,
@@ -14,7 +15,9 @@ from mingli_bench.agent_eval import (
     format_agent_eval_summary,
     load_agent_eval_questions,
     save_agent_eval,
+    start_agent_eval_run,
     summarize_agent_eval,
+    write_agent_eval_summary,
 )
 
 
@@ -67,6 +70,20 @@ class AgentEvalTests(unittest.TestCase):
             parsed = json.loads(summary_path.read_text(encoding="utf-8"))
             self.assertEqual(parsed["total_questions"], 1)
             self.assertEqual(len(records_path.read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_incremental_agent_eval_writes_records_before_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = start_agent_eval_run(tmpdir)
+            append_agent_eval_record({"question_id": "q1"}, paths["records"])
+            append_agent_eval_record({"question_id": "q2"}, paths["records"])
+
+            records_path = Path(paths["records"])
+            summary_path = Path(paths["summary"])
+            self.assertEqual(len(records_path.read_text(encoding="utf-8").splitlines()), 2)
+            self.assertFalse(summary_path.exists())
+
+            write_agent_eval_summary({"total_questions": 2}, paths["summary"])
+            self.assertTrue(summary_path.exists())
 
     def test_expected_intent_domain(self):
         self.assertEqual(expected_intent_domain("事业"), "事业")

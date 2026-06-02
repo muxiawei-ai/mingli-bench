@@ -9,7 +9,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from .agent import MingLiAgent
 from .data.loader import DataLoader
@@ -81,19 +81,21 @@ def evaluate_agent_questions(
     *,
     model_client: Optional[ModelClient] = None,
     fortune_data_path: Optional[str] = None,
+    record_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Run the local MingLi agent over benchmark questions."""
 
     records = []
     agent = MingLiAgent(model_client)
     for question in questions:
-        records.append(
-            evaluate_agent_question(
-                question,
-                agent=agent,
-                fortune_data_path=fortune_data_path,
-            )
+        record = evaluate_agent_question(
+            question,
+            agent=agent,
+            fortune_data_path=fortune_data_path,
         )
+        records.append(record)
+        if record_callback is not None:
+            record_callback(record)
     return records
 
 
@@ -338,6 +340,16 @@ def summarize_agent_eval(
 def save_agent_eval(summary: Dict[str, Any], output_dir: str = "logs") -> Dict[str, str]:
     """Save agent evaluation summary and JSONL records."""
 
+    paths = start_agent_eval_run(output_dir)
+    write_agent_eval_summary(summary, paths["summary"])
+    for record in summary.get("records") or []:
+        append_agent_eval_record(record, paths["records"])
+    return paths
+
+
+def start_agent_eval_run(output_dir: str = "logs") -> Dict[str, str]:
+    """Create an evaluation run directory and touch output files."""
+
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -346,16 +358,26 @@ def save_agent_eval(summary: Dict[str, Any], output_dir: str = "logs") -> Dict[s
 
     summary_path = run_dir / "summary.json"
     records_path = run_dir / "records.jsonl"
-    with summary_path.open("w", encoding="utf-8") as handle:
-        json.dump(summary, handle, ensure_ascii=False, indent=2)
-    with records_path.open("w", encoding="utf-8") as handle:
-        for record in summary.get("records") or []:
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    records_path.touch()
     return {
         "run_dir": str(run_dir),
         "summary": str(summary_path),
         "records": str(records_path),
     }
+
+
+def append_agent_eval_record(record: Dict[str, Any], records_path: str) -> None:
+    """Append one agent evaluation record to a JSONL file."""
+
+    with Path(records_path).open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def write_agent_eval_summary(summary: Dict[str, Any], summary_path: str) -> None:
+    """Write an agent evaluation summary JSON file."""
+
+    with Path(summary_path).open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, ensure_ascii=False, indent=2)
 
 
 def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
@@ -439,6 +461,7 @@ def _nested_confusion(counter: Counter[tuple]) -> Dict[str, Dict[str, int]]:
 __all__ = [
     "AgentEvalConfig",
     "EXPECTED_TRACE",
+    "append_agent_eval_record",
     "expected_intent_domain",
     "answer_choice_matches",
     "build_agent_checks",
@@ -449,5 +472,7 @@ __all__ = [
     "format_agent_eval_question",
     "load_agent_eval_questions",
     "save_agent_eval",
+    "start_agent_eval_run",
     "summarize_agent_eval",
+    "write_agent_eval_summary",
 ]
