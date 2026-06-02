@@ -15,6 +15,9 @@ from .agent_eval import (
 )
 
 
+IGNORED_CONFIG_DIFF_KEYS = {"output_dir", "save"}
+
+
 def load_agent_eval_run(run_dir: str) -> Dict[str, Any]:
     """Load summary and JSONL records from one saved eval-agent run."""
 
@@ -204,19 +207,30 @@ def compare_agent_eval_runs(
 
     base_accuracy = base_summary.get("answer_choice_accuracy")
     candidate_accuracy = candidate_summary.get("answer_choice_accuracy")
+    accuracy_delta = _optional_delta(candidate_accuracy, base_accuracy)
+    llm_json_parse_delta = _optional_delta(
+        candidate_summary.get("llm_json_parse_rate"),
+        base_summary.get("llm_json_parse_rate"),
+    )
+    verdict = _comparison_verdict(
+        accuracy_delta,
+        improvement_count=len(improvements),
+        regression_count=len(regressions),
+        parse_delta=llm_json_parse_delta,
+    )
     return {
         "base_run_dir": base.get("run_dir"),
         "candidate_run_dir": candidate.get("run_dir"),
+        "verdict": verdict["verdict"],
+        "recommendation": verdict["recommendation"],
+        "config_differences": _config_differences(base_summary, candidate_summary),
         "shared_question_count": len(shared_ids),
         "base_accuracy": base_accuracy,
         "candidate_accuracy": candidate_accuracy,
-        "accuracy_delta": _optional_delta(candidate_accuracy, base_accuracy),
+        "accuracy_delta": accuracy_delta,
         "base_llm_json_parse_rate": base_summary.get("llm_json_parse_rate"),
         "candidate_llm_json_parse_rate": candidate_summary.get("llm_json_parse_rate"),
-        "llm_json_parse_delta": _optional_delta(
-            candidate_summary.get("llm_json_parse_rate"),
-            base_summary.get("llm_json_parse_rate"),
-        ),
+        "llm_json_parse_delta": llm_json_parse_delta,
         "base_average_response_time": base_summary.get("average_response_time"),
         "candidate_average_response_time": candidate_summary.get("average_response_time"),
         "average_response_time_delta": _optional_delta(
@@ -259,6 +273,8 @@ def format_agent_eval_comparison(comparison: Dict[str, Any]) -> str:
         "=====================",
         f"Base: {comparison.get('base_run_dir')}",
         f"Candidate: {comparison.get('candidate_run_dir')}",
+        f"Verdict: {comparison.get('verdict')}",
+        f"Recommendation: {comparison.get('recommendation')}",
         f"Shared Questions: {comparison.get('shared_question_count')}",
         "Accuracy: "
         f"{_format_rate(comparison.get('base_accuracy'))} -> "
@@ -275,9 +291,15 @@ def format_agent_eval_comparison(comparison: Dict[str, Any]) -> str:
         f"Improvements: {comparison.get('improvement_count')}",
         f"Regressions: {comparison.get('regression_count')}",
         f"Changed Predictions: {comparison.get('changed_prediction_count')}",
-        "",
-        "Category Deltas:",
     ]
+    if comparison.get("config_differences"):
+        lines.extend(["", "Config Differences:"])
+        for item in comparison["config_differences"]:
+            lines.append(
+                "  - "
+                f"{item['key']}: {item.get('base')} -> {item.get('candidate')}"
+            )
+    lines.extend(["", "Category Deltas:"])
     for item in comparison.get("category_deltas") or []:
         lines.append(
             "  - "
@@ -328,6 +350,69 @@ def _records_by_question_id(records: List[Dict[str, Any]]) -> Dict[str, Dict[str
         for record in records
         if record.get("question_id")
     }
+
+
+def _comparison_verdict(
+    accuracy_delta: Optional[float],
+    *,
+    improvement_count: int,
+    regression_count: int,
+    parse_delta: Optional[float],
+) -> Dict[str, str]:
+    if accuracy_delta is None:
+        return {
+            "verdict": "insufficient_data",
+            "recommendation": "inspect_runs_manually",
+        }
+    if accuracy_delta < 0:
+        return {
+            "verdict": "regressed",
+            "recommendation": "reject_candidate",
+        }
+    if accuracy_delta > 0 and regression_count == 0 and (
+        parse_delta is None or parse_delta >= 0
+    ):
+        return {
+            "verdict": "improved",
+            "recommendation": "candidate_passed_initial_gate",
+        }
+    if accuracy_delta > 0:
+        return {
+            "verdict": "mixed_improvement",
+            "recommendation": "review_changed_questions",
+        }
+    if regression_count > improvement_count:
+        return {
+            "verdict": "mixed_regression",
+            "recommendation": "reject_or_rework_candidate",
+        }
+    if improvement_count > regression_count:
+        return {
+            "verdict": "mixed_tie",
+            "recommendation": "review_changed_questions",
+        }
+    return {
+        "verdict": "tied",
+        "recommendation": "no_clear_gain",
+    }
+
+
+def _config_differences(
+    base_summary: Dict[str, Any],
+    candidate_summary: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    base_config = base_summary.get("config") or {}
+    candidate_config = candidate_summary.get("config") or {}
+    keys = sorted((set(base_config) | set(candidate_config)) - IGNORED_CONFIG_DIFF_KEYS)
+    return [
+        {
+            "key": key,
+            "base": base_config.get(key),
+            "candidate": candidate_config.get(key),
+        }
+        for key in keys
+        if base_config.get(key) != candidate_config.get(key)
+    ]
 
 
 def _comparison_sample(

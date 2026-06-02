@@ -68,6 +68,10 @@ class AgentEvalReportTests(unittest.TestCase):
                 "answer_choice_accuracy": 0.5,
                 "llm_json_parse_rate": 1.0,
                 "average_response_time": 10.0,
+                "config": {
+                    "model_name": "sonnet",
+                    "include_candidate_year_diagnostics": False,
+                },
             },
             "records": [
                 _record("q1", "健康", "A", "C", False, confidence=0.7),
@@ -80,6 +84,10 @@ class AgentEvalReportTests(unittest.TestCase):
                 "answer_choice_accuracy": 0.5,
                 "llm_json_parse_rate": 0.9,
                 "average_response_time": 12.5,
+                "config": {
+                    "model_name": "sonnet",
+                    "include_candidate_year_diagnostics": True,
+                },
             },
             "records": [
                 _record("q1", "健康", "A", "A", True, confidence=0.5),
@@ -96,9 +104,23 @@ class AgentEvalReportTests(unittest.TestCase):
         self.assertEqual(comparison["improvement_count"], 1)
         self.assertEqual(comparison["regression_count"], 1)
         self.assertEqual(comparison["changed_prediction_count"], 2)
+        self.assertEqual(comparison["verdict"], "tied")
+        self.assertEqual(comparison["recommendation"], "no_clear_gain")
+        self.assertEqual(
+            comparison["config_differences"],
+            [
+                {
+                    "key": "include_candidate_year_diagnostics",
+                    "base": False,
+                    "candidate": True,
+                }
+            ],
+        )
 
         formatted = format_agent_eval_comparison(comparison)
         self.assertIn("Agent Eval Comparison", formatted)
+        self.assertIn("Verdict: tied", formatted)
+        self.assertIn("include_candidate_year_diagnostics: False -> True", formatted)
         self.assertIn("delta=+0.00%", formatted)
         self.assertIn("q1", formatted)
         self.assertIn("q2", formatted)

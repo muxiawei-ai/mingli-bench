@@ -145,7 +145,7 @@ mingli-bench compare-agent-evals \
   --candidate-run-dir logs/experimental_run
 ```
 
-The comparison highlights accuracy deltas, parse-rate deltas, response-time changes, improvements, regressions, changed predictions, and category-level deltas.
+The comparison highlights a conservative verdict/recommendation, accuracy deltas, parse-rate deltas, response-time changes, improvements, regressions, changed predictions, and category-level deltas.
 
 Use `--no-save` to print only the terminal summary.
 
