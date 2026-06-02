@@ -8,6 +8,7 @@ from mingli_bench.agent_eval import (
     EXPECTED_TRACE,
     append_agent_eval_record,
     answer_choice_matches,
+    candidate_year_choice,
     evaluate_agent_questions,
     expected_intent_domain,
     extract_answer_choice,
@@ -219,17 +220,37 @@ class AgentEvalTests(unittest.TestCase):
             },
         }
 
+        self.assertEqual(candidate_year_choice(record, "C")["rank"], 2)
         self.assertEqual(top_candidate_year_choice(record), "A")
         summary = summarize_agent_eval([record])
 
         self.assertEqual(summary["candidate_year_score_total"], 1)
         self.assertEqual(summary["candidate_year_top_choice_accuracy"], 0.0)
         self.assertEqual(summary["candidate_year_model_agreement_rate"], 1.0)
+        self.assertEqual(summary["candidate_year_answer_candidate_rate"], 1.0)
+        self.assertEqual(summary["candidate_year_model_candidate_rate"], 1.0)
+        self.assertEqual(
+            summary["candidate_year_answer_rank_distribution"],
+            {"2": 1},
+        )
+        self.assertEqual(
+            summary["candidate_year_model_rank_distribution"],
+            {"1": 1},
+        )
+        self.assertEqual(
+            summary["candidate_year_focus_distribution"],
+            {"marriage_timing": 1},
+        )
         self.assertEqual(
             summary["candidate_year_diagnostic_samples"][0]["top_candidate_year_choice"],
             "A",
         )
+        self.assertEqual(
+            summary["candidate_year_diagnostic_samples"][0]["answer_candidate_rank"],
+            2,
+        )
         self.assertIn("Candidate Year Diagnostics", format_agent_eval_summary(summary))
+        self.assertIn("Answer Rank Distribution: 2: 1", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

@@ -246,6 +246,11 @@ def summarize_agent_eval(
     candidate_year_total = 0
     candidate_year_top_correct = 0
     candidate_year_model_agree = 0
+    candidate_year_answer_candidate = 0
+    candidate_year_model_candidate = 0
+    candidate_year_answer_rank_counts: Counter[str] = Counter()
+    candidate_year_model_rank_counts: Counter[str] = Counter()
+    candidate_year_focus_counts: Counter[str] = Counter()
     candidate_year_diagnostic_samples = []
     answer_error_samples = []
     clarification_samples = []
@@ -269,6 +274,24 @@ def summarize_agent_eval(
             top_candidate = top_candidate_year_choice(record)
             if top_candidate:
                 candidate_year_total += 1
+                answer_candidate = candidate_year_choice(record, expected_answer)
+                predicted_candidate = candidate_year_choice(record, predicted_answer)
+                focus = _candidate_year_scores(record)[0].get("focus") or "unknown"
+                candidate_year_focus_counts.update([str(focus)])
+                if answer_candidate:
+                    candidate_year_answer_candidate += 1
+                    candidate_year_answer_rank_counts.update(
+                        [str(answer_candidate.get("rank") or "unknown")]
+                    )
+                else:
+                    candidate_year_answer_rank_counts.update(["not_candidate"])
+                if predicted_candidate:
+                    candidate_year_model_candidate += 1
+                    candidate_year_model_rank_counts.update(
+                        [str(predicted_candidate.get("rank") or "unknown")]
+                    )
+                else:
+                    candidate_year_model_rank_counts.update(["not_candidate"])
                 if top_candidate == expected_answer:
                     candidate_year_top_correct += 1
                 if top_candidate == predicted_answer:
@@ -350,6 +373,21 @@ def summarize_agent_eval(
             candidate_year_model_agree,
             candidate_year_total,
         ),
+        "candidate_year_answer_candidate_rate": _ratio(
+            candidate_year_answer_candidate,
+            candidate_year_total,
+        ),
+        "candidate_year_model_candidate_rate": _ratio(
+            candidate_year_model_candidate,
+            candidate_year_total,
+        ),
+        "candidate_year_answer_rank_distribution": dict(
+            candidate_year_answer_rank_counts
+        ),
+        "candidate_year_model_rank_distribution": dict(
+            candidate_year_model_rank_counts
+        ),
+        "candidate_year_focus_distribution": dict(candidate_year_focus_counts),
         "candidate_year_diagnostic_samples": candidate_year_diagnostic_samples,
         "answer_score_diagnostics": _summarize_answer_score_diagnostics(
             answer_score_diagnostics
@@ -471,6 +509,18 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
             "  - Model vs Top Candidate: "
             f"{summary['candidate_year_model_agreement_rate']:.2%}"
         )
+        lines.append(
+            "  - Answer In Candidate Set: "
+            f"{summary['candidate_year_answer_candidate_rate']:.2%}"
+        )
+        if summary.get("candidate_year_answer_rank_distribution"):
+            rank_text = ", ".join(
+                f"{rank}: {count}"
+                for rank, count in sorted(
+                    summary["candidate_year_answer_rank_distribution"].items()
+                )
+            )
+            lines.append(f"  - Answer Rank Distribution: {rank_text}")
     diagnostics = summary.get("answer_score_diagnostics") or {}
     if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
         lines.extend(["", "Answer Score Diagnostics:"])
@@ -647,11 +697,28 @@ def top_candidate_year_choice(record: Dict[str, Any]) -> Optional[str]:
     return _normalize_answer_choice(ranked[0].get("letter"))
 
 
+def candidate_year_choice(
+    record: Dict[str, Any],
+    answer: Any,
+) -> Optional[Dict[str, Any]]:
+    """Return candidate-year score metadata for one answer option."""
+
+    letter = _normalize_answer_choice(answer)
+    if not letter:
+        return None
+    for item in _candidate_year_scores(record):
+        if _normalize_answer_choice(item.get("letter")) == letter:
+            return item
+    return None
+
+
 def candidate_year_diagnostic_sample(record: Dict[str, Any]) -> Dict[str, Any]:
     """Build a compact candidate-year diagnostic sample."""
 
     scores = _candidate_year_scores(record)
     top_choice = top_candidate_year_choice(record)
+    answer_candidate = candidate_year_choice(record, record.get("answer"))
+    predicted_candidate = candidate_year_choice(record, record.get("predicted_answer"))
     return {
         "question_id": record.get("question_id"),
         "case_id": record.get("case_id"),
@@ -659,6 +726,10 @@ def candidate_year_diagnostic_sample(record: Dict[str, Any]) -> Dict[str, Any]:
         "answer": _normalize_answer_choice(record.get("answer")),
         "predicted_answer": _normalize_answer_choice(record.get("predicted_answer")),
         "top_candidate_year_choice": top_choice,
+        "answer_candidate_rank": _candidate_rank(answer_candidate),
+        "answer_candidate_score": _candidate_score(answer_candidate),
+        "predicted_candidate_rank": _candidate_rank(predicted_candidate),
+        "predicted_candidate_score": _candidate_score(predicted_candidate),
         "question": record.get("question"),
         "candidate_year_scores": [
             {
@@ -681,6 +752,24 @@ def _candidate_year_scores(record: Dict[str, Any]) -> List[Dict[str, Any]]:
         ((record.get("agent") or {}).get("report") or {}).get("candidate_year_scores")
         or []
     )
+
+
+def _candidate_rank(item: Optional[Dict[str, Any]]) -> Optional[int]:
+    if not item:
+        return None
+    try:
+        return int(item.get("rank"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _candidate_score(item: Optional[Dict[str, Any]]) -> Optional[float]:
+    if not item:
+        return None
+    try:
+        return float(item.get("score"))
+    except (TypeError, ValueError):
+        return None
 
 
 def _answer_diagnostic_sample(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -819,6 +908,7 @@ __all__ = [
     "AgentEvalConfig",
     "EXPECTED_TRACE",
     "append_agent_eval_record",
+    "candidate_year_choice",
     "expected_intent_domain",
     "answer_choice_matches",
     "build_answer_score_diagnostic",
