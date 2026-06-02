@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .bazi import year_pillar_for_date
+from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
 from .option_semantics import analyze_option_semantics
@@ -48,6 +49,7 @@ class ChartReport:
     input_quality: Dict[str, Any]
     event_years: List[Dict[str, Any]]
     option_semantics: List[Dict[str, Any]]
+    candidate_year_scores: List[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
 
@@ -61,6 +63,7 @@ class ChartReport:
             "input_quality": self.input_quality,
             "event_years": self.event_years,
             "option_semantics": self.option_semantics,
+            "candidate_year_scores": self.candidate_year_scores,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
         }
@@ -133,6 +136,14 @@ class ChartReport:
             for item in self.option_semantics:
                 labels = "、".join(item.get("labels") or []) or "unknown"
                 lines.append(f"- {item['letter']}: {labels} ({item['text']})")
+
+        if self.candidate_year_scores:
+            lines.extend(["", "### 候选年份诊断"])
+            for item in self.candidate_year_scores:
+                lines.append(
+                    f"- {item['letter']}: {item['year']} "
+                    f"score={item['score']} rank={item['rank']}"
+                )
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -222,6 +233,11 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
     }
     event_years = _build_event_years(chart, question)
     option_semantics = analyze_option_semantics(question)
+    candidate_year_scores = build_candidate_year_scores(
+        question,
+        event_years,
+        option_semantics,
+    )
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(
@@ -233,6 +249,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         input_quality=input_quality,
         event_years=event_years,
         option_semantics=option_semantics,
+        candidate_year_scores=candidate_year_scores,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )

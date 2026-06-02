@@ -18,6 +18,7 @@ from mingli_bench.agent_eval import (
     save_agent_eval,
     start_agent_eval_run,
     summarize_agent_eval,
+    top_candidate_year_choice,
     write_agent_eval_summary,
 )
 
@@ -166,6 +167,69 @@ class AgentEvalTests(unittest.TestCase):
             "traffic_accident",
         )
         self.assertIn("mental_health -> traffic_accident: 1", format_agent_eval_summary(summary))
+
+    def test_candidate_year_score_diagnostics(self):
+        record = {
+            "question_id": "q2",
+            "case_id": "case_1",
+            "category": "婚姻",
+            "question": "此命何年结婚？",
+            "answer": "C",
+            "predicted_answer": "A",
+            "answer_correct": False,
+            "success": True,
+            "error": None,
+            "response_time": 0.1,
+            "checks": {
+                "chart_ok": True,
+                "intent_ok": True,
+                "trace_complete": True,
+                "interpretation_schema_ok": True,
+                "llm_json_parsed": True,
+            },
+            "agent": {
+                "intent": {"primary_domain": "婚姻"},
+                "report": {
+                    "candidate_year_scores": [
+                        {
+                            "letter": "A",
+                            "year": 1999,
+                            "year_pillar": "己卯",
+                            "score": 4.8,
+                            "rank": 1,
+                            "focus": "marriage_timing",
+                            "interaction_labels": ["寅卯辰三会木局"],
+                            "matched_positions": ["year", "month"],
+                        },
+                        {
+                            "letter": "C",
+                            "year": 2006,
+                            "year_pillar": "丙戌",
+                            "score": 3.2,
+                            "rank": 2,
+                            "focus": "marriage_timing",
+                            "interaction_labels": ["辰戌冲"],
+                            "matched_positions": ["month"],
+                        },
+                    ]
+                },
+                "interpretation": {"mode": "llm_json"},
+                "warnings": [],
+                "trace": [],
+            },
+        }
+
+        self.assertEqual(top_candidate_year_choice(record), "A")
+        summary = summarize_agent_eval([record])
+
+        self.assertEqual(summary["candidate_year_score_total"], 1)
+        self.assertEqual(summary["candidate_year_top_choice_accuracy"], 0.0)
+        self.assertEqual(summary["candidate_year_model_agreement_rate"], 1.0)
+        self.assertEqual(
+            summary["candidate_year_diagnostic_samples"][0]["top_candidate_year_choice"],
+            "A",
+        )
+        self.assertIn("Candidate Year Diagnostics", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

@@ -125,6 +125,30 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(by_letter["D"]["primary_event_type"], "wealth_gain")
         self.assertIn("精神/心理健康", report.to_markdown())
 
+    def test_build_chart_report_scores_candidate_years(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "此命何年结婚？\n选项：\nA. 1999\nB. 2002\nC. 2006\nD. 到2022年为止，单身",
+        )
+        by_letter = {item["letter"]: item for item in report.candidate_year_scores}
+
+        self.assertEqual(set(by_letter), {"A", "B", "C"})
+        self.assertEqual(by_letter["A"]["focus"], "marriage_timing")
+        self.assertEqual(by_letter["C"]["year_pillar"], "丙戌")
+        self.assertIn("候选年份诊断", report.to_markdown())
+
     def test_report_followups_for_missing_time_and_location(self):
         chart = build_bazi_chart(
             {

@@ -243,6 +243,10 @@ def summarize_agent_eval(
     answer_choice_confusion: Counter[tuple] = Counter()
     answer_event_type_confusion: Counter[tuple] = Counter()
     answer_score_diagnostics = []
+    candidate_year_total = 0
+    candidate_year_top_correct = 0
+    candidate_year_model_agree = 0
+    candidate_year_diagnostic_samples = []
     answer_error_samples = []
     clarification_samples = []
 
@@ -262,6 +266,17 @@ def summarize_agent_eval(
         predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
         if expected_answer:
             answer_total += 1
+            top_candidate = top_candidate_year_choice(record)
+            if top_candidate:
+                candidate_year_total += 1
+                if top_candidate == expected_answer:
+                    candidate_year_top_correct += 1
+                if top_candidate == predicted_answer:
+                    candidate_year_model_agree += 1
+                if len(candidate_year_diagnostic_samples) < 10:
+                    candidate_year_diagnostic_samples.append(
+                        candidate_year_diagnostic_sample(record)
+                    )
             expected_event_type = option_event_type(record, expected_answer)
             predicted_event_type = option_event_type(record, predicted_answer)
             if expected_event_type or predicted_event_type:
@@ -326,6 +341,16 @@ def summarize_agent_eval(
         "answer_choice_accuracy_on_parsed": _ratio(answer_correct, answer_parsed),
         "answer_choice_confusion": _nested_confusion(answer_choice_confusion),
         "answer_event_type_confusion": _nested_confusion(answer_event_type_confusion),
+        "candidate_year_score_total": candidate_year_total,
+        "candidate_year_top_choice_accuracy": _ratio(
+            candidate_year_top_correct,
+            candidate_year_total,
+        ),
+        "candidate_year_model_agreement_rate": _ratio(
+            candidate_year_model_agree,
+            candidate_year_total,
+        ),
+        "candidate_year_diagnostic_samples": candidate_year_diagnostic_samples,
         "answer_score_diagnostics": _summarize_answer_score_diagnostics(
             answer_score_diagnostics
         ),
@@ -433,6 +458,19 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
                 for actual_type, count in sorted(actuals.items())
             )
             lines.append(f"  - {expected_type} -> {actual_text}")
+    if summary.get("candidate_year_score_total"):
+        lines.extend(["", "Candidate Year Diagnostics:"])
+        lines.append(
+            f"  - Candidate Year Records: {summary['candidate_year_score_total']}"
+        )
+        lines.append(
+            "  - Top Candidate vs Answer: "
+            f"{summary['candidate_year_top_choice_accuracy']:.2%}"
+        )
+        lines.append(
+            "  - Model vs Top Candidate: "
+            f"{summary['candidate_year_model_agreement_rate']:.2%}"
+        )
     diagnostics = summary.get("answer_score_diagnostics") or {}
     if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
         lines.extend(["", "Answer Score Diagnostics:"])
@@ -596,6 +634,55 @@ def option_event_type(record: Dict[str, Any], answer: Any) -> Optional[str]:
     return None
 
 
+def top_candidate_year_choice(record: Dict[str, Any]) -> Optional[str]:
+    """Return the highest-ranked local candidate-year letter for one record."""
+
+    scores = _candidate_year_scores(record)
+    if not scores:
+        return None
+    ranked = sorted(
+        scores,
+        key=lambda item: (int(item.get("rank") or 999), -float(item.get("score") or 0.0)),
+    )
+    return _normalize_answer_choice(ranked[0].get("letter"))
+
+
+def candidate_year_diagnostic_sample(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Build a compact candidate-year diagnostic sample."""
+
+    scores = _candidate_year_scores(record)
+    top_choice = top_candidate_year_choice(record)
+    return {
+        "question_id": record.get("question_id"),
+        "case_id": record.get("case_id"),
+        "category": record.get("category"),
+        "answer": _normalize_answer_choice(record.get("answer")),
+        "predicted_answer": _normalize_answer_choice(record.get("predicted_answer")),
+        "top_candidate_year_choice": top_choice,
+        "question": record.get("question"),
+        "candidate_year_scores": [
+            {
+                "letter": item.get("letter"),
+                "year": item.get("year"),
+                "year_pillar": item.get("year_pillar"),
+                "score": item.get("score"),
+                "rank": item.get("rank"),
+                "focus": item.get("focus"),
+                "interaction_labels": item.get("interaction_labels") or [],
+                "matched_positions": item.get("matched_positions") or [],
+            }
+            for item in scores
+        ],
+    }
+
+
+def _candidate_year_scores(record: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return (
+        ((record.get("agent") or {}).get("report") or {}).get("candidate_year_scores")
+        or []
+    )
+
+
 def _answer_diagnostic_sample(item: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "question_id": item.get("question_id"),
@@ -746,5 +833,6 @@ __all__ = [
     "save_agent_eval",
     "start_agent_eval_run",
     "summarize_agent_eval",
+    "top_candidate_year_choice",
     "write_agent_eval_summary",
 ]

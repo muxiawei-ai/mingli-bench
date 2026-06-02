@@ -87,7 +87,9 @@ def build_interpretation_prompt(
     report = report or build_chart_report(chart, question)
     intent = intent or parse_question_intent(question)
     intent_json = json.dumps(intent.as_dict(), ensure_ascii=False, indent=2)
-    report_json = json.dumps(report.as_dict(), ensure_ascii=False, indent=2)
+    report_for_prompt = report.as_dict()
+    report_for_prompt.pop("candidate_year_scores", None)
+    report_json = json.dumps(report_for_prompt, ensure_ascii=False, indent=2)
     chart_json = json.dumps(chart.as_dict(), ensure_ascii=False, indent=2)
     return f"""你是一个中文命理分析 Agent。
 
