@@ -57,6 +57,56 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("Answer Choice Accuracy", formatted)
         self.assertIn("Trace Complete Rate", formatted)
 
+    def test_answer_score_diagnostics(self):
+        record = {
+            "question_id": "q1",
+            "case_id": "case_1",
+            "category": "健康",
+            "question": "此命发生何事？",
+            "answer": "A",
+            "predicted_answer": "B",
+            "answer_correct": False,
+            "success": True,
+            "error": None,
+            "response_time": 0.1,
+            "checks": {
+                "chart_ok": True,
+                "intent_ok": True,
+                "trace_complete": True,
+                "interpretation_schema_ok": True,
+                "llm_json_parsed": True,
+            },
+            "agent": {
+                "intent": {"primary_domain": "健康"},
+                "interpretation": {
+                    "mode": "llm_json",
+                    "answer_confidence": 0.82,
+                    "option_scores": {
+                        "A": {"score": 0.70, "rationale": "接近"},
+                        "B": {"score": 0.75, "rationale": "略高"},
+                        "C": {"score": 0.20, "rationale": "较弱"},
+                        "D": {"score": 0.10, "rationale": "较弱"},
+                    },
+                },
+                "warnings": [],
+                "trace": [],
+            },
+        }
+
+        summary = summarize_agent_eval([record])
+        diagnostics = summary["answer_score_diagnostics"]
+
+        self.assertEqual(diagnostics["records_with_confidence"], 1)
+        self.assertEqual(diagnostics["scored_records"], 1)
+        self.assertEqual(diagnostics["high_confidence_wrong_count"], 1)
+        self.assertEqual(diagnostics["low_margin_wrong_count"], 1)
+        self.assertEqual(diagnostics["wrong_average_score_gap_to_expected"], 0.05)
+        self.assertEqual(summary["answer_error_samples"][0]["expected_score"], 0.70)
+
+        formatted = format_agent_eval_summary(summary)
+        self.assertIn("Answer Score Diagnostics", formatted)
+        self.assertIn("High Confidence Wrong Count: 1", formatted)
+
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))
         records = evaluate_agent_questions(questions)

@@ -35,6 +35,8 @@ CATEGORY_TO_INTENT_DOMAIN = {
     "灾劫": "运势",
     "官非": "运势",
 }
+HIGH_CONFIDENCE_WRONG_THRESHOLD = 0.7
+LOW_MARGIN_WRONG_THRESHOLD = 0.15
 
 
 @dataclass(frozen=True)
@@ -239,6 +241,7 @@ def summarize_agent_eval(
     answer_parsed = 0
     answer_correct = 0
     answer_choice_confusion: Counter[tuple] = Counter()
+    answer_score_diagnostics = []
     answer_error_samples = []
     clarification_samples = []
 
@@ -258,6 +261,9 @@ def summarize_agent_eval(
         predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
         if expected_answer:
             answer_total += 1
+            answer_diagnostic = build_answer_score_diagnostic(record)
+            if answer_diagnostic:
+                answer_score_diagnostics.append(answer_diagnostic)
             if predicted_answer:
                 answer_parsed += 1
                 answer_choice_confusion.update([(expected_answer, predicted_answer)])
@@ -265,14 +271,7 @@ def summarize_agent_eval(
                     answer_correct += 1
             if predicted_answer != expected_answer and len(answer_error_samples) < 10:
                 answer_error_samples.append(
-                    {
-                        "question_id": record.get("question_id"),
-                        "case_id": record.get("case_id"),
-                        "category": category,
-                        "answer": expected_answer,
-                        "predicted_answer": predicted_answer,
-                        "question": record.get("question"),
-                    }
+                    _answer_error_sample(record, answer_diagnostic)
                 )
         if intent.get("needs_clarification") and len(clarification_samples) < 10:
             clarification_samples.append(
@@ -314,6 +313,9 @@ def summarize_agent_eval(
         "answer_choice_accuracy": _ratio(answer_correct, answer_total),
         "answer_choice_accuracy_on_parsed": _ratio(answer_correct, answer_parsed),
         "answer_choice_confusion": _nested_confusion(answer_choice_confusion),
+        "answer_score_diagnostics": _summarize_answer_score_diagnostics(
+            answer_score_diagnostics
+        ),
         "answer_error_samples": answer_error_samples,
         "average_response_time": sum(response_times) / len(response_times)
         if response_times
@@ -408,7 +410,231 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
         lines.extend(["", "Warnings:"])
         for warning, count in sorted(summary["warning_counts"].items()):
             lines.append(f"  - {warning}: {count}")
+    diagnostics = summary.get("answer_score_diagnostics") or {}
+    if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
+        lines.extend(["", "Answer Score Diagnostics:"])
+        lines.append(f"  - Scored Records: {diagnostics.get('scored_records', 0)}")
+        lines.append(
+            "  - Average Answer Confidence: "
+            f"{_format_optional_rate(diagnostics.get('average_answer_confidence'))}"
+        )
+        lines.append(
+            "  - Wrong Average Score Gap: "
+            f"{_format_optional_float(diagnostics.get('wrong_average_score_gap_to_expected'))}"
+        )
+        lines.append(
+            "  - High Confidence Wrong Count: "
+            f"{diagnostics.get('high_confidence_wrong_count', 0)}"
+        )
+        lines.append(
+            "  - Low Margin Wrong Count: "
+            f"{diagnostics.get('low_margin_wrong_count', 0)}"
+        )
     return "\n".join(lines)
+
+
+def build_answer_score_diagnostic(record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Extract answer confidence and option-score diagnostics from a record."""
+
+    expected_answer = _normalize_answer_choice(record.get("answer"))
+    if not expected_answer:
+        return None
+
+    predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
+    interpretation = ((record.get("agent") or {}).get("interpretation") or {})
+    option_scores = _extract_option_scores(interpretation.get("option_scores"))
+    answer_confidence = _optional_float(interpretation.get("answer_confidence"))
+    if not option_scores and answer_confidence is None:
+        return None
+
+    expected_score = option_scores.get(expected_answer)
+    predicted_score = option_scores.get(predicted_answer) if predicted_answer else None
+    predicted_margin = _predicted_score_margin(option_scores, predicted_answer)
+    score_gap_to_expected = None
+    if predicted_score is not None and expected_score is not None:
+        score_gap_to_expected = predicted_score - expected_score
+
+    return {
+        "question_id": record.get("question_id"),
+        "case_id": record.get("case_id"),
+        "category": record.get("category"),
+        "answer": expected_answer,
+        "predicted_answer": predicted_answer,
+        "answer_correct": record.get("answer_correct"),
+        "answer_confidence": answer_confidence,
+        "option_scores": option_scores,
+        "expected_score": expected_score,
+        "predicted_score": predicted_score,
+        "expected_rank": _score_rank(option_scores, expected_answer),
+        "predicted_margin": predicted_margin,
+        "score_gap_to_expected": score_gap_to_expected,
+    }
+
+
+def _summarize_answer_score_diagnostics(
+    diagnostics: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    confidence_values = [
+        item["answer_confidence"]
+        for item in diagnostics
+        if item.get("answer_confidence") is not None
+    ]
+    scored = [item for item in diagnostics if item.get("option_scores")]
+    correct = [item for item in diagnostics if item.get("answer_correct") is True]
+    wrong = [item for item in diagnostics if item.get("answer_correct") is False]
+    high_confidence_wrong = [
+        item
+        for item in wrong
+        if (item.get("answer_confidence") or 0.0) >= HIGH_CONFIDENCE_WRONG_THRESHOLD
+    ]
+    low_margin_wrong = [
+        item
+        for item in wrong
+        if item.get("score_gap_to_expected") is not None
+        and abs(float(item["score_gap_to_expected"])) <= LOW_MARGIN_WRONG_THRESHOLD
+    ]
+    return {
+        "records_with_confidence": len(confidence_values),
+        "scored_records": len(scored),
+        "average_answer_confidence": _average_optional(confidence_values),
+        "correct_average_answer_confidence": _average_optional(
+            item.get("answer_confidence")
+            for item in correct
+            if item.get("answer_confidence") is not None
+        ),
+        "wrong_average_answer_confidence": _average_optional(
+            item.get("answer_confidence")
+            for item in wrong
+            if item.get("answer_confidence") is not None
+        ),
+        "average_predicted_margin": _average_optional(
+            item.get("predicted_margin")
+            for item in scored
+            if item.get("predicted_margin") is not None
+        ),
+        "wrong_average_predicted_margin": _average_optional(
+            item.get("predicted_margin")
+            for item in wrong
+            if item.get("predicted_margin") is not None
+        ),
+        "wrong_average_score_gap_to_expected": _average_optional(
+            item.get("score_gap_to_expected")
+            for item in wrong
+            if item.get("score_gap_to_expected") is not None
+        ),
+        "high_confidence_wrong_threshold": HIGH_CONFIDENCE_WRONG_THRESHOLD,
+        "high_confidence_wrong_count": len(high_confidence_wrong),
+        "high_confidence_wrong_samples": [
+            _answer_diagnostic_sample(item) for item in high_confidence_wrong[:5]
+        ],
+        "low_margin_wrong_threshold": LOW_MARGIN_WRONG_THRESHOLD,
+        "low_margin_wrong_count": len(low_margin_wrong),
+        "low_margin_wrong_samples": [
+            _answer_diagnostic_sample(item) for item in low_margin_wrong[:5]
+        ],
+    }
+
+
+def _answer_error_sample(
+    record: Dict[str, Any],
+    diagnostic: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    sample = {
+        "question_id": record.get("question_id"),
+        "case_id": record.get("case_id"),
+        "category": record.get("category"),
+        "answer": _normalize_answer_choice(record.get("answer")),
+        "predicted_answer": _normalize_answer_choice(record.get("predicted_answer")),
+        "question": record.get("question"),
+    }
+    if diagnostic:
+        sample.update(_answer_diagnostic_sample(diagnostic))
+    return sample
+
+
+def _answer_diagnostic_sample(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "question_id": item.get("question_id"),
+        "case_id": item.get("case_id"),
+        "category": item.get("category"),
+        "answer": item.get("answer"),
+        "predicted_answer": item.get("predicted_answer"),
+        "answer_confidence": item.get("answer_confidence"),
+        "expected_score": item.get("expected_score"),
+        "predicted_score": item.get("predicted_score"),
+        "expected_rank": item.get("expected_rank"),
+        "predicted_margin": item.get("predicted_margin"),
+        "score_gap_to_expected": item.get("score_gap_to_expected"),
+        "option_scores": item.get("option_scores") or {},
+    }
+
+
+def _extract_option_scores(value: Any) -> Dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    scores = {}
+    for key, raw_item in value.items():
+        letter = _normalize_answer_choice(key)
+        if not letter:
+            continue
+        raw_score = raw_item.get("score") if isinstance(raw_item, dict) else raw_item
+        score = _optional_float(raw_score)
+        if score is not None:
+            scores[letter] = score
+    return scores
+
+
+def _predicted_score_margin(
+    option_scores: Dict[str, float],
+    predicted_answer: Optional[str],
+) -> Optional[float]:
+    if not predicted_answer or predicted_answer not in option_scores:
+        return None
+    other_scores = [
+        score for letter, score in option_scores.items() if letter != predicted_answer
+    ]
+    if not other_scores:
+        return None
+    return option_scores[predicted_answer] - max(other_scores)
+
+
+def _score_rank(
+    option_scores: Dict[str, float],
+    answer: Optional[str],
+) -> Optional[int]:
+    if not answer or answer not in option_scores:
+        return None
+    ranked = sorted(option_scores.items(), key=lambda item: item[1], reverse=True)
+    for index, (letter, _) in enumerate(ranked, start=1):
+        if letter == answer:
+            return index
+    return None
+
+
+def _optional_float(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _average_optional(values: Iterable[float]) -> Optional[float]:
+    collected = [float(value) for value in values]
+    if not collected:
+        return None
+    return round(sum(collected) / len(collected), 4)
+
+
+def _format_optional_float(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.3f}"
+
+
+def _format_optional_rate(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.2%}"
 
 
 def _check_rate(checks: List[Dict[str, Any]], key: str) -> float:
@@ -464,6 +690,7 @@ __all__ = [
     "append_agent_eval_record",
     "expected_intent_domain",
     "answer_choice_matches",
+    "build_answer_score_diagnostic",
     "build_agent_checks",
     "evaluate_agent_question",
     "evaluate_agent_questions",
