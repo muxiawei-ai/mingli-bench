@@ -264,6 +264,10 @@ class AgentEvalTests(unittest.TestCase):
             {"default": 0.0, "movement_weighted": 1.0},
         )
         self.assertEqual(
+            summary["candidate_year_variant_override_accuracy"],
+            {"default": 0.0, "movement_weighted": 1.0},
+        )
+        self.assertEqual(
             summary["candidate_year_variant_answer_rank_distribution"],
             {"default": {"2": 1}, "movement_weighted": {"1": 1}},
         )
@@ -292,6 +296,10 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("Candidate Year Diagnostics", format_agent_eval_summary(summary))
         self.assertIn("Answer Rank Distribution: 2: 1", format_agent_eval_summary(summary))
         self.assertIn("movement_weighted: 100.00%", format_agent_eval_summary(summary))
+        self.assertIn(
+            "Overall Accuracy With Variant Override",
+            format_agent_eval_summary(summary),
+        )
         self.assertIn("Focus Variant Top Accuracy", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):

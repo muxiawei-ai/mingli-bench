@@ -435,6 +435,12 @@ def summarize_agent_eval(
             )
             for variant in sorted(candidate_year_variants_seen)
         },
+        "candidate_year_variant_override_accuracy": (
+            _candidate_year_variant_override_accuracy(
+                successes,
+                sorted(candidate_year_variants_seen),
+            )
+        ),
         "candidate_year_variant_answer_rank_distribution": {
             variant: dict(counts)
             for variant, counts in sorted(
@@ -595,6 +601,14 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
                 )
             )
             lines.append(f"  - Variant Top Accuracy: {variant_text}")
+        if summary.get("candidate_year_variant_override_accuracy"):
+            override_text = ", ".join(
+                f"{variant}: {accuracy:.2%}"
+                for variant, accuracy in sorted(
+                    summary["candidate_year_variant_override_accuracy"].items()
+                )
+            )
+            lines.append(f"  - Overall Accuracy With Variant Override: {override_text}")
         if summary.get("candidate_year_focus_variant_top_choice_accuracy"):
             lines.append("  - Focus Variant Top Accuracy:")
             for focus, accuracies in sorted(
@@ -894,6 +908,33 @@ def candidate_year_variant_top_choice(
         ),
     )
     return _normalize_answer_choice(ranked[0].get("letter"))
+
+
+def _candidate_year_variant_override_accuracy(
+    records: List[Dict[str, Any]],
+    variants: List[str],
+) -> Dict[str, float]:
+    """Estimate accuracy if variant top choices override candidate-year questions."""
+
+    if not variants:
+        return {}
+    totals: Counter[str] = Counter()
+    correct: Counter[str] = Counter()
+    for record in records:
+        expected_answer = _normalize_answer_choice(record.get("answer"))
+        if not expected_answer:
+            continue
+        predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
+        has_candidate_year_scores = bool(_candidate_year_scores(record))
+        for variant in variants:
+            totals.update([variant])
+            if has_candidate_year_scores:
+                final_answer = candidate_year_variant_top_choice(record, variant)
+            else:
+                final_answer = predicted_answer
+            if final_answer == expected_answer:
+                correct.update([variant])
+    return {variant: _ratio(correct[variant], totals[variant]) for variant in variants}
 
 
 def _candidate_year_scores(record: Dict[str, Any]) -> List[Dict[str, Any]]:

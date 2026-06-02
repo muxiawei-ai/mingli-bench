@@ -125,7 +125,7 @@ By default it saves:
 - `summary.json`: aggregate metrics, distributions, and error samples.
 - `records.jsonl`: one full agent result per benchmark case, appended incrementally as each case finishes.
 
-For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions, including focus-level scoring variant accuracy.
+For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions, including focus-level scoring variant accuracy and simulated overall accuracy if a candidate-year scoring variant overrides only timing-year answers.
 
 Use `--include-candidate-year-diagnostics` to run an experimental prompt variant that exposes a compact `activation_weighted` candidate-year diagnostic to the LLM. This is off by default because early sample runs showed it can change model behavior and should be evaluated separately.
 
