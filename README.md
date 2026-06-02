@@ -127,6 +127,8 @@ By default it saves:
 
 For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions, including focus-level scoring variant accuracy.
 
+Use `--include-candidate-year-diagnostics` to run an experimental prompt variant that exposes a compact `activation_weighted` candidate-year diagnostic to the LLM. This is off by default because early sample runs showed it can change model behavior and should be evaluated separately.
+
 Use `--no-save` to print only the terminal summary.
 
 ## Local HTTP API

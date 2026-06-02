@@ -27,6 +27,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `requirements-openrouter.txt` and optional OpenRouter dependency extra for lighter LLM eval installs.
 - Answer-choice extraction, parse-rate, and accuracy metrics for benchmark-backed Agent evaluations.
 - Option-score interpretation contract fields and option-by-option prompt guidance for A-D benchmark questions.
+- Experimental `--include-candidate-year-diagnostics` prompt flag for activation-weighted candidate-year diagnostics.
 - More robust OpenAI-compatible response text extraction, including empty-content diagnostics and optional OpenRouter reasoning controls.
 - Incremental Agent evaluation JSONL writes so slow model runs keep completed records if interrupted.
 - Deterministic question-year context in local Agent reports, including local year pillars and ages for years mentioned in benchmark questions.

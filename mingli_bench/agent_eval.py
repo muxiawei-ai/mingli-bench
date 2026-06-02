@@ -51,6 +51,7 @@ class AgentEvalConfig:
     model_name: Optional[str] = None
     output_dir: str = "logs"
     save: bool = True
+    include_candidate_year_diagnostics: bool = False
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -62,6 +63,9 @@ class AgentEvalConfig:
             "model_name": self.model_name,
             "output_dir": self.output_dir,
             "save": self.save,
+            "include_candidate_year_diagnostics": (
+                self.include_candidate_year_diagnostics
+            ),
         }
 
 
@@ -83,12 +87,16 @@ def evaluate_agent_questions(
     *,
     model_client: Optional[ModelClient] = None,
     fortune_data_path: Optional[str] = None,
+    include_candidate_year_diagnostics: bool = False,
     record_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Run the local MingLi agent over benchmark questions."""
 
     records = []
-    agent = MingLiAgent(model_client)
+    agent = MingLiAgent(
+        model_client,
+        include_candidate_year_diagnostics=include_candidate_year_diagnostics,
+    )
     for question in questions:
         record = evaluate_agent_question(
             question,

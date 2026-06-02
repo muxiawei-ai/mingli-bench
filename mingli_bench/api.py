@@ -55,7 +55,12 @@ def agent_response(
         raise ValueError("chart_input must be a JSON object")
 
     question = str(payload.get("question") or DEFAULT_AGENT_QUESTION)
-    return MingLiAgent(model_client).run(
+    return MingLiAgent(
+        model_client,
+        include_candidate_year_diagnostics=bool(
+            payload.get("include_candidate_year_diagnostics")
+        ),
+    ).run(
         chart_input,
         question=question,
         fortune_data_path=fortune_data_path,

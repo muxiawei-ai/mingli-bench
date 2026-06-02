@@ -289,6 +289,15 @@ Examples:
     )
 
     parser.add_argument(
+        "--include-candidate-year-diagnostics",
+        action="store_true",
+        help=(
+            "Experimental: include activation-weighted candidate-year "
+            "diagnostics in agent prompts."
+        ),
+    )
+
+    parser.add_argument(
         "--host",
         default="127.0.0.1",
         help="For 'serve': API host address (default: 127.0.0.1)"
@@ -346,7 +355,12 @@ Examples:
                     provider=args.platform,
                     config=config,
                 )
-            result = MingLiAgent(model_client).run(
+            result = MingLiAgent(
+                model_client,
+                include_candidate_year_diagnostics=(
+                    args.include_candidate_year_diagnostics
+                ),
+            ).run(
                 payload,
                 question=question,
                 fortune_data_path=args.fortune_data_path,
@@ -400,6 +414,9 @@ Examples:
                 model_name=model_name,
                 output_dir=args.output_dir,
                 save=not args.no_save,
+                include_candidate_year_diagnostics=(
+                    args.include_candidate_year_diagnostics
+                ),
             )
             questions = load_agent_eval_questions(config)
             saved_paths = {}
@@ -415,6 +432,9 @@ Examples:
                 questions,
                 model_client=model_client,
                 fortune_data_path=args.fortune_data_path,
+                include_candidate_year_diagnostics=(
+                    args.include_candidate_year_diagnostics
+                ),
                 record_callback=record_callback,
             )
             summary = summarize_agent_eval(records, config=config)
@@ -534,7 +554,12 @@ Examples:
                     provider=args.platform,
                     config=config,
                 )
-            result = MingLiAgent(model_client).run(
+            result = MingLiAgent(
+                model_client,
+                include_candidate_year_diagnostics=(
+                    args.include_candidate_year_diagnostics
+                ),
+            ).run(
                 payload,
                 question=args.agent_question,
                 fortune_data_path=args.fortune_data_path,

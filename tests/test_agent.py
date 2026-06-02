@@ -127,7 +127,36 @@ class MingLiAgentTests(unittest.TestCase):
         )
 
         self.assertIn('"year": 1999', prompt)
+        self.assertNotIn("candidate_year_diagnostics", prompt)
         self.assertNotIn("candidate_year_scores", prompt)
+        self.assertNotIn("variant_scores", prompt)
+        self.assertNotIn("candidate_year_score_is_diagnostic_not_gold_label", prompt)
+
+    def test_build_interpretation_prompt_can_include_candidate_year_diagnostics(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        prompt = build_interpretation_prompt(
+            chart,
+            "此命何年结婚？\n选项：\nA. 1999\nB. 2002\nC. 2006\nD. 到2022年为止，单身",
+            include_candidate_year_diagnostics=True,
+        )
+
+        self.assertIn('"candidate_year_diagnostics"', prompt)
+        self.assertIn('"variant": "activation_weighted"', prompt)
+        self.assertIn('"activation_rank"', prompt)
+        self.assertIn("不要把它当作标准答案", prompt)
+        self.assertNotIn("candidate_year_scores", prompt)
+        self.assertNotIn("variant_scores", prompt)
         self.assertNotIn("candidate_year_score_is_diagnostic_not_gold_label", prompt)
 
     def test_agent_without_model_returns_prompt_only(self):
