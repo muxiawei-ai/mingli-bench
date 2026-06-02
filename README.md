@@ -129,6 +129,14 @@ For benchmark questions with A-D answers, the summary also reports answer-choice
 
 Use `--include-candidate-year-diagnostics` to run an experimental prompt variant that exposes a compact `activation_weighted` candidate-year diagnostic to the LLM. This is off by default because early sample runs showed it can change model behavior and should be evaluated separately.
 
+After a saved run, generate a compact error report:
+
+```bash
+mingli-bench analyze-agent-eval --run-dir logs/agent_eval_YYYYMMDD_HHMMSS
+```
+
+The report summarizes category accuracy, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
+
 Use `--no-save` to print only the terminal summary.
 
 ## Local HTTP API

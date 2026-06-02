@@ -17,6 +17,11 @@ from .agent_eval import (
     summarize_agent_eval,
     write_agent_eval_summary,
 )
+from .agent_eval_report import (
+    build_agent_eval_analysis,
+    format_agent_eval_analysis,
+    load_agent_eval_run,
+)
 from .api import run_server
 from .calendar import hour_branch, parse_bazi_pillars
 from .chart_api import build_bazi_chart
@@ -80,10 +85,11 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["agent", "serve", "eval-agent"],
+        choices=["agent", "serve", "eval-agent", "analyze-agent-eval"],
         help=(
             "Optional command. Use 'agent' for the interactive CLI, "
-            "'serve' for the local HTTP API, or 'eval-agent' for agent pipeline evaluation."
+            "'serve' for the local HTTP API, 'eval-agent' for agent pipeline "
+            "evaluation, or 'analyze-agent-eval' for saved eval reports."
         )
     )
     
@@ -148,6 +154,11 @@ Examples:
         "--output-dir", "-o",
         default="logs",
         help="Directory to save results (default: logs)"
+    )
+
+    parser.add_argument(
+        "--run-dir",
+        help="For 'analyze-agent-eval': directory containing summary.json and records.jsonl."
     )
     
     parser.add_argument(
@@ -448,6 +459,25 @@ Examples:
             return 0
         except Exception as e:
             logger.error(f"Failed to evaluate MingLi agent: {e}")
+            return 1
+
+    if args.command == "analyze-agent-eval":
+        try:
+            if not args.run_dir:
+                raise ValueError("--run-dir is required for analyze-agent-eval")
+            run = load_agent_eval_run(args.run_dir)
+            analysis = build_agent_eval_analysis(
+                run["summary"],
+                run["records"],
+                run_dir=run["run_dir"],
+            )
+            if args.json:
+                print(json.dumps(analysis, ensure_ascii=False, indent=2))
+            else:
+                print(format_agent_eval_analysis(analysis))
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to analyze MingLi agent eval run: {e}")
             return 1
     
     # Handle special actions
