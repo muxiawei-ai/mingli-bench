@@ -62,6 +62,7 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("report.event_years", prompt)
         self.assertIn("branch_interactions", prompt)
         self.assertIn("不要自行编造三合、三会、六合、六冲名称", prompt)
+        self.assertIn("report.option_semantics", prompt)
 
     def test_build_interpretation_prompt_includes_event_branch_interactions(self):
         chart = build_bazi_chart(
@@ -80,6 +81,32 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn('"year_pillar": "丙子"', prompt)
         self.assertIn('"label": "申子辰三合水局"', prompt)
         self.assertIn('"type": "three_harmony_complete"', prompt)
+
+    def test_build_interpretation_prompt_includes_option_semantics(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        prompt = build_interpretation_prompt(
+            chart,
+            "此命1996年发生何事？\n"
+            "选项：\n"
+            "A. 患上严重抑郁痴\n"
+            "B. 回港认识现任妻子\n"
+            "C. 交通意外，撞车，人平安\n"
+            "D. 得到一笔意外之财",
+        )
+        self.assertIn('"primary_event_type": "mental_health"', prompt)
+        self.assertIn('"primary_event_type": "traffic_accident"', prompt)
+        self.assertIn("不要把它当作标准答案", prompt)
 
     def test_agent_without_model_returns_prompt_only(self):
         result = MingLiAgent().run(
@@ -128,6 +155,30 @@ class MingLiAgentTests(unittest.TestCase):
         )
         self.assertIn("题目年份关系", result.interpretation.to_markdown())
         self.assertIn("申子辰三合水局", result.interpretation.to_markdown())
+
+    def test_agent_without_model_includes_option_semantics_section(self):
+        result = MingLiAgent().run(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            },
+            question=(
+                "此命1996年发生何事？\n"
+                "选项：\n"
+                "A. 患上严重抑郁痴\n"
+                "B. 回港认识现任妻子\n"
+                "C. 交通意外，撞车，人平安\n"
+                "D. 得到一笔意外之财"
+            ),
+        )
+        self.assertIn("选项语义标签", result.interpretation.to_markdown())
+        self.assertIn("A=精神/心理健康、身体疾病/健康事件", result.interpretation.to_markdown())
 
     def test_agent_with_model_returns_response(self):
         model = FakeModelClient()

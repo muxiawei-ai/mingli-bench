@@ -22,6 +22,7 @@ from .lunar import (
     parse_chinese_lunar_date,
     solar_from_lunar_date,
 )
+from .option_semantics import analyze_option_semantics, extract_options
 from .relations import analyze_branch_interactions
 from .solar_terms import solar_month_branch_for_datetime, solar_term_datetime
 
@@ -35,11 +36,13 @@ __all__ = [
     "ModelClient",
     "MingLiAgent",
     "analyze_branch_interactions",
+    "analyze_option_semantics",
     "bazi_from_birth_info",
     "bazi_from_gregorian",
     "build_bazi_chart",
     "build_interpretation_prompt",
     "day_pillar_for_date",
+    "extract_options",
     "get_chart_summary",
     "hour_branch",
     "hour_pillar_for_datetime",

@@ -39,6 +39,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - Bazi four-pillar parsing,
   - five-element counting,
   - deterministic event-year branch-interaction diagnostics,
+  - text-derived A-D option semantic diagnostics,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

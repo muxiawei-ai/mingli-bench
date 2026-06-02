@@ -241,6 +241,7 @@ def summarize_agent_eval(
     answer_parsed = 0
     answer_correct = 0
     answer_choice_confusion: Counter[tuple] = Counter()
+    answer_event_type_confusion: Counter[tuple] = Counter()
     answer_score_diagnostics = []
     answer_error_samples = []
     clarification_samples = []
@@ -261,6 +262,17 @@ def summarize_agent_eval(
         predicted_answer = _normalize_answer_choice(record.get("predicted_answer"))
         if expected_answer:
             answer_total += 1
+            expected_event_type = option_event_type(record, expected_answer)
+            predicted_event_type = option_event_type(record, predicted_answer)
+            if expected_event_type or predicted_event_type:
+                answer_event_type_confusion.update(
+                    [
+                        (
+                            expected_event_type or "unknown",
+                            predicted_event_type or "unparsed",
+                        )
+                    ]
+                )
             answer_diagnostic = build_answer_score_diagnostic(record)
             if answer_diagnostic:
                 answer_score_diagnostics.append(answer_diagnostic)
@@ -313,6 +325,7 @@ def summarize_agent_eval(
         "answer_choice_accuracy": _ratio(answer_correct, answer_total),
         "answer_choice_accuracy_on_parsed": _ratio(answer_correct, answer_parsed),
         "answer_choice_confusion": _nested_confusion(answer_choice_confusion),
+        "answer_event_type_confusion": _nested_confusion(answer_event_type_confusion),
         "answer_score_diagnostics": _summarize_answer_score_diagnostics(
             answer_score_diagnostics
         ),
@@ -410,6 +423,16 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
         lines.extend(["", "Warnings:"])
         for warning, count in sorted(summary["warning_counts"].items()):
             lines.append(f"  - {warning}: {count}")
+    if summary.get("answer_event_type_confusion"):
+        lines.extend(["", "Answer Event Type Confusion:"])
+        for expected_type, actuals in sorted(
+            summary["answer_event_type_confusion"].items()
+        ):
+            actual_text = ", ".join(
+                f"{actual_type}: {count}"
+                for actual_type, count in sorted(actuals.items())
+            )
+            lines.append(f"  - {expected_type} -> {actual_text}")
     diagnostics = summary.get("answer_score_diagnostics") or {}
     if diagnostics.get("scored_records") or diagnostics.get("records_with_confidence"):
         lines.extend(["", "Answer Score Diagnostics:"])
@@ -545,11 +568,32 @@ def _answer_error_sample(
         "category": record.get("category"),
         "answer": _normalize_answer_choice(record.get("answer")),
         "predicted_answer": _normalize_answer_choice(record.get("predicted_answer")),
+        "answer_event_type": option_event_type(record, record.get("answer")),
+        "predicted_event_type": option_event_type(
+            record,
+            record.get("predicted_answer"),
+        ),
         "question": record.get("question"),
     }
     if diagnostic:
         sample.update(_answer_diagnostic_sample(diagnostic))
     return sample
+
+
+def option_event_type(record: Dict[str, Any], answer: Any) -> Optional[str]:
+    """Return the text-derived event type for one answer option."""
+
+    letter = _normalize_answer_choice(answer)
+    if not letter:
+        return None
+    option_semantics = (
+        ((record.get("agent") or {}).get("report") or {}).get("option_semantics")
+        or []
+    )
+    for item in option_semantics:
+        if item.get("letter") == letter:
+            return str(item.get("primary_event_type") or "unknown")
+    return None
 
 
 def _answer_diagnostic_sample(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -698,6 +742,7 @@ __all__ = [
     "format_agent_eval_summary",
     "format_agent_eval_question",
     "load_agent_eval_questions",
+    "option_event_type",
     "save_agent_eval",
     "start_agent_eval_run",
     "summarize_agent_eval",

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from .bazi import year_pillar_for_date
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
+from .option_semantics import analyze_option_semantics
 from .relations import analyze_branch_interactions
 
 
@@ -46,6 +47,7 @@ class ChartReport:
     missing_elements: List[str]
     input_quality: Dict[str, Any]
     event_years: List[Dict[str, Any]]
+    option_semantics: List[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
 
@@ -58,6 +60,7 @@ class ChartReport:
             "missing_elements": self.missing_elements,
             "input_quality": self.input_quality,
             "event_years": self.event_years,
+            "option_semantics": self.option_semantics,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
         }
@@ -124,6 +127,12 @@ class ChartReport:
                 ]
                 if interactions:
                     lines.append(f"  - 地支关系: {'；'.join(interactions)}")
+
+        if self.option_semantics:
+            lines.extend(["", "### 选项语义标签"])
+            for item in self.option_semantics:
+                labels = "、".join(item.get("labels") or []) or "unknown"
+                lines.append(f"- {item['letter']}: {labels} ({item['text']})")
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -212,6 +221,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         "warnings": list(chart.warnings),
     }
     event_years = _build_event_years(chart, question)
+    option_semantics = analyze_option_semantics(question)
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(
@@ -222,6 +232,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         missing_elements=missing_elements,
         input_quality=input_quality,
         event_years=event_years,
+        option_semantics=option_semantics,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )

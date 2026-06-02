@@ -166,6 +166,17 @@ def build_local_interpretation(
                 ],
             )
         )
+    if report.option_semantics:
+        sections.append(
+            InterpretationSection(
+                title="选项语义标签",
+                summary=_option_semantics_summary(report),
+                evidence=_option_semantics_evidence(report),
+                caveats=[
+                    "这是从选项文字抽取的事件类型标签，不代表标准答案。",
+                ],
+            )
+        )
     sections.append(
         InterpretationSection(
             title="输入质量",
@@ -301,6 +312,27 @@ def _event_years_evidence(report: ChartReport) -> List[str]:
             label = interaction.get("label")
             if label:
                 evidence.append(f"branch_interaction={label}")
+    return evidence
+
+
+def _option_semantics_summary(report: ChartReport) -> str:
+    parts = []
+    for item in report.option_semantics:
+        labels = "、".join(item.get("labels") or []) or "unknown"
+        parts.append(f"{item.get('letter')}={labels}")
+    return "；".join(parts) + "。"
+
+
+def _option_semantics_evidence(report: ChartReport) -> List[str]:
+    evidence = []
+    for item in report.option_semantics:
+        event_type = item.get("primary_event_type") or "unknown"
+        letter = item.get("letter")
+        evidence.append(f"option_{letter}_primary_event_type={event_type}")
+        for event_type, keywords in (item.get("matched_keywords") or {}).items():
+            evidence.append(
+                f"option_{letter}_{event_type}_keywords={','.join(keywords)}"
+            )
     return evidence
 
 

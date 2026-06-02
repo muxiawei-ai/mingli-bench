@@ -14,6 +14,7 @@ from mingli_bench.agent_eval import (
     format_agent_eval_question,
     format_agent_eval_summary,
     load_agent_eval_questions,
+    option_event_type,
     save_agent_eval,
     start_agent_eval_run,
     summarize_agent_eval,
@@ -106,6 +107,65 @@ class AgentEvalTests(unittest.TestCase):
         formatted = format_agent_eval_summary(summary)
         self.assertIn("Answer Score Diagnostics", formatted)
         self.assertIn("High Confidence Wrong Count: 1", formatted)
+
+    def test_answer_event_type_confusion(self):
+        record = {
+            "question_id": "q1",
+            "case_id": "case_1",
+            "category": "健康",
+            "question": "此命1996年发生何事？",
+            "answer": "A",
+            "predicted_answer": "C",
+            "answer_correct": False,
+            "success": True,
+            "error": None,
+            "response_time": 0.1,
+            "checks": {
+                "chart_ok": True,
+                "intent_ok": True,
+                "trace_complete": True,
+                "interpretation_schema_ok": True,
+                "llm_json_parsed": True,
+            },
+            "agent": {
+                "intent": {"primary_domain": "健康"},
+                "report": {
+                    "option_semantics": [
+                        {
+                            "letter": "A",
+                            "primary_event_type": "mental_health",
+                        },
+                        {
+                            "letter": "C",
+                            "primary_event_type": "traffic_accident",
+                        },
+                    ]
+                },
+                "interpretation": {
+                    "mode": "llm_json",
+                    "answer_confidence": 0.52,
+                },
+                "warnings": [],
+                "trace": [],
+            },
+        }
+
+        self.assertEqual(option_event_type(record, "A"), "mental_health")
+        summary = summarize_agent_eval([record])
+
+        self.assertEqual(
+            summary["answer_event_type_confusion"],
+            {"mental_health": {"traffic_accident": 1}},
+        )
+        self.assertEqual(
+            summary["answer_error_samples"][0]["answer_event_type"],
+            "mental_health",
+        )
+        self.assertEqual(
+            summary["answer_error_samples"][0]["predicted_event_type"],
+            "traffic_accident",
+        )
+        self.assertIn("mental_health -> traffic_accident: 1", format_agent_eval_summary(summary))
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

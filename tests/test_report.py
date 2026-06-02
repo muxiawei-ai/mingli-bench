@@ -96,6 +96,35 @@ class ChartReportTests(unittest.TestCase):
         self.assertIn("1996: 丙子", report.to_markdown())
         self.assertIn("申子辰三合水局", report.to_markdown())
 
+    def test_build_chart_report_extracts_option_semantics(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1974,
+                "month": 4,
+                "day": 28,
+                "hour": 16,
+                "minute": 40,
+                "location": "usa",
+                "country": "usa",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "此命1996年发生何事？\n"
+            "选项：\n"
+            "A. 患上严重抑郁痴\n"
+            "B. 回港认识现任妻子\n"
+            "C. 交通意外，撞车，人平安\n"
+            "D. 得到一笔意外之财",
+        )
+        by_letter = {item["letter"]: item for item in report.option_semantics}
+
+        self.assertEqual(by_letter["A"]["primary_event_type"], "mental_health")
+        self.assertEqual(by_letter["C"]["primary_event_type"], "traffic_accident")
+        self.assertEqual(by_letter["D"]["primary_event_type"], "wealth_gain")
+        self.assertIn("精神/心理健康", report.to_markdown())
+
     def test_report_followups_for_missing_time_and_location(self):
         chart = build_bazi_chart(
             {
