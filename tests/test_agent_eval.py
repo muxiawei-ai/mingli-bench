@@ -8,6 +8,7 @@ from mingli_bench.agent_eval import (
     EXPECTED_TRACE,
     append_agent_eval_record,
     answer_choice_matches,
+    apply_candidate_year_override,
     candidate_year_choice,
     candidate_year_variant_top_choice,
     evaluate_agent_questions,
@@ -301,6 +302,58 @@ class AgentEvalTests(unittest.TestCase):
             format_agent_eval_summary(summary),
         )
         self.assertIn("Focus Variant Top Accuracy", format_agent_eval_summary(summary))
+
+    def test_apply_candidate_year_override_preserves_model_choice(self):
+        record = {
+            "answer": "C",
+            "predicted_answer": "A",
+            "agent": {
+                "report": {
+                    "candidate_year_scores": [
+                        {
+                            "letter": "A",
+                            "score": 4.8,
+                            "rank": 1,
+                            "variant_scores": {
+                                "default": 4.8,
+                                "movement_weighted": 2.7,
+                            },
+                            "variant_ranks": {
+                                "default": 1,
+                                "movement_weighted": 2,
+                            },
+                        },
+                        {
+                            "letter": "C",
+                            "score": 3.2,
+                            "rank": 2,
+                            "variant_scores": {
+                                "default": 3.2,
+                                "movement_weighted": 4.0,
+                            },
+                            "variant_ranks": {
+                                "default": 2,
+                                "movement_weighted": 1,
+                            },
+                        },
+                    ]
+                }
+            },
+        }
+
+        apply_candidate_year_override(record, "movement_weighted")
+
+        self.assertEqual(record["model_predicted_answer"], "A")
+        self.assertEqual(record["predicted_answer"], "C")
+        self.assertEqual(
+            record["candidate_year_override"],
+            {
+                "variant": "movement_weighted",
+                "applied": True,
+                "original_predicted_answer": "A",
+                "override_answer": "C",
+            },
+        )
 
     def test_save_agent_eval(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=1))

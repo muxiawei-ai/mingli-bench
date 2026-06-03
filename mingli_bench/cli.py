@@ -26,6 +26,7 @@ from .agent_eval_report import (
 )
 from .api import run_server
 from .calendar import hour_branch, parse_bazi_pillars
+from .candidate_years import SCORING_VARIANTS
 from .chart_api import build_bazi_chart
 from .charts import extract_bazi_summary, get_chart_record, get_chart_summary
 from .bazi import bazi_from_birth_info, bazi_from_gregorian
@@ -328,6 +329,16 @@ Examples:
     )
 
     parser.add_argument(
+        "--candidate-year-override-variant",
+        choices=sorted(SCORING_VARIANTS),
+        help=(
+            "Experimental: for eval-agent, override candidate-year answers "
+            "with the top local scoring variant while preserving the model "
+            "choice in model_predicted_answer."
+        ),
+    )
+
+    parser.add_argument(
         "--host",
         default="127.0.0.1",
         help="For 'serve': API host address (default: 127.0.0.1)"
@@ -447,6 +458,9 @@ Examples:
                 include_candidate_year_diagnostics=(
                     args.include_candidate_year_diagnostics
                 ),
+                candidate_year_override_variant=(
+                    args.candidate_year_override_variant
+                ),
             )
             questions = load_agent_eval_questions(config)
             saved_paths = {}
@@ -464,6 +478,9 @@ Examples:
                 fortune_data_path=args.fortune_data_path,
                 include_candidate_year_diagnostics=(
                     args.include_candidate_year_diagnostics
+                ),
+                candidate_year_override_variant=(
+                    args.candidate_year_override_variant
                 ),
                 record_callback=record_callback,
             )

@@ -52,6 +52,7 @@ class AgentEvalConfig:
     output_dir: str = "logs"
     save: bool = True
     include_candidate_year_diagnostics: bool = False
+    candidate_year_override_variant: Optional[str] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -66,6 +67,7 @@ class AgentEvalConfig:
             "include_candidate_year_diagnostics": (
                 self.include_candidate_year_diagnostics
             ),
+            "candidate_year_override_variant": self.candidate_year_override_variant,
         }
 
 
@@ -88,6 +90,7 @@ def evaluate_agent_questions(
     model_client: Optional[ModelClient] = None,
     fortune_data_path: Optional[str] = None,
     include_candidate_year_diagnostics: bool = False,
+    candidate_year_override_variant: Optional[str] = None,
     record_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Run the local MingLi agent over benchmark questions."""
@@ -102,6 +105,7 @@ def evaluate_agent_questions(
             question,
             agent=agent,
             fortune_data_path=fortune_data_path,
+            candidate_year_override_variant=candidate_year_override_variant,
         )
         records.append(record)
         if record_callback is not None:
@@ -114,6 +118,7 @@ def evaluate_agent_question(
     *,
     agent: MingLiAgent,
     fortune_data_path: Optional[str] = None,
+    candidate_year_override_variant: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Evaluate one benchmark question through the agent pipeline."""
 
@@ -148,6 +153,8 @@ def evaluate_agent_question(
         record["agent"] = agent_dict
         record["checks"] = build_agent_checks(agent_dict)
         record["predicted_answer"] = extract_answer_choice(agent_dict)
+        if candidate_year_override_variant:
+            apply_candidate_year_override(record, candidate_year_override_variant)
         record["answer_correct"] = answer_choice_matches(
             record.get("answer"),
             record.get("predicted_answer"),
@@ -213,6 +220,25 @@ def extract_answer_choice(agent_result: Dict[str, Any]) -> Optional[str]:
             text_parts.append(str(section.get("title") or ""))
             text_parts.append(str(section.get("summary") or ""))
     return _extract_answer_choice_from_text("\n".join(text_parts))
+
+
+def apply_candidate_year_override(record: Dict[str, Any], variant: str) -> Dict[str, Any]:
+    """Override predicted answers for candidate-year questions using a local variant."""
+
+    original_answer = _normalize_answer_choice(record.get("predicted_answer"))
+    override_answer = candidate_year_variant_top_choice(record, variant)
+    metadata = {
+        "variant": variant,
+        "applied": False,
+        "original_predicted_answer": original_answer,
+        "override_answer": override_answer,
+    }
+    record["model_predicted_answer"] = original_answer
+    if override_answer:
+        record["predicted_answer"] = override_answer
+        metadata["applied"] = True
+    record["candidate_year_override"] = metadata
+    return record
 
 
 def answer_choice_matches(answer: Any, predicted_answer: Any) -> Optional[bool]:

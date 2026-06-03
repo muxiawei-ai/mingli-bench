@@ -129,6 +129,8 @@ For benchmark questions with A-D answers, the summary also reports answer-choice
 
 Use `--include-candidate-year-diagnostics` to run an experimental prompt variant that exposes a compact `activation_weighted` candidate-year diagnostic to the LLM. This is off by default because early sample runs showed it can change model behavior and should be evaluated separately.
 
+Use `--candidate-year-override-variant activation_weighted` to run an experimental post-processing variant for `eval-agent`: candidate-year questions are scored by the selected local variant, while the original LLM answer is preserved in `model_predicted_answer` for auditability.
+
 After a saved run, generate a compact error report:
 
 ```bash
