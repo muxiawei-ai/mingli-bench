@@ -9,6 +9,7 @@ from mingli_bench.agent_eval import (
     append_agent_eval_record,
     answer_choice_matches,
     apply_candidate_year_override,
+    apply_event_type_guard,
     candidate_year_choice,
     candidate_year_variant_top_choice,
     evaluate_agent_questions,
@@ -177,6 +178,91 @@ class AgentEvalTests(unittest.TestCase):
         self.assertIn("Event Type Diagnostics", format_agent_eval_summary(summary))
         self.assertIn("Match Rate: 0.00%", format_agent_eval_summary(summary))
         self.assertIn("mental_health -> traffic_accident: 1", format_agent_eval_summary(summary))
+
+    def test_cautious_traffic_guard_prefers_non_traffic_health_option(self):
+        record = {
+            "predicted_answer": "C",
+            "agent": {
+                "report": {
+                    "event_years": [
+                        {
+                            "branch_interactions": [
+                                {"type": "three_harmony_complete", "label": "申子辰三合水局"}
+                            ]
+                        }
+                    ],
+                    "option_semantics": [
+                        {
+                            "letter": "A",
+                            "primary_event_type": "mental_health",
+                            "event_types": ["mental_health", "health_illness"],
+                            "broad_domains": ["健康"],
+                        },
+                        {
+                            "letter": "C",
+                            "primary_event_type": "traffic_accident",
+                            "event_types": ["traffic_accident"],
+                            "broad_domains": ["健康"],
+                        },
+                    ],
+                },
+                "interpretation": {
+                    "option_scores": {
+                        "A": {"score": 0.2},
+                        "C": {"score": 0.7},
+                    }
+                },
+            },
+        }
+
+        apply_event_type_guard(record, "cautious_traffic")
+
+        self.assertEqual(record["model_predicted_answer"], "C")
+        self.assertEqual(record["predicted_answer"], "A")
+        self.assertEqual(
+            record["event_type_guard"]["reason"],
+            "traffic_prediction_without_strong_clash_evidence",
+        )
+
+    def test_cautious_traffic_guard_keeps_prediction_with_clash_evidence(self):
+        record = {
+            "predicted_answer": "C",
+            "agent": {
+                "report": {
+                    "event_years": [
+                        {
+                            "branch_interactions": [
+                                {"type": "six_clash", "label": "寅申冲"}
+                            ]
+                        }
+                    ],
+                    "option_semantics": [
+                        {
+                            "letter": "A",
+                            "primary_event_type": "mental_health",
+                            "event_types": ["mental_health"],
+                            "broad_domains": ["健康"],
+                        },
+                        {
+                            "letter": "C",
+                            "primary_event_type": "traffic_accident",
+                            "event_types": ["traffic_accident"],
+                            "broad_domains": ["健康"],
+                        },
+                    ],
+                },
+                "interpretation": {},
+            },
+        }
+
+        apply_event_type_guard(record, "cautious_traffic")
+
+        self.assertEqual(record["predicted_answer"], "C")
+        self.assertFalse(record["event_type_guard"]["applied"])
+        self.assertEqual(
+            record["event_type_guard"]["reason"],
+            "strong_traffic_evidence_present",
+        )
 
     def test_candidate_year_score_diagnostics(self):
         record = {

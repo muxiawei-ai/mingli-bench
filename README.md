@@ -131,6 +131,8 @@ Use `--include-candidate-year-diagnostics` to run an experimental prompt variant
 
 Use `--candidate-year-override-variant activation_weighted` to run an experimental post-processing variant for `eval-agent`: candidate-year questions are scored by the selected local variant, while the original LLM answer is preserved in `model_predicted_answer` for auditability.
 
+Use `--event-type-guard cautious_traffic` to run an experimental event-type guard for `eval-agent`: unsupported traffic-accident predictions can be redirected to a non-traffic health option, while the original LLM answer is preserved in `model_predicted_answer`.
+
 After a saved run, generate a compact error report:
 
 ```bash

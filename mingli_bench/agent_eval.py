@@ -37,6 +37,7 @@ CATEGORY_TO_INTENT_DOMAIN = {
 }
 HIGH_CONFIDENCE_WRONG_THRESHOLD = 0.7
 LOW_MARGIN_WRONG_THRESHOLD = 0.15
+SUPPORTED_EVENT_TYPE_GUARDS = {"cautious_traffic"}
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,7 @@ class AgentEvalConfig:
     save: bool = True
     include_candidate_year_diagnostics: bool = False
     candidate_year_override_variant: Optional[str] = None
+    event_type_guard: Optional[str] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -68,6 +70,7 @@ class AgentEvalConfig:
                 self.include_candidate_year_diagnostics
             ),
             "candidate_year_override_variant": self.candidate_year_override_variant,
+            "event_type_guard": self.event_type_guard,
         }
 
 
@@ -91,6 +94,7 @@ def evaluate_agent_questions(
     fortune_data_path: Optional[str] = None,
     include_candidate_year_diagnostics: bool = False,
     candidate_year_override_variant: Optional[str] = None,
+    event_type_guard: Optional[str] = None,
     record_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Run the local MingLi agent over benchmark questions."""
@@ -106,6 +110,7 @@ def evaluate_agent_questions(
             agent=agent,
             fortune_data_path=fortune_data_path,
             candidate_year_override_variant=candidate_year_override_variant,
+            event_type_guard=event_type_guard,
         )
         records.append(record)
         if record_callback is not None:
@@ -119,6 +124,7 @@ def evaluate_agent_question(
     agent: MingLiAgent,
     fortune_data_path: Optional[str] = None,
     candidate_year_override_variant: Optional[str] = None,
+    event_type_guard: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Evaluate one benchmark question through the agent pipeline."""
 
@@ -155,6 +161,8 @@ def evaluate_agent_question(
         record["predicted_answer"] = extract_answer_choice(agent_dict)
         if candidate_year_override_variant:
             apply_candidate_year_override(record, candidate_year_override_variant)
+        if event_type_guard:
+            apply_event_type_guard(record, event_type_guard)
         record["answer_correct"] = answer_choice_matches(
             record.get("answer"),
             record.get("predicted_answer"),
@@ -238,6 +246,51 @@ def apply_candidate_year_override(record: Dict[str, Any], variant: str) -> Dict[
         record["predicted_answer"] = override_answer
         metadata["applied"] = True
     record["candidate_year_override"] = metadata
+    return record
+
+
+def apply_event_type_guard(record: Dict[str, Any], guard: str) -> Dict[str, Any]:
+    """Apply an eval-only event-type post-processor to a predicted answer."""
+
+    if guard not in SUPPORTED_EVENT_TYPE_GUARDS:
+        raise ValueError(f"Unsupported event type guard: {guard}")
+    if guard == "cautious_traffic":
+        return _apply_cautious_traffic_guard(record)
+    return record
+
+
+def _apply_cautious_traffic_guard(record: Dict[str, Any]) -> Dict[str, Any]:
+    original_answer = _normalize_answer_choice(record.get("predicted_answer"))
+    metadata = {
+        "guard": "cautious_traffic",
+        "applied": False,
+        "original_predicted_answer": original_answer,
+        "replacement_answer": None,
+        "reason": None,
+    }
+    record.setdefault("model_predicted_answer", original_answer)
+    if option_event_type(record, original_answer) != "traffic_accident":
+        metadata["reason"] = "prediction_is_not_traffic_accident"
+        record["event_type_guard"] = metadata
+        return record
+    if _has_strong_traffic_evidence(record):
+        metadata["reason"] = "strong_traffic_evidence_present"
+        record["event_type_guard"] = metadata
+        return record
+    replacement = _best_non_traffic_health_option(record, exclude=original_answer)
+    if not replacement:
+        metadata["reason"] = "no_non_traffic_health_alternative"
+        record["event_type_guard"] = metadata
+        return record
+    record["predicted_answer"] = replacement
+    metadata.update(
+        {
+            "applied": True,
+            "replacement_answer": replacement,
+            "reason": "traffic_prediction_without_strong_clash_evidence",
+        }
+    )
+    record["event_type_guard"] = metadata
     return record
 
 
@@ -848,6 +901,53 @@ def option_event_type(record: Dict[str, Any], answer: Any) -> Optional[str]:
         if item.get("letter") == letter:
             return str(item.get("primary_event_type") or "unknown")
     return None
+
+
+def _has_strong_traffic_evidence(record: Dict[str, Any]) -> bool:
+    report = ((record.get("agent") or {}).get("report") or {})
+    for event_year in report.get("event_years") or []:
+        for interaction in event_year.get("branch_interactions") or []:
+            interaction_type = str(interaction.get("type") or "")
+            label = str(interaction.get("label") or "")
+            if interaction_type == "six_clash" or "冲" in label:
+                return True
+    return False
+
+
+def _best_non_traffic_health_option(
+    record: Dict[str, Any],
+    *,
+    exclude: Optional[str],
+) -> Optional[str]:
+    excluded = _normalize_answer_choice(exclude)
+    option_scores = _extract_option_scores(
+        (((record.get("agent") or {}).get("interpretation") or {}).get("option_scores"))
+    )
+    candidates = []
+    option_semantics = (
+        ((record.get("agent") or {}).get("report") or {}).get("option_semantics")
+        or []
+    )
+    for item in option_semantics:
+        letter = _normalize_answer_choice(item.get("letter"))
+        if not letter or letter == excluded:
+            continue
+        event_types = set(str(value) for value in item.get("event_types") or [])
+        primary_type = str(item.get("primary_event_type") or "")
+        domains = set(str(value) for value in item.get("broad_domains") or [])
+        if "traffic_accident" in event_types or primary_type == "traffic_accident":
+            continue
+        is_health_option = (
+            primary_type in {"mental_health", "health_illness"}
+            or bool(event_types.intersection({"mental_health", "health_illness"}))
+            or "健康" in domains
+        )
+        if is_health_option:
+            candidates.append((letter, option_scores.get(letter, 0.0)))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (-float(item[1]), item[0]))
+    return candidates[0][0]
 
 
 def top_candidate_year_choice(record: Dict[str, Any]) -> Optional[str]:

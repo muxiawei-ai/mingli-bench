@@ -9,6 +9,7 @@ import sys
 from .agent import MingLiAgent
 from .agent_eval import (
     AgentEvalConfig,
+    SUPPORTED_EVENT_TYPE_GUARDS,
     append_agent_eval_record,
     evaluate_agent_questions,
     format_agent_eval_summary,
@@ -339,6 +340,16 @@ Examples:
     )
 
     parser.add_argument(
+        "--event-type-guard",
+        choices=sorted(SUPPORTED_EVENT_TYPE_GUARDS),
+        help=(
+            "Experimental: for eval-agent, apply a narrow event-type "
+            "post-processor while preserving the model choice in "
+            "model_predicted_answer."
+        ),
+    )
+
+    parser.add_argument(
         "--host",
         default="127.0.0.1",
         help="For 'serve': API host address (default: 127.0.0.1)"
@@ -461,6 +472,7 @@ Examples:
                 candidate_year_override_variant=(
                     args.candidate_year_override_variant
                 ),
+                event_type_guard=args.event_type_guard,
             )
             questions = load_agent_eval_questions(config)
             saved_paths = {}
@@ -482,6 +494,7 @@ Examples:
                 candidate_year_override_variant=(
                     args.candidate_year_override_variant
                 ),
+                event_type_guard=args.event_type_guard,
                 record_callback=record_callback,
             )
             summary = summarize_agent_eval(records, config=config)
