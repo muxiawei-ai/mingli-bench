@@ -161,6 +161,11 @@ class AgentEvalTests(unittest.TestCase):
             summary["answer_event_type_confusion"],
             {"mental_health": {"traffic_accident": 1}},
         )
+        self.assertEqual(summary["answer_event_type_total"], 1)
+        self.assertEqual(summary["answer_event_type_match_rate"], 0.0)
+        self.assertEqual(summary["answer_event_type_mismatch_count"], 1)
+        self.assertEqual(summary["answer_event_type_unknown_expected_count"], 0)
+        self.assertEqual(summary["answer_event_type_unparsed_prediction_count"], 0)
         self.assertEqual(
             summary["answer_error_samples"][0]["answer_event_type"],
             "mental_health",
@@ -169,6 +174,8 @@ class AgentEvalTests(unittest.TestCase):
             summary["answer_error_samples"][0]["predicted_event_type"],
             "traffic_accident",
         )
+        self.assertIn("Event Type Diagnostics", format_agent_eval_summary(summary))
+        self.assertIn("Match Rate: 0.00%", format_agent_eval_summary(summary))
         self.assertIn("mental_health -> traffic_accident: 1", format_agent_eval_summary(summary))
 
     def test_candidate_year_score_diagnostics(self):

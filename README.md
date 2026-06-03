@@ -137,7 +137,7 @@ After a saved run, generate a compact error report:
 mingli-bench analyze-agent-eval --run-dir logs/agent_eval_YYYYMMDD_HHMMSS
 ```
 
-The report summarizes category accuracy, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
+The report summarizes category accuracy, event-type confusions, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
 
 Compare two saved runs to inspect prompt or model changes:
 

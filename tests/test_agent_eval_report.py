@@ -35,10 +35,20 @@ class AgentEvalReportTests(unittest.TestCase):
         self.assertTrue(
             analysis["candidate_year_cases"][0]["model_followed_activation"]
         )
+        self.assertEqual(
+            analysis["event_type_confusions"][0]["answer_event_type"],
+            "mental_health",
+        )
+        self.assertEqual(
+            analysis["event_type_confusions"][0]["predicted_event_type"],
+            "traffic_accident",
+        )
 
         formatted = format_agent_eval_analysis(analysis)
         self.assertIn("Agent Eval Error Report", formatted)
         self.assertIn("Answer Accuracy: 50.00%", formatted)
+        self.assertIn("Event Type Confusions", formatted)
+        self.assertIn("mental_health -> traffic_accident: 1", formatted)
         self.assertIn("q_health", formatted)
         self.assertIn("activation_top=C", formatted)
 

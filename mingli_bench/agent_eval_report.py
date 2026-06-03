@@ -87,6 +87,7 @@ def build_agent_eval_analysis(
             }
             for category, total in sorted(category_totals.items())
         ],
+        "event_type_confusions": _event_type_confusions(records),
         "wrong_answers": wrong_answers,
         "candidate_year_cases": candidate_year_cases,
         "answer_score_diagnostics": summary.get("answer_score_diagnostics") or {},
@@ -134,6 +135,22 @@ def format_agent_eval_analysis(analysis: Dict[str, Any]) -> str:
         lines.extend(["", "Warnings:"])
         for warning, count in sorted(analysis["warning_counts"].items()):
             lines.append(f"  - {warning}: {count}")
+
+    if analysis.get("event_type_confusions"):
+        lines.extend(["", "Event Type Confusions:"])
+        for item in analysis["event_type_confusions"]:
+            lines.append(
+                "  - "
+                f"{item['answer_event_type']} -> {item['predicted_event_type']}: "
+                f"{item['count']}"
+            )
+            for sample in item.get("samples") or []:
+                lines.append(
+                    "    e.g. "
+                    f"{sample['question_id']} [{sample['category']}]: "
+                    f"{sample['answer']} -> {sample['predicted_answer']} "
+                    f"question={sample.get('question')}"
+                )
 
     if analysis.get("wrong_answers"):
         lines.extend(["", "Wrong Answers:"])
@@ -342,6 +359,51 @@ def _wrong_answer_sample(record: Dict[str, Any]) -> Dict[str, Any]:
         "predicted_score": diagnostic.get("predicted_score"),
         "score_gap_to_expected": diagnostic.get("score_gap_to_expected"),
     }
+
+
+def _event_type_confusions(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+    for record in records:
+        if not record.get("success"):
+            continue
+        answer_type = option_event_type(record, record.get("answer")) or "unknown"
+        predicted_answer = record.get("predicted_answer")
+        predicted_type = (
+            option_event_type(record, predicted_answer)
+            if predicted_answer
+            else "unparsed"
+        ) or "unparsed"
+        if answer_type == predicted_type:
+            continue
+        key = (answer_type, predicted_type)
+        if key not in grouped:
+            grouped[key] = {
+                "answer_event_type": answer_type,
+                "predicted_event_type": predicted_type,
+                "count": 0,
+                "samples": [],
+            }
+        item = grouped[key]
+        item["count"] += 1
+        if len(item["samples"]) < 3:
+            item["samples"].append(
+                {
+                    "question_id": record.get("question_id"),
+                    "case_id": record.get("case_id"),
+                    "category": record.get("category"),
+                    "question": record.get("question"),
+                    "answer": record.get("answer"),
+                    "predicted_answer": predicted_answer,
+                }
+            )
+    return sorted(
+        grouped.values(),
+        key=lambda item: (
+            -int(item["count"]),
+            str(item["answer_event_type"]),
+            str(item["predicted_event_type"]),
+        ),
+    )
 
 
 def _records_by_question_id(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:

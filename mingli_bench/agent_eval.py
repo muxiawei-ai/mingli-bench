@@ -276,6 +276,11 @@ def summarize_agent_eval(
     answer_correct = 0
     answer_choice_confusion: Counter[tuple] = Counter()
     answer_event_type_confusion: Counter[tuple] = Counter()
+    answer_event_type_total = 0
+    answer_event_type_match = 0
+    answer_event_type_mismatch = 0
+    answer_event_type_unknown_expected = 0
+    answer_event_type_unparsed_prediction = 0
     answer_score_diagnostics = []
     candidate_year_total = 0
     candidate_year_top_correct = 0
@@ -369,6 +374,16 @@ def summarize_agent_eval(
             expected_event_type = option_event_type(record, expected_answer)
             predicted_event_type = option_event_type(record, predicted_answer)
             if expected_event_type or predicted_event_type:
+                if expected_event_type:
+                    answer_event_type_total += 1
+                    if expected_event_type == predicted_event_type:
+                        answer_event_type_match += 1
+                    else:
+                        answer_event_type_mismatch += 1
+                else:
+                    answer_event_type_unknown_expected += 1
+                if expected_event_type and not predicted_event_type:
+                    answer_event_type_unparsed_prediction += 1
                 answer_event_type_confusion.update(
                     [
                         (
@@ -430,6 +445,16 @@ def summarize_agent_eval(
         "answer_choice_accuracy_on_parsed": _ratio(answer_correct, answer_parsed),
         "answer_choice_confusion": _nested_confusion(answer_choice_confusion),
         "answer_event_type_confusion": _nested_confusion(answer_event_type_confusion),
+        "answer_event_type_total": answer_event_type_total,
+        "answer_event_type_match_rate": _ratio(
+            answer_event_type_match,
+            answer_event_type_total,
+        ),
+        "answer_event_type_mismatch_count": answer_event_type_mismatch,
+        "answer_event_type_unknown_expected_count": answer_event_type_unknown_expected,
+        "answer_event_type_unparsed_prediction_count": (
+            answer_event_type_unparsed_prediction
+        ),
         "candidate_year_score_total": candidate_year_total,
         "candidate_year_top_choice_accuracy": _ratio(
             candidate_year_top_correct,
@@ -585,6 +610,23 @@ def format_agent_eval_summary(summary: Dict[str, Any]) -> str:
         for warning, count in sorted(summary["warning_counts"].items()):
             lines.append(f"  - {warning}: {count}")
     if summary.get("answer_event_type_confusion"):
+        lines.extend(["", "Event Type Diagnostics:"])
+        lines.append(
+            "  - Match Rate: "
+            f"{summary.get('answer_event_type_match_rate', 0.0):.2%}"
+        )
+        lines.append(
+            "  - Mismatch Count: "
+            f"{summary.get('answer_event_type_mismatch_count', 0)}"
+        )
+        lines.append(
+            "  - Unknown Expected Count: "
+            f"{summary.get('answer_event_type_unknown_expected_count', 0)}"
+        )
+        lines.append(
+            "  - Unparsed Prediction Count: "
+            f"{summary.get('answer_event_type_unparsed_prediction_count', 0)}"
+        )
         lines.extend(["", "Answer Event Type Confusion:"])
         for expected_type, actuals in sorted(
             summary["answer_event_type_confusion"].items()
