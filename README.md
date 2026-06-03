@@ -215,6 +215,8 @@ The config loader accepts both provider-specific variables such as `OPENROUTER_A
 
 OpenRouter model ids such as `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`, and `google/gemini-2.5-pro` are routed through OpenRouter automatically when the model name contains `/`.
 
+For long eval runs on OpenAI-compatible providers, transient network errors are retried automatically. Tune this with `LLM_MAX_RETRIES` (default `2`) and `LLM_RETRY_DELAY` seconds (default `1.0`).
+
 ## Python API Examples
 
 ```python

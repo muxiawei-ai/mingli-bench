@@ -3,6 +3,7 @@ OpenAI model client implementation.
 """
 
 import os
+import time
 from typing import Optional
 from openai import OpenAI
 
@@ -49,6 +50,8 @@ class OpenAIClient(ModelClient):
         self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
         self.reasoning_effort = os.getenv("OPENROUTER_REASONING_EFFORT")
         self.reasoning_exclude = _env_bool("OPENROUTER_REASONING_EXCLUDE")
+        self.max_retries = max(0, int(os.getenv("LLM_MAX_RETRIES", "2")))
+        self.retry_delay = max(0.0, float(os.getenv("LLM_RETRY_DELAY", "1.0")))
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
@@ -88,7 +91,7 @@ class OpenAIClient(ModelClient):
             logger.debug(f"Making API call with model: {params['model']}")
             
             # Make API call
-            response = self.client.chat.completions.create(**params)
+            response = self._create_chat_completion(params)
             
             # Extract text
             choice = response.choices[0]
@@ -105,6 +108,30 @@ class OpenAIClient(ModelClient):
         except Exception as e:
             self.handle_api_error("OpenAI generation", e)
             raise
+
+    def _create_chat_completion(self, params: dict):
+        """Call the API with a small retry loop for transient provider errors."""
+
+        current_delay = self.retry_delay
+        for attempt in range(self.max_retries + 1):
+            try:
+                return self.client.chat.completions.create(**params)
+            except Exception as error:
+                if attempt >= self.max_retries or not _is_retryable_api_error(error):
+                    raise
+                logger.warning(
+                    "Transient OpenAI-compatible API error for %s: %s. "
+                    "Retrying in %.1fs (%d/%d).",
+                    self.model_name,
+                    error,
+                    current_delay,
+                    attempt + 1,
+                    self.max_retries,
+                )
+                time.sleep(current_delay)
+                current_delay *= 2
+
+        raise RuntimeError("unreachable retry state")
     
     def validate_api_key(self) -> bool:
         """
@@ -142,3 +169,22 @@ def _env_bool(name: str) -> Optional[bool]:
     if value is None:
         return None
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_retryable_api_error(error: Exception) -> bool:
+    """Return True for network, timeout, rate-limit, and server-side errors."""
+
+    status_code = getattr(error, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code in {408, 409, 429} or status_code >= 500
+
+    error_name = error.__class__.__name__
+    if error_name in {
+        "APIConnectionError",
+        "APITimeoutError",
+        "RateLimitError",
+        "InternalServerError",
+    }:
+        return True
+
+    return "connection error" in str(error).lower()
