@@ -44,6 +44,8 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - deterministic Meihua-style time hexagram generation for report modules,
   - a complete 64-hexagram I Ching text corpus for judgments, Great Image text,
     and line texts,
+  - local rule-based hexagram reading scaffolds for primary hexagram,
+    moving line, changed hexagram, and question-domain guidance,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

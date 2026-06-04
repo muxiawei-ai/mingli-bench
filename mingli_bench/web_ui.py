@@ -573,6 +573,40 @@ INDEX_HTML = """<!doctype html>
       font-weight: 850;
     }
 
+    .hex-reading-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid rgba(26, 104, 92, 0.22);
+      border-left: 4px solid var(--teal);
+      border-radius: var(--radius);
+      background: #f4fbf8;
+      line-height: 1.75;
+    }
+
+    .hex-reading-card > strong {
+      color: var(--teal-dark);
+      font-size: 15px;
+    }
+
+    .hex-reading-section {
+      display: grid;
+      gap: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(26, 104, 92, 0.16);
+    }
+
+    .hex-reading-section strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .hex-reading-section p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
     .hexagram-panel .detail {
       padding: 10px 12px;
       border-left: 3px solid var(--line);
@@ -1413,7 +1447,31 @@ INDEX_HTML = """<!doctype html>
             {index: 4, name: "六四 · 阴", text: "井甃，无咎。", note: "打好基础、修复结构，低调扎实即可。"},
             {index: 5, name: "九五 · 阳 · 动爻", text: "井洌，寒泉食。", note: "核心动爻，代表资源终于可用，适合进入成果转化。"},
             {index: 6, name: "上六 · 阴", text: "井收勿幕，有孚元吉。", note: "开放资源、形成信任，避免封闭与独占。"}
-          ]
+          ],
+          reading: {
+            schema_version: "hexagram_reading.v1",
+            domain: "事业",
+            intent_confidence: 0.78,
+            overview: "本卦《井卦》主轴为“资源、基础、汲取与公共供养”，动九五，变卦《升卦》指向“渐进、上升、积小成高”。在事业问题中，宜把它作为从资源清理到成果抬升的结构参考。",
+            sections: [
+              {
+                title: "本卦主轴",
+                summary: "井卦描述当前问题的主场景：已有资源和能力，但关键在于能否被整理、汲取和稳定供给。"
+              },
+              {
+                title: "动爻焦点",
+                summary: "九五落在主位与决策位，爻辞“井洌，寒泉食。”提示资源已经可用，重点在把积累转化为可见成果。"
+              },
+              {
+                title: "变卦方向",
+                summary: "由井变升，表示从资源系统转向渐进抬升，适合用阶梯式计划推进，而不是一次性跳跃。"
+              },
+              {
+                title: "事业问题提示",
+                summary: "用于事业问题时，优先看已有能力是否被正确包装、协作路径是否顺畅，以及下一步是否能稳步升级。"
+              }
+            ]
+          }
         },
         strongest_elements: ["火", "金"],
         missing_elements: [],
@@ -1661,7 +1719,31 @@ INDEX_HTML = """<!doctype html>
         }
         lines.push("");
       }
+      appendHexagramReadingMarkdown(lines, hexagram.reading);
       appendDetailList(lines, "卦象边界", hexagram.caveats);
+    }
+
+    function appendHexagramReadingMarkdown(lines, reading) {
+      if (!reading || typeof reading !== "object") {
+        return;
+      }
+      lines.push("### 规则解读");
+      if (reading.overview) {
+        lines.push(mdText(reading.overview), "");
+      }
+      if (Array.isArray(reading.sections)) {
+        reading.sections.forEach((section) => {
+          if (!section || typeof section !== "object") {
+            return;
+          }
+          lines.push(`#### ${mdText(section.title || "未命名规则")}`);
+          if (section.summary) {
+            lines.push(mdText(section.summary));
+          }
+          appendDetailList(lines, "依据", section.evidence);
+          lines.push("");
+        });
+      }
     }
 
     function appendInterpretationMarkdown(lines, interpretation) {
@@ -2280,6 +2362,36 @@ INDEX_HTML = """<!doctype html>
       font-size: 20px;
       font-weight: 850;
     }
+    .hex-reading-card {
+      display: grid;
+      gap: 12px;
+      padding: 17px 18px;
+      border: 1px solid rgba(26, 104, 92, 0.22);
+      border-left: 4px solid var(--teal);
+      border-radius: 10px;
+      background: #f4fbf8;
+      line-height: 1.75;
+      break-inside: avoid;
+    }
+    .hex-reading-card > strong {
+      color: var(--teal-dark);
+      font-size: 15px;
+    }
+    .hex-reading-section {
+      display: grid;
+      gap: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(26, 104, 92, 0.16);
+    }
+    .hex-reading-section strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .hex-reading-section p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
     .line-detail-table {
       display: grid;
       overflow: hidden;
@@ -2597,7 +2709,8 @@ INDEX_HTML = """<!doctype html>
           ${renderPrintableHexPrintSection("壹", "起卦依据", renderPrintableBasis(hexagram.basis))}
           ${renderPrintableHexPrintSection("贰", "本卦 · 变卦", renderPrintableCompare(hexagram))}
           ${renderPrintableHexPrintSection("叁", "动爻爻辞", renderPrintableFocus(hexagram))}
-          ${renderPrintableHexPrintSection("肆", "六爻详释", renderPrintableLineDetails(hexagram))}
+          ${renderPrintableHexPrintSection("肆", "规则解读", renderHexagramReading(hexagram.reading))}
+          ${renderPrintableHexPrintSection("伍", "六爻详释", renderPrintableLineDetails(hexagram))}
           ${renderPrintableCaveats(hexagram.caveats)}
         </div>
       </section>`;
@@ -2811,6 +2924,7 @@ INDEX_HTML = """<!doctype html>
           ${renderHexCard(changed, hexagram.moving_line)}
         </div>
         ${renderMovingLineCard(hexagram)}
+        ${renderHexagramReading(hexagram.reading)}
         ${renderLineDetailTable(hexagram)}
         ${caveats.length ? `<div class="detail"><strong>卦象边界</strong><ul>${caveats.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
       </div>`;
@@ -2844,6 +2958,29 @@ INDEX_HTML = """<!doctype html>
         lines.push(`卦辞：${escapeHtml(card.judgment)}`);
       }
       return lines.length ? `<div class="hex-card-text">${lines.join("<br>")}</div>` : "";
+    }
+
+    function renderHexagramReading(reading) {
+      if (!reading || typeof reading !== "object") {
+        return "";
+      }
+      const sections = Array.isArray(reading.sections)
+        ? reading.sections
+            .filter((section) => section && typeof section === "object")
+            .map((section) => `<div class="hex-reading-section">
+              <strong>${escapeHtml(section.title || "未命名规则")}</strong>
+              ${section.summary ? `<p>${escapeHtml(section.summary)}</p>` : ""}
+            </div>`)
+            .join("")
+        : "";
+      if (!reading.overview && !sections) {
+        return "";
+      }
+      return `<section class="hex-reading-card">
+        <strong>规则解读${reading.domain ? ` · ${escapeHtml(reading.domain)}` : ""}</strong>
+        ${reading.overview ? `<p>${escapeHtml(reading.overview)}</p>` : ""}
+        ${sections}
+      </section>`;
     }
 
     function renderHexLines(lines, movingLine) {

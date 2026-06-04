@@ -11,6 +11,7 @@ from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
 from .hexagram import build_time_hexagram
+from .hexagram_rules import build_hexagram_reading
 from .option_semantics import analyze_option_semantics
 from .relations import analyze_branch_interactions
 
@@ -176,6 +177,14 @@ class ChartReport:
             )
             if self.hexagram.get("moving_line_text"):
                 lines.append(f"  - 爻辞: {self.hexagram['moving_line_text']}")
+            reading = self.hexagram.get("reading") or {}
+            if reading.get("overview"):
+                lines.append(f"- 规则解读: {reading['overview']}")
+            for section in reading.get("sections") or []:
+                title = section.get("title")
+                summary = section.get("summary")
+                if title and summary:
+                    lines.append(f"  - {title}: {summary}")
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -271,6 +280,8 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         option_semantics,
     )
     hexagram = build_time_hexagram(chart)
+    if hexagram:
+        hexagram["reading"] = build_hexagram_reading(hexagram, question)
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(

@@ -60,6 +60,8 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.hexagram["changed"]["name"], "复卦")
         self.assertEqual(report.hexagram["moving_line_name"], "九二")
         self.assertEqual(report.hexagram["moving_line_text"], "咸临，吉，无不利。")
+        self.assertEqual(report.hexagram["reading"]["domain"], "事业")
+        self.assertIn("规则解读", report.to_markdown())
         self.assertIn("本地报告只整理排盘结构", report.to_markdown())
         self.assertIn("卦象参考", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())

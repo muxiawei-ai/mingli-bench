@@ -295,6 +295,9 @@ def _input_quality_summary(report: ChartReport) -> str:
 
 def _hexagram_summary(report: ChartReport) -> str:
     hexagram = report.hexagram or {}
+    reading = hexagram.get("reading") or {}
+    if reading.get("overview"):
+        return str(reading["overview"])
     primary = hexagram.get("primary") or {}
     changed = hexagram.get("changed") or {}
     return (
@@ -314,6 +317,12 @@ def _hexagram_evidence(report: ChartReport) -> List[str]:
             f"moving_line_text: {hexagram.get('moving_line_name', '-')}"
             f" {hexagram['moving_line_text']}"
         )
+    reading = hexagram.get("reading") or {}
+    for section in reading.get("sections") or []:
+        title = section.get("title")
+        summary = section.get("summary")
+        if title and summary:
+            evidence.append(f"{title}: {summary}")
     source = hexagram.get("number_source") or {}
     if source:
         evidence.append(
