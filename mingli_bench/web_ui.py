@@ -540,6 +540,19 @@ INDEX_HTML = """<!doctype html>
       text-align: center;
     }
 
+    .hex-card-text {
+      max-width: 340px;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .hex-card-text strong {
+      color: var(--teal-dark);
+      font-size: 14px;
+    }
+
     .hex-arrow {
       color: var(--muted);
       font-size: 28px;
@@ -1365,7 +1378,11 @@ INDEX_HTML = """<!doctype html>
             upper: "坎",
             lower: "巽",
             lines: ["yin", "yang", "yang", "yin", "yang", "yin"],
-            description: "坎上巽下 · 水风井"
+            description: "水风井",
+            theme: "资源、基础、汲取与公共供养",
+            judgment: "改邑不改井，无丧无得，往来井井。汔至亦未繘井，羸其瓶，凶。",
+            image: "木上有水，井。君子以劳民劝相。",
+            text_source: "zhouyi_classic.v1"
           },
           changed: {
             role: "变卦",
@@ -1375,7 +1392,11 @@ INDEX_HTML = """<!doctype html>
             upper: "坤",
             lower: "巽",
             lines: ["yin", "yang", "yang", "yin", "yin", "yin"],
-            description: "坤上巽下 · 地风升"
+            description: "地风升",
+            theme: "渐进、上升、积小成高",
+            judgment: "元亨，用见大人，勿恤，南征吉。",
+            image: "地中生木，升。君子以顺德，积小以高大。",
+            text_source: "zhouyi_classic.v1"
           },
           moving_line: 5,
           moving_line_name: "九五",
@@ -1618,11 +1639,17 @@ INDEX_HTML = """<!doctype html>
       appendKeyValue(lines, "卦序", primary.number);
       appendKeyValue(lines, "上下卦", `${primary.upper || "-"}上${primary.lower || "-"}下`);
       appendKeyValue(lines, "说明", primary.description);
+      appendKeyValue(lines, "主题", primary.theme);
+      appendKeyValue(lines, "卦辞", primary.judgment);
+      appendKeyValue(lines, "象曰", primary.image);
       lines.push("");
       lines.push(`### 变卦：${mdText(changed.name || "-")} ${mdText(changed.symbol || "")}`);
       appendKeyValue(lines, "卦序", changed.number);
       appendKeyValue(lines, "上下卦", `${changed.upper || "-"}上${changed.lower || "-"}下`);
       appendKeyValue(lines, "说明", changed.description);
+      appendKeyValue(lines, "主题", changed.theme);
+      appendKeyValue(lines, "卦辞", changed.judgment);
+      appendKeyValue(lines, "象曰", changed.image);
       lines.push("");
       if (hexagram.moving_line_name || hexagram.moving_line_text || hexagram.interpretation) {
         lines.push(`### ${mdText(hexagram.moving_line_name || "动爻")}爻辞`);
@@ -2224,6 +2251,17 @@ INDEX_HTML = """<!doctype html>
       font-weight: 700;
       text-align: center;
     }
+    .hex-card-text {
+      max-width: 360px;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.65;
+      text-align: center;
+    }
+    .hex-card-text strong {
+      color: var(--teal-dark);
+      font-size: 14px;
+    }
     .hex-arrow {
       color: var(--muted);
       font-size: 30px;
@@ -2616,6 +2654,7 @@ INDEX_HTML = """<!doctype html>
           ${lower ? `<span class="hex-print-trigram">下 ${escapeHtml(lower)} ${escapeHtml(trigramSymbol(lower))}</span>` : ""}
         </div>
         <div class="hex-print-description">${escapeHtml(card.description || "-")}</div>
+        ${renderHexCardText(card)}
       </article>`;
     }
 
@@ -2792,7 +2831,19 @@ INDEX_HTML = """<!doctype html>
         ${renderHexLines(card.lines, movingLine)}
         <div class="hex-card-name">${escapeHtml(title || "-")}</div>
         <div class="hex-card-meta">${escapeHtml(meta || "-")}</div>
+        ${renderHexCardText(card)}
       </article>`;
+    }
+
+    function renderHexCardText(card) {
+      const lines = [];
+      if (card.theme) {
+        lines.push(`<strong>${escapeHtml(card.theme)}</strong>`);
+      }
+      if (card.judgment) {
+        lines.push(`卦辞：${escapeHtml(card.judgment)}`);
+      }
+      return lines.length ? `<div class="hex-card-text">${lines.join("<br>")}</div>` : "";
     }
 
     function renderHexLines(lines, movingLine) {

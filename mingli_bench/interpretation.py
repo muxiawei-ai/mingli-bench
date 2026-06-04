@@ -309,6 +309,11 @@ def _hexagram_summary(report: ChartReport) -> str:
 def _hexagram_evidence(report: ChartReport) -> List[str]:
     hexagram = report.hexagram or {}
     evidence = [str(item) for item in hexagram.get("basis") or []]
+    if hexagram.get("moving_line_text"):
+        evidence.append(
+            f"moving_line_text: {hexagram.get('moving_line_name', '-')}"
+            f" {hexagram['moving_line_text']}"
+        )
     source = hexagram.get("number_source") or {}
     if source:
         evidence.append(

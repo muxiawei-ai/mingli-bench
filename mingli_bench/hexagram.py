@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from .chart_api import BaziChart
+from .hexagram_data import get_hexagram_text, get_line_text
 
 
 Line = str
@@ -225,6 +226,7 @@ def build_time_hexagram(chart: BaziChart) -> Optional[Dict[str, Any]]:
     changed = lookup_hexagram(changed_upper.name, changed_lower.name, role="变卦")
 
     moving_line_name = _line_name(moving_line, primary["lines"][moving_line - 1])
+    moving_line_data = get_line_text(primary["number"], moving_line)
     return {
         "method": "梅花易数时间法",
         "basis": [
@@ -255,14 +257,26 @@ def build_time_hexagram(chart: BaziChart) -> Optional[Dict[str, Any]]:
         "changed": changed,
         "moving_line": moving_line,
         "moving_line_name": moving_line_name,
-        "moving_line_text": f"{moving_line_name}为本次动爻；经典爻辞库待补充。",
+        "moving_line_text": (
+            moving_line_data["text"]
+            if moving_line_data
+            else f"{moving_line_name}为本次动爻；经典爻辞库待补充。"
+        ),
+        "moving_line_note": (
+            moving_line_data.get("note")
+            if moving_line_data
+            else "本地规则定位此爻为动爻，解读时应重点关注。"
+        ),
+        "moving_line_source": (
+            moving_line_data.get("source") if moving_line_data else "pending"
+        ),
         "interpretation": (
             f"本地时间法生成本卦《{primary['name'].removesuffix('卦')}》"
             f"，动{moving_line_name}，变卦为《{changed['name'].removesuffix('卦')}》。"
             "该结果用于提供可审计的卦象结构，后续解读应基于此结构展开。"
         ),
         "caveats": _hexagram_caveats(chart, date_numbers["source"]),
-        "line_details": _line_details(primary["lines"], moving_line),
+        "line_details": _line_details(primary["number"], primary["lines"], moving_line),
     }
 
 
@@ -272,6 +286,7 @@ def lookup_hexagram(upper: str, lower: str, *, role: str = "卦象") -> Dict[str
     upper_trigram = TRIGRAMS_BY_NAME[upper]
     lower_trigram = TRIGRAMS_BY_NAME[lower]
     number = KING_WEN_BY_TRIGRAMS[(upper, lower)]
+    text_data = get_hexagram_text(number)
     return {
         "role": role,
         "name": HEXAGRAM_NAMES[number],
@@ -285,6 +300,11 @@ def lookup_hexagram(upper: str, lower: str, *, role: str = "卦象") -> Dict[str
         "lower_element": lower_trigram.element,
         "lines": list(lower_trigram.lines + upper_trigram.lines),
         "description": f"{upper}上{lower}下",
+        "theme": text_data.get("theme") if text_data else None,
+        "judgment": text_data.get("judgment") if text_data else None,
+        "image": text_data.get("image") if text_data else None,
+        "text_source": text_data.get("source") if text_data else "pending",
+        "text_coverage": text_data.get("coverage") if text_data else "pending",
     }
 
 
@@ -320,21 +340,31 @@ def _line_name(index: int, line: Line) -> str:
     return (yang_names if line == "yang" else yin_names)[index]
 
 
-def _line_details(lines: List[Line], moving_line: int) -> List[Dict[str, Any]]:
+def _line_details(
+    hexagram_number: int,
+    lines: List[Line],
+    moving_line: int,
+) -> List[Dict[str, Any]]:
     details = []
     for index, line in enumerate(lines, start=1):
         moving = index == moving_line
+        text_data = get_line_text(hexagram_number, index)
         details.append(
             {
                 "index": index,
                 "name": _line_name(index, line) + (" · 动爻" if moving else ""),
                 "line_type": line,
-                "text": "经典爻辞待补充。",
+                "text": text_data["text"] if text_data else "经典爻辞待补充。",
                 "note": (
-                    "本地规则定位此爻为动爻，解读时应重点关注。"
-                    if moving
-                    else "本地规则已确定该爻阴阳，爻辞文本库待补充。"
+                    text_data.get("note")
+                    if text_data
+                    else (
+                        "本地规则定位此爻为动爻，解读时应重点关注。"
+                        if moving
+                        else "本地规则已确定该爻阴阳，爻辞文本库待补充。"
+                    )
                 ),
+                "source": text_data.get("source") if text_data else "pending",
             }
         )
     return details
@@ -343,7 +373,7 @@ def _line_details(lines: List[Line], moving_line: int) -> List[Dict[str, Any]]:
 def _hexagram_caveats(chart: BaziChart, date_source: str) -> List[str]:
     caveats = [
         "卦象由本地梅花易数时间法规则生成，不代表确定事实。",
-        "当前版本先提供卦象结构、卦序和动爻定位；完整爻辞库和细分断语待补充。",
+        "当前版本已接入首批卦辞/爻辞资料；未覆盖卦仍会显示待补充。",
     ]
     if date_source == "solar_input_proxy":
         caveats.append("当前为公历输入，月日数暂按公历月日代入；未来接入完整农历引擎后可改用农历月日。")

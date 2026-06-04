@@ -191,6 +191,7 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.interpretation.mode, "local")
         self.assertIn("性格问题路由", result.interpretation.to_markdown())
         self.assertIn("卦象参考", result.interpretation.to_markdown())
+        self.assertIn("咸临，吉，无不利", result.interpretation.to_markdown())
         self.assertIn("trace", result.as_dict())
         self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())

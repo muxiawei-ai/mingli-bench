@@ -42,6 +42,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - text-derived A-D option semantic diagnostics,
   - local candidate-year scoring diagnostics and scoring variants for timing questions,
   - deterministic Meihua-style time hexagram generation for report modules,
+  - an initial curated I Ching text subset for hexagram judgments and line texts,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

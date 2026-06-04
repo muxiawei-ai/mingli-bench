@@ -8,6 +8,7 @@ from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
 from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
 from .hexagram import build_time_hexagram, lookup_hexagram
+from .hexagram_data import get_hexagram_text, get_line_text
 from .bazi import (
     bazi_from_birth_info,
     bazi_from_gregorian,
@@ -48,6 +49,8 @@ __all__ = [
     "day_pillar_for_date",
     "extract_options",
     "get_chart_summary",
+    "get_hexagram_text",
+    "get_line_text",
     "hour_branch",
     "infer_timing_focus",
     "hour_pillar_for_datetime",

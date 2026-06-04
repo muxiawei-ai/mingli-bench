@@ -158,16 +158,24 @@ class ChartReport:
                 f"{primary.get('name')} {primary.get('symbol')} "
                 f"第{primary.get('number')}卦"
             )
+            if primary.get("judgment"):
+                lines.append(f"  - 卦辞: {primary['judgment']}")
+            if primary.get("theme"):
+                lines.append(f"  - 主题: {primary['theme']}")
             lines.append(
                 "- 变卦: "
                 f"{changed.get('name')} {changed.get('symbol')} "
                 f"第{changed.get('number')}卦"
             )
+            if changed.get("judgment"):
+                lines.append(f"  - 卦辞: {changed['judgment']}")
             lines.append(
                 "- 动爻: "
                 f"第{self.hexagram.get('moving_line')}爻 "
                 f"({self.hexagram.get('moving_line_name')})"
             )
+            if self.hexagram.get("moving_line_text"):
+                lines.append(f"  - 爻辞: {self.hexagram['moving_line_text']}")
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])

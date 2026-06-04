@@ -39,6 +39,8 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["primary"]["name"], "临卦")
         self.assertEqual(response["report"]["hexagram"]["changed"]["name"], "复卦")
         self.assertEqual(response["report"]["hexagram"]["moving_line_name"], "九二")
+        self.assertEqual(response["report"]["hexagram"]["moving_line_text"], "咸临，吉，无不利。")
+        self.assertEqual(response["report"]["hexagram"]["moving_line_source"], "zhouyi_classic.v1")
         self.assertEqual(response["intent"]["primary_domain"], "事业")
         self.assertIn("llm_not_called", response["warnings"])
         trace = {stage["name"]: stage for stage in response["trace"]}
