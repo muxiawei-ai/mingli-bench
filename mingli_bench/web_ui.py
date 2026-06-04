@@ -431,6 +431,200 @@ INDEX_HTML = """<!doctype html>
       border: 1px solid var(--line);
     }
 
+    .hexagram-panel {
+      display: grid;
+      gap: 16px;
+    }
+
+    .divination-basis {
+      display: grid;
+      gap: 6px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #f5f2ea;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .divination-basis strong,
+    .moving-line-card strong,
+    .line-detail-table strong {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .hexagram-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+    }
+
+    .hex-card {
+      min-height: 240px;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 10px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdf8;
+    }
+
+    .hex-card-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .hex-lines {
+      display: grid;
+      gap: 6px;
+      width: 108px;
+      margin: 2px auto 4px;
+    }
+
+    .hex-row {
+      min-height: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .hex-line {
+      height: 7px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+
+    .hex-line.yang {
+      width: 78px;
+    }
+
+    .hex-line.yin {
+      width: 34px;
+    }
+
+    .hex-row.moving .hex-line {
+      background: #6b5812;
+    }
+
+    .hex-row.moving::after {
+      content: "";
+      width: 11px;
+      height: 11px;
+      border: 2px solid #6b5812;
+      border-radius: 999px;
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #fffdf8;
+    }
+
+    .hex-card-name {
+      font-size: 24px;
+      font-weight: 850;
+      line-height: 1.25;
+    }
+
+    .hex-card-meta {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .hex-arrow {
+      color: var(--muted);
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .moving-line-card {
+      padding: 14px 16px;
+      border-left: 4px solid #8a6810;
+      border-radius: var(--radius);
+      background: #fff5e3;
+      line-height: 1.8;
+    }
+
+    .moving-line-card blockquote {
+      margin: 5px 0 6px;
+      font-size: 18px;
+      font-weight: 850;
+    }
+
+    .hexagram-panel .detail {
+      padding: 10px 12px;
+      border-left: 3px solid var(--line);
+      background: #fbfaf5;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .line-detail-table {
+      display: grid;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdf8;
+    }
+
+    .line-detail-row {
+      display: grid;
+      grid-template-columns: 48px 88px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .line-detail-row:first-child {
+      border-top: 0;
+    }
+
+    .line-detail-heading {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f5f2ea;
+    }
+
+    .line-detail-heading + .line-detail-row {
+      border-top: 0;
+    }
+
+    .line-detail-row.is-moving {
+      background: #fff5e3;
+    }
+
+    .line-mini {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      min-height: 20px;
+      padding-top: 5px;
+    }
+
+    .line-mini .hex-line {
+      height: 5px;
+    }
+
+    .line-mini .yang {
+      width: 54px;
+    }
+
+    .line-mini .yin {
+      width: 24px;
+    }
+
     .export-row {
       display: flex;
       flex-wrap: wrap;
@@ -711,6 +905,15 @@ INDEX_HTML = """<!doctype html>
         flex-direction: column;
       }
 
+      .hexagram-pair {
+        grid-template-columns: 1fr;
+      }
+
+      .hex-arrow {
+        transform: rotate(90deg);
+        justify-self: center;
+      }
+
       .export-row {
         justify-content: flex-start;
       }
@@ -734,6 +937,14 @@ INDEX_HTML = """<!doctype html>
       }
 
       .element-row .muted {
+        grid-column: 1 / -1;
+      }
+
+      .line-detail-row {
+        grid-template-columns: 36px minmax(0, 1fr);
+      }
+
+      .line-detail-row > div:last-child {
         grid-column: 1 / -1;
       }
     }
@@ -822,6 +1033,11 @@ INDEX_HTML = """<!doctype html>
             <div class="metric"><span>时辰</span><strong id="hourBranch">-</strong></div>
             <div class="metric"><span>问题方向</span><strong id="intentDomain">-</strong></div>
           </div>
+
+          <section class="panel" id="hexagramPanel" hidden>
+            <h2>卦象参考</h2>
+            <div class="panel-body" id="hexagramContent"></div>
+          </section>
 
           <section class="panel">
             <h2>五行分布</h2>
@@ -1135,6 +1351,49 @@ INDEX_HTML = """<!doctype html>
           {element: "金", count: 2, level: "medium"},
           {element: "水", count: 1, level: "low"}
         ],
+        hexagram: {
+          method: "梅花易数时间法示例",
+          basis: [
+            "年数(10)+月数(6)+日数(30)=46 -> 余6 -> 上卦：坎",
+            "加时数(7，午时)=53 -> 余5 -> 下卦：巽 · 动爻：第五爻"
+          ],
+          primary: {
+            role: "本卦",
+            name: "井卦",
+            symbol: "䷯",
+            number: 48,
+            upper: "坎",
+            lower: "巽",
+            lines: ["yin", "yang", "yang", "yin", "yang", "yin"],
+            description: "坎上巽下 · 水风井"
+          },
+          changed: {
+            role: "变卦",
+            name: "升卦",
+            symbol: "䷭",
+            number: 46,
+            upper: "坤",
+            lower: "巽",
+            lines: ["yin", "yang", "yang", "yin", "yin", "yin"],
+            description: "坤上巽下 · 地风升"
+          },
+          moving_line: 5,
+          moving_line_name: "九五",
+          moving_line_text: "井洌，寒泉食。",
+          interpretation: "井水洁净，甘泉可饮。象征长期积蓄的实力与资源，此刻可以被汲取运用；对事业主题而言，重点是把已有积累转成可见成果，而不是重新从零开始。",
+          caveats: [
+            "这是前端卦象展示示例，用于验证盘面模块与导出版式。",
+            "真实起卦需要后续接入确定性的卦象计算引擎，不应由 LLM 直接编造。"
+          ],
+          line_details: [
+            {index: 1, name: "初六 · 阴", text: "井泥不食，旧井无禽。", note: "底层资源尚未清理，旧方法需要重整。"},
+            {index: 2, name: "九二 · 阳", text: "井谷射鲋，瓮敝漏。", note: "已有资源但承接容器不足，提醒补足执行与表达的漏洞。"},
+            {index: 3, name: "九三 · 阳", text: "井渫不食，为我心恻。", note: "能力已经清澈，但仍需主动展示，等待本身不够。"},
+            {index: 4, name: "六四 · 阴", text: "井甃，无咎。", note: "打好基础、修复结构，低调扎实即可。"},
+            {index: 5, name: "九五 · 阳 · 动爻", text: "井洌，寒泉食。", note: "核心动爻，代表资源终于可用，适合进入成果转化。"},
+            {index: 6, name: "上六 · 阴", text: "井收勿幕，有孚元吉。", note: "开放资源、形成信任，避免封闭与独占。"}
+          ]
+        },
         strongest_elements: ["火", "金"],
         missing_elements: [],
         caveats: [
@@ -1321,6 +1580,8 @@ INDEX_HTML = """<!doctype html>
         lines.push("");
       }
 
+      appendHexagramMarkdown(lines, report.hexagram);
+
       conversationTurns.forEach((turn, index) => {
         const interpretation = normalizeInterpretation(turn.interpretation);
         lines.push(index === 0 ? "## 初始问题" : `## 追问 ${index}`);
@@ -1337,6 +1598,43 @@ INDEX_HTML = """<!doctype html>
       lines.push("本报告是传统命理视角下的结构化参考，不等同于确定事实或人生决策依据；涉及健康、财务、法律等现实问题时，仍应以专业意见和现实证据为准。");
 
       return lines.join("\\n").replace(/\\n{3,}/g, "\\n\\n").trim() + "\\n";
+    }
+
+    function appendHexagramMarkdown(lines, hexagram) {
+      if (!hexagram) {
+        return;
+      }
+      const primary = hexagram.primary || {};
+      const changed = hexagram.changed || {};
+      lines.push("## 卦象参考");
+      if (hexagram.method) {
+        lines.push(`- 起卦方法：${mdText(hexagram.method)}`);
+      }
+      cleanTextList(hexagram.basis).forEach((item) => {
+        lines.push(`- ${mdText(item)}`);
+      });
+      lines.push("");
+      lines.push(`### 本卦：${mdText(primary.name || "-")} ${mdText(primary.symbol || "")}`);
+      appendKeyValue(lines, "卦序", primary.number);
+      appendKeyValue(lines, "上下卦", `${primary.upper || "-"}上${primary.lower || "-"}下`);
+      appendKeyValue(lines, "说明", primary.description);
+      lines.push("");
+      lines.push(`### 变卦：${mdText(changed.name || "-")} ${mdText(changed.symbol || "")}`);
+      appendKeyValue(lines, "卦序", changed.number);
+      appendKeyValue(lines, "上下卦", `${changed.upper || "-"}上${changed.lower || "-"}下`);
+      appendKeyValue(lines, "说明", changed.description);
+      lines.push("");
+      if (hexagram.moving_line_name || hexagram.moving_line_text || hexagram.interpretation) {
+        lines.push(`### ${mdText(hexagram.moving_line_name || "动爻")}爻辞`);
+        if (hexagram.moving_line_text) {
+          lines.push(`> ${mdText(hexagram.moving_line_text)}`);
+        }
+        if (hexagram.interpretation) {
+          lines.push(mdText(hexagram.interpretation));
+        }
+        lines.push("");
+      }
+      appendDetailList(lines, "卦象边界", hexagram.caveats);
     }
 
     function appendInterpretationMarkdown(lines, interpretation) {
@@ -1525,6 +1823,148 @@ INDEX_HTML = """<!doctype html>
       color: #0f5148;
       border-color: #b8d8d0;
     }
+    .hexagram-panel {
+      display: grid;
+      gap: 18px;
+      margin-top: 14px;
+    }
+    .divination-basis {
+      display: grid;
+      gap: 6px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--soft);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .divination-basis strong,
+    .moving-line-card strong,
+    .line-detail-table strong {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .hexagram-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+    .hex-card {
+      min-height: 250px;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 11px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfaf5;
+      break-inside: avoid;
+    }
+    .hex-card-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .hex-lines {
+      display: grid;
+      gap: 6px;
+      width: 112px;
+      margin: 3px auto 5px;
+    }
+    .hex-row {
+      min-height: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+    }
+    .hex-line {
+      height: 7px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+    .hex-line.yang { width: 80px; }
+    .hex-line.yin { width: 35px; }
+    .hex-row.moving .hex-line { background: #6b5812; }
+    .hex-row.moving::after {
+      content: "";
+      width: 11px;
+      height: 11px;
+      border: 2px solid #6b5812;
+      border-radius: 999px;
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #fbfaf5;
+    }
+    .hex-card-name {
+      font-size: 26px;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+    .hex-card-meta {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .hex-arrow {
+      color: var(--muted);
+      font-size: 30px;
+      font-weight: 700;
+    }
+    .moving-line-card {
+      padding: 16px 18px;
+      border-left: 4px solid #8a6810;
+      border-radius: 10px;
+      background: #fff3dc;
+      line-height: 1.85;
+      break-inside: avoid;
+    }
+    .moving-line-card blockquote {
+      margin: 5px 0 6px;
+      font-size: 20px;
+      font-weight: 850;
+    }
+    .line-detail-table {
+      display: grid;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfaf5;
+      break-inside: avoid;
+    }
+    .line-detail-row {
+      display: grid;
+      grid-template-columns: 52px 92px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 11px 14px;
+      border-top: 1px solid var(--line);
+    }
+    .line-detail-row:first-child { border-top: 0; }
+    .line-detail-heading {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .line-detail-heading + .line-detail-row { border-top: 0; }
+    .line-detail-row.is-moving { background: #fff3dc; }
+    .line-mini {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      min-height: 20px;
+      padding-top: 5px;
+    }
+    .line-mini .hex-line { height: 5px; }
+    .line-mini .yang { width: 54px; }
+    .line-mini .yin { width: 24px; }
     .print-tip {
       margin-top: 18px;
       padding: 12px 14px;
@@ -1563,6 +2003,7 @@ INDEX_HTML = """<!doctype html>
       font-weight: 800;
       line-height: 1;
       font-variant-numeric: tabular-nums;
+      padding-bottom: 1px;
     }
     .question {
       margin-top: 6px;
@@ -1611,6 +2052,10 @@ INDEX_HTML = """<!doctype html>
       .page { margin: 0; padding: 24px; border: 0; }
       header { padding: 20px; }
       .meta, .grid, .summary-cards { grid-template-columns: 1fr; }
+      .hexagram-pair { grid-template-columns: 1fr; }
+      .hex-arrow { transform: rotate(90deg); justify-self: center; }
+      .line-detail-row { grid-template-columns: 40px minmax(0, 1fr); }
+      .line-detail-row > div:last-child { grid-column: 1 / -1; }
     }
   </style>
 </head>
@@ -1656,6 +2101,8 @@ INDEX_HTML = """<!doctype html>
       ], "accent")}
       ${htmlElementProfile(report.element_profile)}
     </section>
+
+    ${renderHtmlHexagramSection(report.hexagram)}
 
     <section>
       <h2>咨询记录</h2>
@@ -1756,6 +2203,134 @@ INDEX_HTML = """<!doctype html>
         `<span class="chip">${escapeHtml(item.element)}：${escapeHtml(String(item.count))}（${escapeHtml(item.level)}）</span>`
       ));
       return `<div class="chips">${items.join("")}</div>`;
+    }
+
+    function renderHtmlHexagramSection(hexagram) {
+      const module = renderHexagramModule(hexagram);
+      return module ? `<section><h2>卦象参考</h2>${module}</section>` : "";
+    }
+
+    function renderHexagramPanel(hexagram) {
+      const panel = document.getElementById("hexagramPanel");
+      const content = document.getElementById("hexagramContent");
+      const module = renderHexagramModule(hexagram);
+      if (!module) {
+        panel.hidden = true;
+        content.replaceChildren();
+        return;
+      }
+      content.innerHTML = module;
+      panel.hidden = false;
+    }
+
+    function renderHexagramModule(hexagram) {
+      if (!hexagram || typeof hexagram !== "object") {
+        return "";
+      }
+      const primary = hexagram.primary || {};
+      const changed = hexagram.changed || {};
+      if (!primary.name && !changed.name) {
+        return "";
+      }
+      const basis = cleanTextList(hexagram.basis);
+      const caveats = cleanTextList(hexagram.caveats);
+      return `<div class="hexagram-panel">
+        ${basis.length ? `<div class="divination-basis">
+          <strong>起卦依据${hexagram.method ? `（${escapeHtml(hexagram.method)}）` : ""}</strong>
+          ${basis.map((item) => `<div>${escapeHtml(item)}</div>`).join("")}
+        </div>` : ""}
+        <div class="hexagram-pair">
+          ${renderHexCard(primary, hexagram.moving_line)}
+          <div class="hex-arrow">-></div>
+          ${renderHexCard(changed, hexagram.moving_line)}
+        </div>
+        ${renderMovingLineCard(hexagram)}
+        ${renderLineDetailTable(hexagram)}
+        ${caveats.length ? `<div class="detail"><strong>卦象边界</strong><ul>${caveats.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+      </div>`;
+    }
+
+    function renderHexCard(card, movingLine) {
+      if (!card || typeof card !== "object") {
+        return "";
+      }
+      const title = [card.name, card.symbol].filter(Boolean).join(" ");
+      const meta = [
+        card.number ? `第${card.number}卦` : "",
+        card.upper && card.lower ? `${card.upper}上${card.lower}下` : "",
+        card.description || ""
+      ].filter(Boolean).join(" · ");
+      return `<article class="hex-card">
+        <div class="hex-card-label">${escapeHtml(card.role || "卦象")}</div>
+        ${renderHexLines(card.lines, movingLine)}
+        <div class="hex-card-name">${escapeHtml(title || "-")}</div>
+        <div class="hex-card-meta">${escapeHtml(meta || "-")}</div>
+      </article>`;
+    }
+
+    function renderHexLines(lines, movingLine) {
+      if (!Array.isArray(lines) || !lines.length) {
+        return "";
+      }
+      const rows = lines
+        .map((line, index) => ({line, index: index + 1}))
+        .reverse()
+        .map(({line, index}) => {
+          const movingClass = Number(movingLine) === index ? " moving" : "";
+          return `<div class="hex-row${movingClass}">${renderLineGlyph(line)}</div>`;
+        });
+      return `<div class="hex-lines" aria-label="六爻卦象">${rows.join("")}</div>`;
+    }
+
+    function renderLineGlyph(line) {
+      const type = isYangLine(line) ? "yang" : "yin";
+      if (type === "yang") {
+        return `<span class="hex-line yang"></span>`;
+      }
+      return `<span class="hex-line yin"></span><span class="hex-line yin"></span>`;
+    }
+
+    function isYangLine(line) {
+      return line === "yang" || line === "y" || line === true || line === 1;
+    }
+
+    function renderMovingLineCard(hexagram) {
+      if (!hexagram.moving_line_name && !hexagram.moving_line_text && !hexagram.interpretation) {
+        return "";
+      }
+      return `<section class="moving-line-card">
+        <strong>${escapeHtml(hexagram.moving_line_name || "动爻")}爻辞</strong>
+        ${hexagram.moving_line_text ? `<blockquote>${escapeHtml(hexagram.moving_line_text)}</blockquote>` : ""}
+        ${hexagram.interpretation ? `<p>${escapeHtml(hexagram.interpretation)}</p>` : ""}
+      </section>`;
+    }
+
+    function renderLineDetailTable(hexagram) {
+      const rows = Array.isArray(hexagram.line_details) ? hexagram.line_details : [];
+      if (!rows.length) {
+        return "";
+      }
+      const primaryLines = hexagram.primary?.lines || [];
+      const movingLine = Number(hexagram.moving_line);
+      const content = rows.map((row) => {
+        const index = Number(row.index);
+        const line = primaryLines[index - 1];
+        const movingClass = movingLine === index ? " is-moving" : "";
+        return `<div class="line-detail-row${movingClass}">
+          <strong>${escapeHtml(lineIndexLabel(index))}</strong>
+          <div class="line-mini">${renderLineGlyph(line)}</div>
+          <div>
+            <strong>${escapeHtml(row.name || "")}</strong>
+            ${row.text ? `<p>${escapeHtml(row.text)}</p>` : ""}
+            ${row.note ? `<p class="muted">${escapeHtml(row.note)}</p>` : ""}
+          </div>
+        </div>`;
+      }).join("");
+      return `<section class="line-detail-table"><div class="line-detail-heading"><strong>六爻详释（由下至上）</strong></div>${content}</section>`;
+    }
+
+    function lineIndexLabel(index) {
+      return ["", "初", "二", "三", "四", "五", "上"][index] || String(index || "-");
     }
 
     function htmlListSection(title, values) {
@@ -1993,6 +2568,7 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("hourBranch").textContent = summary.hour_branch || "未知";
       document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
+      renderHexagramPanel(report.hexagram);
       renderElements(report.element_profile || []);
       renderSignalTags(report, intent, inputQuality);
       renderTags("caveats", [
