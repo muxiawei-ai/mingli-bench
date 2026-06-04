@@ -335,6 +335,158 @@ INDEX_HTML = """<!doctype html>
       font-size: 13px;
     }
 
+    .interpretation {
+      display: grid;
+      gap: 16px;
+    }
+
+    .interpretation-head {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .overview {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .answer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .section-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .reading-section {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .reading-section:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .reading-section h3 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .reading-section p {
+      margin: 0;
+      line-height: 1.85;
+      white-space: pre-wrap;
+    }
+
+    .detail-group {
+      display: grid;
+      gap: 6px;
+      margin-top: 2px;
+      padding-left: 12px;
+      border-left: 3px solid var(--line);
+    }
+
+    .detail-group strong {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .detail-group ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .detail-group li {
+      line-height: 1.65;
+    }
+
+    .option-score-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .option-score {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .option-score:first-child {
+      border-top: 0;
+    }
+
+    .option-score strong {
+      color: var(--accent);
+    }
+
+    .option-score p {
+      margin: 0;
+      line-height: 1.7;
+    }
+
+    .boundary-note {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid rgba(138, 90, 0, 0.25);
+      border-radius: var(--radius);
+      background: #fff8e8;
+      color: #4f3909;
+      line-height: 1.7;
+    }
+
+    .boundary-note strong {
+      font-size: 13px;
+    }
+
+    .follow-up-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .follow-up-form textarea {
+      min-height: 74px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .history-item {
+      display: grid;
+      gap: 5px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .history-item strong {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .history-item p {
+      margin: 0;
+      line-height: 1.7;
+    }
+
     .muted {
       color: var(--muted);
     }
@@ -513,6 +665,24 @@ INDEX_HTML = """<!doctype html>
             <div class="panel-body" id="llmResponse"></div>
           </section>
 
+          <section class="panel" id="followUpPanel" hidden>
+            <h2>继续追问</h2>
+            <div class="panel-body">
+              <form id="followUpForm" class="follow-up-form">
+                <label>
+                  基于当前命盘继续问
+                  <textarea id="followUpQuestion" placeholder="例如：事业上更适合稳定路线还是自主发展？"></textarea>
+                </label>
+                <div class="actions">
+                  <button type="submit" id="followUpButton">继续咨询</button>
+                  <button type="button" id="clearFollowUpButton">清空</button>
+                </div>
+                <div id="followUpError" class="error" role="alert"></div>
+              </form>
+              <div id="historyList" class="history-list"></div>
+            </div>
+          </section>
+
           <section class="panel">
             <h2>原始 JSON</h2>
             <div class="panel-body"><pre id="rawJson"></pre></div>
@@ -530,6 +700,18 @@ INDEX_HTML = """<!doctype html>
     const submitButton = document.getElementById("submitButton");
     const resetButton = document.getElementById("resetButton");
     const formError = document.getElementById("formError");
+    const followUpPanel = document.getElementById("followUpPanel");
+    const followUpForm = document.getElementById("followUpForm");
+    const followUpQuestion = document.getElementById("followUpQuestion");
+    const followUpButton = document.getElementById("followUpButton");
+    const followUpError = document.getElementById("followUpError");
+    const clearFollowUpButton = document.getElementById("clearFollowUpButton");
+    const historyList = document.getElementById("historyList");
+
+    let currentChartInput = null;
+    let currentQuestion = "";
+    let currentOverview = "";
+    let conversationTurns = [];
 
     calendarType.addEventListener("change", () => {
       const isLunar = calendarType.value === "lunar";
@@ -541,6 +723,14 @@ INDEX_HTML = """<!doctype html>
       form.reset();
       calendarType.dispatchEvent(new Event("change"));
       formError.textContent = "";
+      followUpError.textContent = "";
+      followUpQuestion.value = "";
+      followUpPanel.hidden = true;
+      historyList.replaceChildren();
+      currentChartInput = null;
+      currentQuestion = "";
+      currentOverview = "";
+      conversationTurns = [];
     });
 
     form.addEventListener("submit", async (event) => {
@@ -559,13 +749,72 @@ INDEX_HTML = """<!doctype html>
         if (!response.ok) {
           throw new Error(data.error?.message || "请求失败");
         }
+        currentChartInput = payload.chart_input;
+        currentQuestion = payload.question;
+        currentOverview = data.interpretation?.overview || "";
+        conversationTurns = [{
+          question: payload.question,
+          overview: currentOverview
+        }];
         renderResult(data);
+        renderHistory();
       } catch (error) {
         formError.textContent = error.message;
       } finally {
         submitButton.disabled = false;
         submitButton.textContent = "生成报告";
       }
+    });
+
+    followUpForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      followUpError.textContent = "";
+      const nextQuestion = followUpQuestion.value.trim();
+      if (!currentChartInput) {
+        followUpError.textContent = "请先生成一次命盘报告";
+        return;
+      }
+      if (!nextQuestion) {
+        followUpError.textContent = "请输入追问内容";
+        return;
+      }
+      followUpButton.disabled = true;
+      followUpButton.textContent = "追问中";
+      try {
+        const payload = {
+          chart_input: currentChartInput,
+          question: buildFollowUpQuestion(nextQuestion)
+        };
+        const response = await fetch("/agent", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error?.message || "请求失败");
+        }
+        currentQuestion = nextQuestion;
+        currentOverview = data.interpretation?.overview || "";
+        conversationTurns.push({
+          question: nextQuestion,
+          overview: currentOverview
+        });
+        renderResult(data);
+        renderHistory();
+        followUpQuestion.value = "";
+      } catch (error) {
+        followUpError.textContent = error.message;
+      } finally {
+        followUpButton.disabled = false;
+        followUpButton.textContent = "继续咨询";
+      }
+    });
+
+    clearFollowUpButton.addEventListener("click", () => {
+      followUpQuestion.value = "";
+      followUpError.textContent = "";
+      followUpQuestion.focus();
     });
 
     function buildPayload() {
@@ -597,6 +846,17 @@ INDEX_HTML = """<!doctype html>
         chart_input: chartInput,
         question: valueOf("question") || "请基于这个八字命盘，给出结构化、审慎的中文命理分析。"
       };
+    }
+
+    function buildFollowUpQuestion(nextQuestion) {
+      const previous = conversationTurns[conversationTurns.length - 1] || {};
+      return [
+        "这是基于同一命盘的继续追问。",
+        `上一轮问题：${previous.question || currentQuestion || "无"}`,
+        `上一轮概览：${previous.overview || currentOverview || "无"}`,
+        `当前追问：${nextQuestion}`,
+        "请直接回答当前追问，并保持结构化、审慎、可读。"
+      ].join("\\n");
     }
 
     function valueOf(id) {
@@ -663,39 +923,163 @@ INDEX_HTML = """<!doctype html>
       const llmPanel = document.getElementById("llmPanel");
       if (data.response) {
         llmPanel.hidden = false;
-        document.getElementById("llmResponse").textContent = formatInterpretation(data.interpretation);
+        renderInterpretation(data.interpretation);
+        followUpPanel.hidden = false;
       } else {
         llmPanel.hidden = true;
+        followUpPanel.hidden = true;
       }
       document.getElementById("rawJson").textContent = JSON.stringify(data, null, 2);
     }
 
-    function formatInterpretation(interpretation) {
+    function renderInterpretation(interpretation) {
+      const container = document.getElementById("llmResponse");
+      container.replaceChildren();
+      container.className = "interpretation";
       if (!interpretation) {
-        return "";
+        container.textContent = "";
+        return;
       }
-      const lines = [
-        `概览：${interpretation.overview || ""}`,
-        `模式：${interpretation.mode || ""}`
-      ];
+
+      const head = document.createElement("div");
+      head.className = "interpretation-head";
+      if (interpretation.overview) {
+        const overview = document.createElement("p");
+        overview.className = "overview";
+        overview.textContent = interpretation.overview;
+        head.appendChild(overview);
+      }
+      const answerRow = document.createElement("div");
+      answerRow.className = "answer-row";
+      if (interpretation.answer_choice) {
+        answerRow.appendChild(makeTag(`结论选项：${interpretation.answer_choice}`));
+      }
+      if (interpretation.answer_confidence !== null && interpretation.answer_confidence !== undefined) {
+        answerRow.appendChild(makeTag(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`));
+      }
+      if (interpretation.mode) {
+        answerRow.appendChild(makeTag(`模式：${interpretation.mode}`));
+      }
+      if (answerRow.children.length) {
+        head.appendChild(answerRow);
+      }
+      head.appendChild(makeBoundaryNote());
+      container.appendChild(head);
+
+      if (interpretation.option_scores && Object.keys(interpretation.option_scores).length) {
+        const optionSection = document.createElement("div");
+        optionSection.className = "reading-section";
+        const title = document.createElement("h3");
+        title.textContent = "选项比较";
+        optionSection.appendChild(title);
+        const list = document.createElement("div");
+        list.className = "option-score-list";
+        Object.entries(interpretation.option_scores).forEach(([letter, value]) => {
+          const row = document.createElement("div");
+          row.className = "option-score";
+          const score = document.createElement("strong");
+          score.textContent = `${letter} · ${formatScore(value?.score)}`;
+          const rationale = document.createElement("p");
+          rationale.textContent = value?.rationale || "暂无理由";
+          row.append(score, rationale);
+          list.appendChild(row);
+        });
+        optionSection.appendChild(list);
+        container.appendChild(optionSection);
+      }
+
+      const sectionList = document.createElement("div");
+      sectionList.className = "section-list";
       (interpretation.sections || []).forEach((section) => {
-        lines.push("", `【${section.title || "未命名段落"}】`, section.summary || "");
-        if (section.evidence?.length) {
-          lines.push(`依据：${section.evidence.join("；")}`);
-        }
-        if (section.caveats?.length) {
-          lines.push(`限制：${section.caveats.join("；")}`);
-        }
+        sectionList.appendChild(renderReadingSection(section));
       });
+      if (sectionList.children.length) {
+        container.appendChild(sectionList);
+      }
+
       if (interpretation.follow_up_questions?.length) {
-        lines.push("", "建议追问：");
-        interpretation.follow_up_questions.forEach((item) => lines.push(`- ${item}`));
+        container.appendChild(renderDetailBlock("建议追问", interpretation.follow_up_questions));
       }
       if (interpretation.caveats?.length) {
-        lines.push("", "整体限制：");
-        interpretation.caveats.forEach((item) => lines.push(`- ${item}`));
+        container.appendChild(renderDetailBlock("整体边界", interpretation.caveats));
       }
-      return lines.join("\\n");
+    }
+
+    function renderReadingSection(section) {
+      const block = document.createElement("article");
+      block.className = "reading-section";
+      const title = document.createElement("h3");
+      title.textContent = section.title || "未命名段落";
+      const summary = document.createElement("p");
+      summary.textContent = section.summary || "";
+      block.append(title, summary);
+      if (section.evidence?.length) {
+        block.appendChild(renderDetailBlock("依据", section.evidence));
+      }
+      if (section.caveats?.length) {
+        block.appendChild(renderDetailBlock("限制", section.caveats));
+      }
+      return block;
+    }
+
+    function renderDetailBlock(title, items) {
+      const block = document.createElement("div");
+      block.className = "detail-group";
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      const list = document.createElement("ul");
+      (items || []).filter(Boolean).forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+      block.append(heading, list);
+      return block;
+    }
+
+    function makeBoundaryNote() {
+      const note = document.createElement("div");
+      note.className = "boundary-note";
+      const title = document.createElement("strong");
+      title.textContent = "解读边界";
+      const text = document.createElement("div");
+      text.textContent = "以下内容是传统命理视角下的结构化参考，不等同于确定事实或人生决策依据；涉及健康、财务、法律等现实问题时，仍应以专业意见和现实证据为准。";
+      note.append(title, text);
+      return note;
+    }
+
+    function makeTag(text) {
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = text;
+      return tag;
+    }
+
+    function formatPercent(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${Math.round(number * 100)}%` : "-";
+    }
+
+    function formatScore(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? number.toFixed(2) : "-";
+    }
+
+    function renderHistory() {
+      historyList.replaceChildren();
+      conversationTurns.slice(-4).forEach((turn, index) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+        const label = document.createElement("strong");
+        label.textContent = index === 0 && conversationTurns.length <= 4 ? "初始问题" : "追问";
+        const question = document.createElement("p");
+        question.textContent = turn.question;
+        const overview = document.createElement("p");
+        overview.className = "muted";
+        overview.textContent = turn.overview || "暂无概览";
+        item.append(label, question, overview);
+        historyList.appendChild(item);
+      });
     }
 
     function renderElements(profile) {

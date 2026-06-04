@@ -58,6 +58,9 @@ class LocalApiTests(unittest.TestCase):
                 html = response.read().decode("utf-8")
             self.assertIn("MingLi Agent", html)
             self.assertIn("agentForm", html)
+            self.assertIn("followUpForm", html)
+            self.assertIn("继续追问", html)
+            self.assertIn("解读边界", html)
 
             body = json.dumps(
                 {
