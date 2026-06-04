@@ -41,6 +41,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - deterministic event-year branch-interaction diagnostics,
   - text-derived A-D option semantic diagnostics,
   - local candidate-year scoring diagnostics and scoring variants for timing questions,
+  - deterministic Meihua-style time hexagram generation for report modules,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

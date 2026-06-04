@@ -7,6 +7,7 @@ from .calendar import hour_branch, parse_bazi_pillars
 from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
 from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
+from .hexagram import build_time_hexagram, lookup_hexagram
 from .bazi import (
     bazi_from_birth_info,
     bazi_from_gregorian,
@@ -43,12 +44,14 @@ __all__ = [
     "build_bazi_chart",
     "build_candidate_year_scores",
     "build_interpretation_prompt",
+    "build_time_hexagram",
     "day_pillar_for_date",
     "extract_options",
     "get_chart_summary",
     "hour_branch",
     "infer_timing_focus",
     "hour_pillar_for_datetime",
+    "lookup_hexagram",
     "month_pillar_for_datetime",
     "parse_bazi_pillars",
     "parse_chinese_lunar_date",

@@ -36,6 +36,9 @@ class LocalApiTests(unittest.TestCase):
             }
         )
         self.assertEqual(response["report"]["summary"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertEqual(response["report"]["hexagram"]["primary"]["name"], "临卦")
+        self.assertEqual(response["report"]["hexagram"]["changed"]["name"], "复卦")
+        self.assertEqual(response["report"]["hexagram"]["moving_line_name"], "九二")
         self.assertEqual(response["intent"]["primary_domain"], "事业")
         self.assertIn("llm_not_called", response["warnings"])
         trace = {stage["name"]: stage for stage in response["trace"]}

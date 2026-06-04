@@ -63,6 +63,10 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("branch_interactions", prompt)
         self.assertIn("不要自行编造三合、三会、六合、六冲名称", prompt)
         self.assertIn("report.option_semantics", prompt)
+        self.assertIn("report.hexagram", prompt)
+        self.assertIn("不要自行重新起卦", prompt)
+        self.assertIn('"primary": {', prompt)
+        self.assertIn('"name": "临卦"', prompt)
 
     def test_build_interpretation_prompt_includes_event_branch_interactions(self):
         chart = build_bazi_chart(
@@ -186,6 +190,7 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.trace[-2].status, "skipped")
         self.assertEqual(result.interpretation.mode, "local")
         self.assertIn("性格问题路由", result.interpretation.to_markdown())
+        self.assertIn("卦象参考", result.interpretation.to_markdown())
         self.assertIn("trace", result.as_dict())
         self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())
@@ -288,6 +293,7 @@ class MingLiAgentTests(unittest.TestCase):
         trace = {stage.name: stage.as_dict() for stage in result.trace}
         self.assertEqual(trace["intent"]["data"]["primary_domain"], "事业")
         self.assertEqual(trace["chart"]["data"]["pillars_text"], "戊午 丙辰 丁酉 己酉")
+        self.assertTrue(trace["report"]["data"]["has_hexagram"])
         self.assertGreater(trace["prompt"]["data"]["prompt_chars"], 1000)
         self.assertEqual(trace["llm"]["warnings"], ["llm_not_called"])
         self.assertEqual(trace["interpretation"]["data"]["mode"], "local")

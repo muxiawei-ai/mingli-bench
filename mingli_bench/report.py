@@ -10,6 +10,7 @@ from .bazi import year_pillar_for_date
 from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
+from .hexagram import build_time_hexagram
 from .option_semantics import analyze_option_semantics
 from .relations import analyze_branch_interactions
 
@@ -50,6 +51,7 @@ class ChartReport:
     event_years: List[Dict[str, Any]]
     option_semantics: List[Dict[str, Any]]
     candidate_year_scores: List[Dict[str, Any]]
+    hexagram: Optional[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
 
@@ -64,6 +66,7 @@ class ChartReport:
             "event_years": self.event_years,
             "option_semantics": self.option_semantics,
             "candidate_year_scores": self.candidate_year_scores,
+            "hexagram": self.hexagram,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
         }
@@ -144,6 +147,27 @@ class ChartReport:
                     f"- {item['letter']}: {item['year']} "
                     f"score={item['score']} rank={item['rank']}"
                 )
+
+        if self.hexagram:
+            primary = self.hexagram.get("primary") or {}
+            changed = self.hexagram.get("changed") or {}
+            lines.extend(["", "### 卦象参考"])
+            lines.append(f"- 起卦方法: {self.hexagram.get('method')}")
+            lines.append(
+                "- 本卦: "
+                f"{primary.get('name')} {primary.get('symbol')} "
+                f"第{primary.get('number')}卦"
+            )
+            lines.append(
+                "- 变卦: "
+                f"{changed.get('name')} {changed.get('symbol')} "
+                f"第{changed.get('number')}卦"
+            )
+            lines.append(
+                "- 动爻: "
+                f"第{self.hexagram.get('moving_line')}爻 "
+                f"({self.hexagram.get('moving_line_name')})"
+            )
 
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
@@ -238,6 +262,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         event_years,
         option_semantics,
     )
+    hexagram = build_time_hexagram(chart)
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(
@@ -250,6 +275,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         event_years=event_years,
         option_semantics=option_semantics,
         candidate_year_scores=candidate_year_scores,
+        hexagram=hexagram,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )

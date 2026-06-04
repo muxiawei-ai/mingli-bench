@@ -100,7 +100,7 @@ def build_interpretation_prompt(
     if candidate_year_diagnostics:
         report_for_prompt["candidate_year_diagnostics"] = candidate_year_diagnostics
         candidate_year_instruction = "\n如果本地 report.candidate_year_diagnostics 提供了 activation_weighted 候选年份诊断，请只把它当作本地规则参考，不要把它当作标准答案；必须仍然逐项比较所有选项，并说明采纳或不采纳该诊断 top 候选的理由。"
-        candidate_year_requirement = "\n12. 对候选年份题，可以引用本地 report.candidate_year_diagnostics 中的 activation_rank、activation_score、interaction_labels 和 matched_positions 作为辅助诊断；这些字段不是答案，不能代替你对四柱、流年和题意的独立比较。"
+        candidate_year_requirement = "\n13. 对候选年份题，可以引用本地 report.candidate_year_diagnostics 中的 activation_rank、activation_score、interaction_labels 和 matched_positions 作为辅助诊断；这些字段不是答案，不能代替你对四柱、流年和题意的独立比较。"
     report_json = json.dumps(report_for_prompt, ensure_ascii=False, indent=2)
     chart_json = json.dumps(chart.as_dict(), ensure_ascii=False, indent=2)
     return f"""你是一个中文命理分析 Agent。
@@ -111,6 +111,7 @@ def build_interpretation_prompt(
 如果本地 report.event_years 提供了题目年份的 year_pillar，请直接使用该流年干支，不要自行重算或猜测年份干支。
 如果本地 report.event_years 提供了 branch_interactions，请直接引用其中的 label，不要自行编造三合、三会、六合、六冲名称。
 如果本地 report.option_semantics 提供了选项事件类型，请只把它当作选项文字的语义标签，不要把它当作标准答案或命理加分依据。
+如果本地 report.hexagram 提供了卦象结构，请只引用其中的本卦、变卦、动爻和起卦依据；不要自行重新起卦，也不要补造经典爻辞。
 {candidate_year_instruction}
 intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_domain 和 section_hints 组织回答。
 
@@ -126,6 +127,7 @@ intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_doma
 9. 对题目中出现的年份，优先引用本地 report.event_years 中的 year_pillar、age 和 nominal_age；不要把 1996、2008、2020 等年份误写成其他干支。
 10. 对流年地支关系，优先引用本地 report.event_years.branch_interactions 中的 label 和 element；如果没有对应关系，请说明本地规则未检出主要冲合会合。
 11. 对 A/B/C/D 选项，可以引用本地 report.option_semantics 中的 primary_event_type、labels 和 matched_keywords 来说明选项文字含义；评分必须来自 chart/report 的干支、流年、地支关系与选项文本的直接对应。不要因为标签中出现婚恋、财运、健康或意外就自动加分，也不要只因为“意外”“车祸”等词更具体就选择它。
+12. 如果引用卦象，只能引用本地 report.hexagram 的确定性字段；当前版本爻辞库待补充时，需要说明该限制，不要把解释写成经典爻辞原文。
 {candidate_year_requirement}
 
 JSON 输出契约：
@@ -257,6 +259,7 @@ class MingLiAgent:
                 data={
                     "strongest_elements": list(report.strongest_elements),
                     "missing_elements": list(report.missing_elements),
+                    "has_hexagram": report.hexagram is not None,
                     "caveat_count": len(report.caveats),
                     "follow_up_count": len(report.follow_up_questions),
                 },

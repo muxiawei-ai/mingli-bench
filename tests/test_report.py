@@ -54,7 +54,13 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.strongest_elements, ["火", "土"])
         self.assertEqual(report.missing_elements, ["木", "水"])
         self.assertTrue(report.input_quality["has_birth_time"])
+        self.assertIsNotNone(report.hexagram)
+        assert report.hexagram is not None
+        self.assertEqual(report.hexagram["primary"]["name"], "临卦")
+        self.assertEqual(report.hexagram["changed"]["name"], "复卦")
+        self.assertEqual(report.hexagram["moving_line_name"], "九二")
         self.assertIn("本地报告只整理排盘结构", report.to_markdown())
+        self.assertIn("卦象参考", report.to_markdown())
 
     def test_build_chart_report_extracts_event_years(self):
         chart = build_bazi_chart(
@@ -160,6 +166,7 @@ class ChartReportTests(unittest.TestCase):
         )
         report = build_chart_report(chart, "")
         self.assertFalse(report.input_quality["has_birth_time"])
+        self.assertIsNone(report.hexagram)
         self.assertGreaterEqual(len(report.follow_up_questions), 2)
         self.assertIn("出生时间未知", "\n".join(report.caveats))
 

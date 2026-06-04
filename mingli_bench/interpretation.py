@@ -178,6 +178,15 @@ def build_local_interpretation(
                 ],
             )
         )
+    if report.hexagram:
+        sections.append(
+            InterpretationSection(
+                title="卦象参考",
+                summary=_hexagram_summary(report),
+                evidence=_hexagram_evidence(report),
+                caveats=list(report.hexagram.get("caveats") or []),
+            )
+        )
     sections.append(
         InterpretationSection(
             title="输入质量",
@@ -282,6 +291,35 @@ def _input_quality_summary(report: ChartReport) -> str:
         f"历法来源为 {report.input_quality.get('calendar_source')}，"
         f"时区为 {report.input_quality.get('timezone')}，出生时间{time_text}。"
     )
+
+
+def _hexagram_summary(report: ChartReport) -> str:
+    hexagram = report.hexagram or {}
+    primary = hexagram.get("primary") or {}
+    changed = hexagram.get("changed") or {}
+    return (
+        f"本地梅花易数时间法生成本卦《{primary.get('name', '-')}》"
+        f"（{primary.get('description', '-')}），"
+        f"动{hexagram.get('moving_line_name', '-')}，"
+        f"变卦为《{changed.get('name', '-')}》"
+        f"（{changed.get('description', '-')}）。"
+    )
+
+
+def _hexagram_evidence(report: ChartReport) -> List[str]:
+    hexagram = report.hexagram or {}
+    evidence = [str(item) for item in hexagram.get("basis") or []]
+    source = hexagram.get("number_source") or {}
+    if source:
+        evidence.append(
+            "number_source="
+            + ",".join(
+                f"{key}:{value}"
+                for key, value in source.items()
+                if value is not None
+            )
+        )
+    return evidence
 
 
 def _event_years_summary(report: ChartReport) -> str:
