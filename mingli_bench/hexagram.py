@@ -373,7 +373,7 @@ def _line_details(
 def _hexagram_caveats(chart: BaziChart, date_source: str) -> List[str]:
     caveats = [
         "卦象由本地梅花易数时间法规则生成，不代表确定事实。",
-        "当前版本已接入首批卦辞/爻辞资料；未覆盖卦仍会显示待补充。",
+        "当前版本已接入 64 卦基础卦辞/爻辞资料；细分断语仍需结合问题语境。",
     ]
     if date_source == "solar_input_proxy":
         caveats.append("当前为公历输入，月日数暂按公历月日代入；未来接入完整农历引擎后可改用农历月日。")

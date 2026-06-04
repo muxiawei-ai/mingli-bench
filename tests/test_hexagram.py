@@ -50,12 +50,13 @@ class HexagramTests(unittest.TestCase):
         self.assertEqual(hexagram["line_details"][1]["text"], "咸临，吉，无不利。")
         self.assertIn("公历输入", "\n".join(hexagram["caveats"]))
 
-    def test_lookup_uncovered_hexagram_preserves_pending_text_status(self):
+    def test_lookup_all_valid_hexagrams_have_text_source(self):
         hexagram = lookup_hexagram("乾", "兑", role="本卦")
 
         self.assertEqual(hexagram["name"], "履卦")
-        self.assertIsNone(hexagram["judgment"])
-        self.assertEqual(hexagram["text_source"], "pending")
+        self.assertEqual(hexagram["judgment"], "履虎尾，不咥人，亨。")
+        self.assertEqual(hexagram["text_source"], "zhouyi_classic.v1")
+        self.assertEqual(hexagram["text_coverage"], "full_64")
 
     def test_time_hexagram_requires_birth_hour(self):
         chart = build_bazi_chart(

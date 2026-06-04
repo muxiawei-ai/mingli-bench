@@ -8,7 +8,7 @@ from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
 from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
 from .hexagram import build_time_hexagram, lookup_hexagram
-from .hexagram_data import get_hexagram_text, get_line_text
+from .hexagram_data import get_hexagram_text, get_line_text, validate_hexagram_texts
 from .bazi import (
     bazi_from_birth_info,
     bazi_from_gregorian,
@@ -63,6 +63,7 @@ __all__ = [
     "solar_month_branch_for_datetime",
     "solar_term_datetime",
     "solar_from_lunar_date",
+    "validate_hexagram_texts",
     "year_pillar_for_date",
     "year_pillar_for_datetime",
 ]
