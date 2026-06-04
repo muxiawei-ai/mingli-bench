@@ -99,6 +99,31 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertEqual(interpretation.overview, "双重编码也应解析")
         self.assertEqual(interpretation.sections[0].summary, "不是原始 JSON 字符串")
 
+    def test_parse_json_with_literal_newlines_and_trailing_commas(self):
+        response = """{
+  "schema_version": "mingli_interpretation.v1",
+  "overview": "第一行
+第二行",
+  "sections": [
+    {
+      "title": "追问分析",
+      "summary": "第一段
+第二段",
+      "evidence": ["event_year=2026",],
+      "caveats": [],
+    },
+  ],
+  "follow_up_questions": [],
+  "caveats": [],
+}"""
+
+        interpretation = parse_interpretation_response(response, self.report)
+
+        self.assertEqual(interpretation.mode, "llm_json")
+        self.assertTrue(interpretation.parsed_from_response)
+        self.assertEqual(interpretation.overview, "第一行\n第二行")
+        self.assertEqual(interpretation.sections[0].summary, "第一段\n第二段")
+
     def test_parse_plain_text_response_falls_back(self):
         interpretation = parse_interpretation_response("普通文本解读", self.report)
         self.assertEqual(interpretation.mode, "llm_text")

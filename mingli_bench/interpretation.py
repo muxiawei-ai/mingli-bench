@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -354,7 +355,7 @@ def _load_json_object(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _loads_json_object_candidate(text: str, *, max_depth: int = 2) -> Optional[Dict[str, Any]]:
+def _loads_json_object_candidate(text: str, *, max_depth: int = 3) -> Optional[Dict[str, Any]]:
     """Parse a JSON object, including common double-encoded model responses."""
 
     current: Any = text
@@ -363,11 +364,63 @@ def _loads_json_object_candidate(text: str, *, max_depth: int = 2) -> Optional[D
             return current
         if not isinstance(current, str):
             return None
-        try:
-            current = json.loads(current.strip())
-        except json.JSONDecodeError:
+        current = _loads_json_value(current)
+        if current is None:
             return None
     return current if isinstance(current, dict) else None
+
+
+def _loads_json_value(text: str) -> Optional[Any]:
+    """Load JSON with small repairs for common model formatting slips."""
+
+    cleaned = text.strip()
+    for candidate in (
+        cleaned,
+        _escape_control_chars_in_json_strings(cleaned),
+        _remove_trailing_commas(cleaned),
+        _remove_trailing_commas(_escape_control_chars_in_json_strings(cleaned)),
+    ):
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _escape_control_chars_in_json_strings(text: str) -> str:
+    """Escape literal newlines/tabs when a model leaves them inside JSON strings."""
+
+    result = []
+    in_string = False
+    escape = False
+    for char in text:
+        if escape:
+            result.append(char)
+            escape = False
+            continue
+        if char == "\\":
+            result.append(char)
+            escape = True
+            continue
+        if char == '"':
+            result.append(char)
+            in_string = not in_string
+            continue
+        if in_string and char == "\n":
+            result.append("\\n")
+            continue
+        if in_string and char == "\r":
+            result.append("\\r")
+            continue
+        if in_string and char == "\t":
+            result.append("\\t")
+            continue
+        result.append(char)
+    return "".join(result)
+
+
+def _remove_trailing_commas(text: str) -> str:
+    return re.sub(r",\s*([}\]])", r"\1", text)
 
 
 def _section_from_mapping(payload: Any) -> InterpretationSection:

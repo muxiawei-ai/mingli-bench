@@ -1010,19 +1010,84 @@ INDEX_HTML = """<!doctype html>
     }
 
     function normalizeInterpretation(interpretation) {
+      if (typeof interpretation === "string") {
+        const embedded = parseEmbeddedJsonObject(interpretation);
+        if (embedded?.sections) {
+          return normalizeInterpretation({
+            ...embedded,
+            mode: embedded.mode || "llm_json",
+            parsed_from_response: true,
+            raw_response: interpretation
+          });
+        }
+        return {
+          schema_version: "mingli_interpretation.v1",
+          mode: "llm_text",
+          overview: cleanDisplayText(
+            interpretation,
+            "模型返回了未完全解析的结构化文本，以下先按本地排盘信号整理。"
+          ),
+          sections: [],
+          follow_up_questions: [],
+          caveats: ["llm_response_not_valid_json"],
+          parsed_from_response: false,
+          raw_response: interpretation
+        };
+      }
       if (!interpretation || typeof interpretation !== "object") {
         return interpretation;
       }
-      const embedded = parseEmbeddedJsonObject(interpretation.overview);
-      if (!embedded || !embedded.sections) {
+      const sources = [
+        interpretation.overview,
+        interpretation.raw_response,
+        ...(interpretation.sections || []).map((section) => section?.summary)
+      ];
+      for (const source of sources) {
+        const embedded = parseEmbeddedJsonObject(source);
+        if (embedded?.sections) {
+          return sanitizeInterpretation({
+            ...interpretation,
+            ...embedded,
+            mode: embedded.mode || "llm_json",
+            parsed_from_response: true,
+            raw_response: interpretation.raw_response || source
+          });
+        }
+      }
+      return sanitizeInterpretation(interpretation);
+    }
+
+    function sanitizeInterpretation(interpretation) {
+      if (!interpretation || typeof interpretation !== "object") {
         return interpretation;
       }
       return {
         ...interpretation,
-        ...embedded,
-        mode: embedded.mode || "llm_json",
-        parsed_from_response: true,
-        raw_response: interpretation.raw_response || interpretation.overview
+        overview: cleanDisplayText(
+          interpretation.overview,
+          "模型返回了结构化内容，已按下方段落整理。"
+        ),
+        sections: (interpretation.sections || []).map(normalizeSection),
+        follow_up_questions: cleanTextList(interpretation.follow_up_questions),
+        caveats: cleanTextList(interpretation.caveats)
+      };
+    }
+
+    function normalizeSection(section) {
+      if (!section || typeof section !== "object") {
+        return {
+          title: "未命名段落",
+          summary: cleanDisplayText(section, ""),
+          evidence: [],
+          caveats: []
+        };
+      }
+      return {
+        ...section,
+        title: cleanDisplayText(section.title, "未命名段落"),
+        summary: cleanDisplayText(section.summary, ""),
+        evidence: cleanTextList(section.evidence),
+        caveats: cleanTextList(section.caveats)
       };
     }
 
@@ -1055,13 +1120,100 @@ INDEX_HTML = """<!doctype html>
         if (typeof current !== "string") {
           return null;
         }
-        try {
-          current = JSON.parse(current.trim());
-        } catch (_error) {
+        current = tryParseJson(current);
+        if (current === null) {
           return null;
         }
       }
       return current && typeof current === "object" && !Array.isArray(current) ? current : null;
+    }
+
+    function tryParseJson(value) {
+      const cleaned = value.trim();
+      const candidates = [
+        cleaned,
+        escapeControlCharsInJsonStrings(cleaned),
+        removeTrailingCommas(cleaned),
+        removeTrailingCommas(escapeControlCharsInJsonStrings(cleaned))
+      ];
+      for (const candidate of candidates) {
+        try {
+          return JSON.parse(candidate);
+        } catch (_error) {
+          // Try the next lenient candidate.
+        }
+      }
+      return null;
+    }
+
+    function escapeControlCharsInJsonStrings(value) {
+      let result = "";
+      let inString = false;
+      let escaped = false;
+      for (const char of value) {
+        if (escaped) {
+          result += char;
+          escaped = false;
+          continue;
+        }
+        if (char === "\\\\") {
+          result += char;
+          escaped = true;
+          continue;
+        }
+        if (char === '"') {
+          result += char;
+          inString = !inString;
+          continue;
+        }
+        if (inString && char === "\\n") {
+          result += "\\\\n";
+          continue;
+        }
+        if (inString && char === "\\r") {
+          result += "\\\\r";
+          continue;
+        }
+        if (inString && char === "\\t") {
+          result += "\\\\t";
+          continue;
+        }
+        result += char;
+      }
+      return result;
+    }
+
+    function removeTrailingCommas(value) {
+      return value.replace(/,\\s*([}\\]])/g, "$1");
+    }
+
+    function cleanDisplayText(value, fallback) {
+      if (value === null || value === undefined) {
+        return fallback;
+      }
+      const text = String(value).trim();
+      if (!text) {
+        return fallback;
+      }
+      if (looksLikeRawJsonText(text)) {
+        return fallback;
+      }
+      return text.replace(/\\\\n/g, "\\n").replace(/\\\\t/g, "\\t");
+    }
+
+    function cleanTextList(value) {
+      const items = Array.isArray(value) ? value : (value ? [value] : []);
+      return items
+        .map((item) => cleanDisplayText(item, ""))
+        .filter(Boolean);
+    }
+
+    function looksLikeRawJsonText(text) {
+      const trimmed = text.trim();
+      return (
+        trimmed.startsWith("{") &&
+        (trimmed.includes('"schema_version"') || trimmed.includes('"sections"'))
+      );
     }
 
     function renderInterpretation(interpretation) {
@@ -1072,6 +1224,7 @@ INDEX_HTML = """<!doctype html>
     }
 
     function appendInterpretationContent(container, interpretation, options = {}) {
+      interpretation = normalizeInterpretation(interpretation);
       if (!interpretation) {
         container.textContent = "";
         return;
@@ -1227,6 +1380,7 @@ INDEX_HTML = """<!doctype html>
 
         const body = document.createElement("div");
         body.className = "history-body";
+        turn.interpretation = normalizeInterpretation(turn.interpretation);
         appendInterpretationContent(body, turn.interpretation, {includeBoundary: false});
         item.append(summary, body);
         historyList.appendChild(item);
