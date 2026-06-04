@@ -234,10 +234,21 @@ INDEX_HTML = """<!doctype html>
       color: var(--accent-ink);
     }
 
+    .button-primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
     button[type="button"] {
       background: var(--surface-soft);
       color: var(--ink);
       border-color: var(--line);
+    }
+
+    button[type="button"].button-primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-color: transparent;
     }
 
     button:disabled {
@@ -361,6 +372,20 @@ INDEX_HTML = """<!doctype html>
       background: #eeeeea;
       color: var(--muted);
       border: 1px solid var(--line);
+    }
+
+    .export-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .export-status {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
     }
 
     .interpretation {
@@ -717,6 +742,17 @@ INDEX_HTML = """<!doctype html>
             <div class="metric"><span>问题方向</span><strong id="intentDomain">-</strong></div>
           </div>
 
+          <section class="panel" id="exportPanel">
+            <h2>报告导出</h2>
+            <div class="panel-body">
+              <div class="export-row">
+                <button type="button" id="copyMarkdownButton" class="button-primary">复制 Markdown</button>
+                <button type="button" id="downloadMarkdownButton">下载 .md</button>
+                <span id="exportStatus" class="export-status" role="status"></span>
+              </div>
+            </div>
+          </section>
+
           <section class="panel">
             <h2>五行分布</h2>
             <div class="panel-body">
@@ -785,10 +821,16 @@ INDEX_HTML = """<!doctype html>
     const followUpError = document.getElementById("followUpError");
     const clearFollowUpButton = document.getElementById("clearFollowUpButton");
     const historyList = document.getElementById("historyList");
+    const copyMarkdownButton = document.getElementById("copyMarkdownButton");
+    const downloadMarkdownButton = document.getElementById("downloadMarkdownButton");
+    const exportStatus = document.getElementById("exportStatus");
+    const serviceStatus = document.getElementById("serviceStatus");
 
     let currentChartInput = null;
     let currentQuestion = "";
     let currentOverview = "";
+    let latestResultData = null;
+    let reportGeneratedAt = null;
     let conversationTurns = [];
 
     calendarType.addEventListener("change", () => {
@@ -808,7 +850,10 @@ INDEX_HTML = """<!doctype html>
       currentChartInput = null;
       currentQuestion = "";
       currentOverview = "";
+      latestResultData = null;
+      reportGeneratedAt = null;
       conversationTurns = [];
+      setExportStatus("");
     });
 
     form.addEventListener("submit", async (event) => {
@@ -828,6 +873,8 @@ INDEX_HTML = """<!doctype html>
           throw new Error(data.error?.message || "请求失败");
         }
         data.interpretation = normalizeInterpretation(data.interpretation);
+        latestResultData = data;
+        reportGeneratedAt = new Date();
         currentChartInput = payload.chart_input;
         currentQuestion = payload.question;
         currentOverview = data.interpretation?.overview || "";
@@ -875,6 +922,7 @@ INDEX_HTML = """<!doctype html>
           throw new Error(data.error?.message || "请求失败");
         }
         data.interpretation = normalizeInterpretation(data.interpretation);
+        latestResultData = data;
         currentQuestion = nextQuestion;
         currentOverview = data.interpretation?.overview || "";
         conversationTurns.push({
@@ -898,6 +946,238 @@ INDEX_HTML = """<!doctype html>
       followUpError.textContent = "";
       followUpQuestion.focus();
     });
+
+    copyMarkdownButton.addEventListener("click", async () => {
+      const markdown = buildMarkdownReport();
+      if (!markdown) {
+        setExportStatus("暂无可导出的报告");
+        return;
+      }
+      try {
+        await copyText(markdown);
+        setExportStatus("已复制");
+      } catch (_error) {
+        setExportStatus("复制失败");
+      }
+    });
+
+    downloadMarkdownButton.addEventListener("click", () => {
+      const markdown = buildMarkdownReport();
+      if (!markdown) {
+        setExportStatus("暂无可导出的报告");
+        return;
+      }
+      const blob = new Blob([markdown], {type: "text/markdown;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `mingli-report-${dateSlug(new Date())}.md`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportStatus("已下载");
+    });
+
+    function buildMarkdownReport() {
+      if (!latestResultData || !conversationTurns.length) {
+        return "";
+      }
+
+      const data = latestResultData;
+      const report = data.report || {};
+      const summary = report.summary || {};
+      const inputQuality = report.input_quality || {};
+      const chartInput = currentChartInput || {};
+      const lines = [];
+
+      lines.push("# MingLi Agent 本地命盘报告", "");
+      lines.push(`生成时间：${formatDateTime(reportGeneratedAt || new Date())}`);
+      lines.push(`导出时间：${formatDateTime(new Date())}`);
+      lines.push(`模型：${mdText(serviceStatus.textContent || "-")}`, "");
+
+      lines.push("## 出生信息");
+      appendKeyValue(lines, "日期类型", chartInput.calendar_type === "lunar" ? "农历" : "公历");
+      appendKeyValue(lines, "出生日期", formatBirthDate(chartInput));
+      appendKeyValue(lines, "出生时间", formatBirthTime(chartInput));
+      appendKeyValue(lines, "性别", chartInput.gender);
+      appendKeyValue(lines, "国家/地区", chartInput.country);
+      appendKeyValue(lines, "出生地", chartInput.location);
+      appendKeyValue(lines, "时区", inputQuality.timezone);
+      lines.push("");
+
+      lines.push("## 命盘摘要");
+      appendKeyValue(lines, "四柱", summary.pillars_text);
+      appendKeyValue(lines, "日主", `${summary.day_master || "-"}（${summary.day_master_element || "未知"}）`);
+      appendKeyValue(lines, "时辰", summary.hour_branch || "未知");
+      appendKeyValue(lines, "问题方向", data.intent?.primary_domain);
+      appendList(lines, "相对较多", report.strongest_elements);
+      appendList(lines, "未见五行", report.missing_elements);
+      lines.push("");
+
+      if (Array.isArray(report.element_profile) && report.element_profile.length) {
+        lines.push("## 五行分布");
+        report.element_profile.forEach((item) => {
+          lines.push(`- ${mdText(item.element)}：${item.count}（${mdText(item.level)}）`);
+        });
+        lines.push("");
+      }
+
+      conversationTurns.forEach((turn, index) => {
+        const interpretation = normalizeInterpretation(turn.interpretation);
+        lines.push(index === 0 ? "## 初始问题" : `## 追问 ${index}`);
+        lines.push(`**问题：** ${mdText(turn.question)}`, "");
+        appendInterpretationMarkdown(lines, interpretation);
+        lines.push("");
+      });
+
+      if (Array.isArray(report.caveats) && report.caveats.length) {
+        appendDetailList(lines, "## 输入与限制", report.caveats);
+      }
+
+      lines.push("## 解读边界");
+      lines.push("本报告是传统命理视角下的结构化参考，不等同于确定事实或人生决策依据；涉及健康、财务、法律等现实问题时，仍应以专业意见和现实证据为准。");
+
+      return lines.join("\\n").replace(/\\n{3,}/g, "\\n\\n").trim() + "\\n";
+    }
+
+    function appendInterpretationMarkdown(lines, interpretation) {
+      if (!interpretation) {
+        return;
+      }
+      if (interpretation.overview) {
+        lines.push(mdText(interpretation.overview), "");
+      }
+      const meta = [];
+      if (interpretation.answer_choice) {
+        meta.push(`结论选项：${interpretation.answer_choice}`);
+      }
+      if (interpretation.answer_confidence !== null && interpretation.answer_confidence !== undefined) {
+        meta.push(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`);
+      }
+      if (interpretation.mode) {
+        meta.push(`模式：${interpretation.mode}`);
+      }
+      if (meta.length) {
+        lines.push(meta.map((item) => `\`${mdText(item)}\``).join(" "), "");
+      }
+
+      if (interpretation.option_scores && Object.keys(interpretation.option_scores).length) {
+        lines.push("### 选项比较");
+        Object.entries(interpretation.option_scores).forEach(([letter, value]) => {
+          lines.push(`- ${letter}：${formatScore(value?.score)} - ${mdText(value?.rationale || "暂无理由")}`);
+        });
+        lines.push("");
+      }
+
+      (interpretation.sections || []).forEach((section) => {
+        lines.push(`### ${mdText(section.title || "未命名段落")}`);
+        if (section.summary) {
+          lines.push(mdText(section.summary));
+        }
+        appendDetailList(lines, "依据", section.evidence);
+        appendDetailList(lines, "限制", section.caveats);
+        lines.push("");
+      });
+      appendDetailList(lines, "建议追问", interpretation.follow_up_questions);
+      appendDetailList(lines, "整体边界", interpretation.caveats);
+    }
+
+    function appendKeyValue(lines, label, value) {
+      const text = mdText(value || "未提供");
+      lines.push(`- ${label}：${text}`);
+    }
+
+    function appendList(lines, label, values) {
+      const text = cleanTextList(values).join("、") || "无";
+      lines.push(`- ${label}：${text}`);
+    }
+
+    function appendDetailList(lines, title, values) {
+      const items = cleanTextList(values);
+      if (!items.length) {
+        return;
+      }
+      lines.push(title);
+      items.forEach((item) => {
+        lines.push(`- ${mdListText(item)}`);
+      });
+      lines.push("");
+    }
+
+    function mdText(value) {
+      return cleanDisplayText(value, "未提供").trim();
+    }
+
+    function mdListText(value) {
+      return mdText(value).replace(/\\n/g, "\\n  ");
+    }
+
+    function formatBirthDate(chartInput) {
+      if (chartInput.lunar_date) {
+        return chartInput.lunar_date;
+      }
+      const parts = [chartInput.year, chartInput.month, chartInput.day].filter(Boolean);
+      return parts.length === 3 ? `${parts[0]}-${pad2(parts[1])}-${pad2(parts[2])}` : "未提供";
+    }
+
+    function formatBirthTime(chartInput) {
+      if (chartInput.hour === null || chartInput.hour === undefined) {
+        return "未知";
+      }
+      return `${pad2(chartInput.hour)}:${pad2(chartInput.minute || 0)}`;
+    }
+
+    function formatDateTime(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "未知";
+      }
+      return new Intl.DateTimeFormat("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).format(date);
+    }
+
+    function dateSlug(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      return [
+        date.getFullYear(),
+        pad2(date.getMonth() + 1),
+        pad2(date.getDate()),
+        pad2(date.getHours()),
+        pad2(date.getMinutes())
+      ].join("");
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+
+    function setExportStatus(text) {
+      exportStatus.textContent = text;
+    }
 
     function buildPayload() {
       const chartInput = {

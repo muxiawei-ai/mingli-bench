@@ -66,6 +66,9 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("意图识别", html)
             self.assertIn("escapeControlCharsInJsonStrings", html)
             self.assertIn("模型返回了结构化内容", html)
+            self.assertIn("报告导出", html)
+            self.assertIn("copyMarkdownButton", html)
+            self.assertIn("buildMarkdownReport", html)
             self.assertNotIn("`置信度：${intent.confidence", html)
 
             body = json.dumps(
