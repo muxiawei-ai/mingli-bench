@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .agent_eval import (
+    HIGH_CONFIDENCE_WRONG_THRESHOLD,
+    LOW_MARGIN_WRONG_THRESHOLD,
     build_answer_score_diagnostic,
     candidate_year_variant_top_choice,
     option_event_type,
@@ -88,6 +90,7 @@ def build_agent_eval_analysis(
             for category, total in sorted(category_totals.items())
         ],
         "event_type_confusions": _event_type_confusions(records),
+        "category_diagnostics": _category_diagnostics(records),
         "wrong_answers": wrong_answers,
         "candidate_year_cases": candidate_year_cases,
         "answer_score_diagnostics": summary.get("answer_score_diagnostics") or {},
@@ -130,6 +133,45 @@ def format_agent_eval_analysis(analysis: Dict[str, Any]) -> str:
             f"{item['category']}: {item['correct']}/{item['total']} "
             f"({_format_rate(item['accuracy'])})"
         )
+
+    if analysis.get("category_diagnostics"):
+        lines.extend(["", "Category Diagnostics:"])
+        for item in analysis["category_diagnostics"]:
+            lines.append(
+                "  - "
+                f"{item['category']}: wrong={item['wrong']}/{item['total']}, "
+                f"avg_wrong_conf={_format_rate(item.get('wrong_average_confidence'))}, "
+                "avg_gap="
+                f"{_format_float(item.get('wrong_average_score_gap_to_expected'))}, "
+                f"low_margin_wrong={item['low_margin_wrong_count']}, "
+                f"high_confidence_wrong={item['high_confidence_wrong_count']}"
+            )
+            if item.get("candidate_year_override_applied_count"):
+                lines.append(
+                    "    candidate_year_override="
+                    f"{item['candidate_year_override_correct_count']} correct / "
+                    f"{item['candidate_year_override_wrong_count']} wrong"
+                )
+            if item.get("event_type_guard_applied_count"):
+                lines.append(
+                    "    event_type_guard="
+                    f"{item['event_type_guard_correct_count']} correct / "
+                    f"{item['event_type_guard_wrong_count']} wrong"
+                )
+            if item.get("event_type_confusions"):
+                confusion_text = ", ".join(
+                    f"{confusion['answer_event_type']}->{confusion['predicted_event_type']}"
+                    f":{confusion['count']}"
+                    for confusion in item["event_type_confusions"][:3]
+                )
+                lines.append(f"    event_confusions={confusion_text}")
+            for sample in item.get("wrong_samples") or []:
+                lines.append(
+                    "    e.g. "
+                    f"{sample['question_id']}: "
+                    f"{sample['answer']} -> {sample['predicted_answer']} "
+                    f"question={sample.get('question')}"
+                )
 
     if analysis.get("warning_counts"):
         lines.extend(["", "Warnings:"])
@@ -406,6 +448,130 @@ def _event_type_confusions(records: List[Dict[str, Any]]) -> List[Dict[str, Any]
     )
 
 
+def _category_diagnostics(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    grouped: Dict[str, Dict[str, Any]] = {}
+    for record in records:
+        if not record.get("success"):
+            continue
+        category = str(record.get("category") or "unknown")
+        item = grouped.setdefault(category, _empty_category_diagnostic(category))
+        item["total"] += 1
+        if record.get("answer_correct") is True:
+            item["correct"] += 1
+        elif record.get("answer_correct") is False:
+            _add_wrong_category_diagnostic(item, record)
+
+        candidate_override = record.get("candidate_year_override") or {}
+        if candidate_override.get("applied") is True:
+            _add_post_processor_count(item, "candidate_year_override", record)
+        event_guard = record.get("event_type_guard") or {}
+        if event_guard.get("applied") is True:
+            _add_post_processor_count(item, "event_type_guard", record)
+
+    diagnostics = []
+    for item in grouped.values():
+        wrong_confidences = item.pop("_wrong_confidences")
+        score_gaps = item.pop("_score_gaps")
+        event_confusions = item.pop("_event_confusions")
+        item["wrong"] = item["total"] - item["correct"]
+        item["accuracy"] = _ratio(item["correct"], item["total"])
+        item["wrong_average_confidence"] = _average_optional(wrong_confidences)
+        item["wrong_average_score_gap_to_expected"] = _average_optional(score_gaps)
+        item["event_type_confusions"] = [
+            {
+                "answer_event_type": answer_type,
+                "predicted_event_type": predicted_type,
+                "count": count,
+            }
+            for (answer_type, predicted_type), count in sorted(
+                event_confusions.items(),
+                key=lambda pair: (-pair[1], str(pair[0][0]), str(pair[0][1])),
+            )
+        ]
+        diagnostics.append(item)
+
+    return sorted(
+        diagnostics,
+        key=lambda item: (-int(item["wrong"]), str(item["category"])),
+    )
+
+
+def _empty_category_diagnostic(category: str) -> Dict[str, Any]:
+    return {
+        "category": category,
+        "total": 0,
+        "correct": 0,
+        "wrong": 0,
+        "accuracy": 0.0,
+        "wrong_average_confidence": None,
+        "high_confidence_wrong_count": 0,
+        "wrong_average_score_gap_to_expected": None,
+        "low_margin_wrong_count": 0,
+        "candidate_year_override_applied_count": 0,
+        "candidate_year_override_correct_count": 0,
+        "candidate_year_override_wrong_count": 0,
+        "event_type_guard_applied_count": 0,
+        "event_type_guard_correct_count": 0,
+        "event_type_guard_wrong_count": 0,
+        "event_type_confusions": [],
+        "wrong_samples": [],
+        "_wrong_confidences": [],
+        "_score_gaps": [],
+        "_event_confusions": Counter(),
+    }
+
+
+def _add_wrong_category_diagnostic(
+    item: Dict[str, Any],
+    record: Dict[str, Any],
+) -> None:
+    interpretation = ((record.get("agent") or {}).get("interpretation") or {})
+    confidence = interpretation.get("answer_confidence")
+    if confidence is not None:
+        item["_wrong_confidences"].append(float(confidence))
+        if float(confidence) >= HIGH_CONFIDENCE_WRONG_THRESHOLD:
+            item["high_confidence_wrong_count"] += 1
+
+    diagnostic = build_answer_score_diagnostic(record) or {}
+    score_gap = diagnostic.get("score_gap_to_expected")
+    if score_gap is not None:
+        item["_score_gaps"].append(float(score_gap))
+        if abs(float(score_gap)) <= LOW_MARGIN_WRONG_THRESHOLD:
+            item["low_margin_wrong_count"] += 1
+
+    answer_type = option_event_type(record, record.get("answer")) or "unknown"
+    predicted_type = (
+        option_event_type(record, record.get("predicted_answer")) or "unparsed"
+    )
+    if answer_type != predicted_type:
+        item["_event_confusions"].update([(answer_type, predicted_type)])
+
+    if len(item["wrong_samples"]) < 3:
+        item["wrong_samples"].append(
+            {
+                "question_id": record.get("question_id"),
+                "case_id": record.get("case_id"),
+                "question": record.get("question"),
+                "answer": record.get("answer"),
+                "predicted_answer": record.get("predicted_answer"),
+                "answer_confidence": confidence,
+                "score_gap_to_expected": score_gap,
+            }
+        )
+
+
+def _add_post_processor_count(
+    item: Dict[str, Any],
+    name: str,
+    record: Dict[str, Any],
+) -> None:
+    item[f"{name}_applied_count"] += 1
+    if record.get("answer_correct") is True:
+        item[f"{name}_correct_count"] += 1
+    elif record.get("answer_correct") is False:
+        item[f"{name}_wrong_count"] += 1
+
+
 def _records_by_question_id(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     return {
         str(record.get("question_id")): record
@@ -567,6 +733,10 @@ def _optional_delta(candidate_value: Any, base_value: Any) -> Optional[float]:
     if candidate_value is None or base_value is None:
         return None
     return float(candidate_value) - float(base_value)
+
+
+def _average_optional(values: List[float]) -> Optional[float]:
+    return sum(values) / len(values) if values else None
 
 
 __all__ = [

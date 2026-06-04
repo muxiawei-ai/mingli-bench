@@ -33,6 +33,22 @@ class AgentEvalTests(unittest.TestCase):
         self.assertEqual(len(questions), 3)
         self.assertIn("birth_info", questions[0])
 
+    def test_load_agent_eval_questions_filters_by_question_ids_in_order(self):
+        questions = load_agent_eval_questions(
+            AgentEvalConfig(question_ids=["ftb_0002", "ftb_0001"])
+        )
+
+        self.assertEqual(
+            [question["id"] for question in questions],
+            ["ftb_0002", "ftb_0001"],
+        )
+
+    def test_load_agent_eval_questions_fails_for_missing_question_id(self):
+        with self.assertRaisesRegex(ValueError, "question IDs not found"):
+            load_agent_eval_questions(
+                AgentEvalConfig(question_ids=["ftb_missing"])
+            )
+
     def test_evaluate_agent_questions_and_summary(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=2))
         records = evaluate_agent_questions(questions)

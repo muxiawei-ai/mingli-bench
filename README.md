@@ -133,13 +133,21 @@ Use `--candidate-year-override-variant activation_weighted` to run an experiment
 
 Use `--event-type-guard cautious_traffic` to run an experimental event-type guard for `eval-agent`: unsupported traffic-accident predictions can be redirected to a non-traffic health option, while the original LLM answer is preserved in `model_predicted_answer`.
 
+Replay exact benchmark questions with `--question-ids`, which accepts space- or comma-separated IDs:
+
+```bash
+mingli-bench eval-agent \
+  --model anthropic/claude-sonnet-4.6 \
+  --question-ids ftb_0012 ftb_0014 ftb_0016
+```
+
 After a saved run, generate a compact error report:
 
 ```bash
 mingli-bench analyze-agent-eval --run-dir logs/agent_eval_YYYYMMDD_HHMMSS
 ```
 
-The report summarizes category accuracy, event-type confusions, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
+The report summarizes category accuracy, category-level error diagnostics, event-type confusions, wrong answers, warning counts, confidence/score gaps, and candidate-year cases where default and activation-weighted diagnostics disagree.
 
 Compare two saved runs to inspect prompt or model changes:
 

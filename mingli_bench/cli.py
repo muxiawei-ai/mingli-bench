@@ -41,6 +41,19 @@ from .data import DataLoader
 logger = get_logger(__name__)
 
 
+def _parse_question_ids(values):
+    if not values:
+        return None
+    question_ids = []
+    for value in values:
+        question_ids.extend(
+            item.strip()
+            for item in str(value).split(",")
+            if item.strip()
+        )
+    return question_ids or None
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -134,6 +147,15 @@ Examples:
         type=int,
         metavar="N",
         help="Evaluate only N sample questions"
+    )
+
+    parser.add_argument(
+        "--question-ids",
+        nargs="+",
+        help=(
+            "For 'eval-agent': replay exact benchmark question IDs "
+            "(space- or comma-separated, e.g. ftb_0012 ftb_0014)."
+        ),
     )
 
     parser.add_argument(
@@ -459,6 +481,7 @@ Examples:
                 )
             config = AgentEvalConfig(
                 sample_size=args.sample,
+                question_ids=_parse_question_ids(args.question_ids),
                 year=args.year,
                 categories=args.categories,
                 data_path=args.data_path,

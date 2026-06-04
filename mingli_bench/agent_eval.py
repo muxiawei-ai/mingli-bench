@@ -45,6 +45,7 @@ class AgentEvalConfig:
     """Configuration for an agent evaluation run."""
 
     sample_size: Optional[int] = None
+    question_ids: Optional[List[str]] = None
     year: Optional[int] = None
     categories: Optional[List[str]] = None
     data_path: Optional[str] = None
@@ -59,6 +60,7 @@ class AgentEvalConfig:
     def as_dict(self) -> Dict[str, Any]:
         return {
             "sample_size": self.sample_size,
+            "question_ids": self.question_ids,
             "year": self.year,
             "categories": self.categories,
             "data_path": self.data_path,
@@ -78,13 +80,23 @@ def load_agent_eval_questions(config: AgentEvalConfig) -> List[Dict[str, Any]]:
     """Load benchmark questions for agent pipeline evaluation."""
 
     loader = DataLoader(config.data_path)
-    return loader.load_questions(
-        sample_size=config.sample_size,
+    questions = loader.load_questions(
+        sample_size=None if config.question_ids else config.sample_size,
         year=config.year,
         categories=config.categories,
         shuffle=False,
         shuffle_options=False,
     )
+    if not config.question_ids:
+        return questions
+
+    by_id = {str(question.get("id")): question for question in questions}
+    missing_ids = [
+        question_id for question_id in config.question_ids if question_id not in by_id
+    ]
+    if missing_ids:
+        raise ValueError(f"question IDs not found: {', '.join(missing_ids)}")
+    return [by_id[question_id] for question_id in config.question_ids]
 
 
 def evaluate_agent_questions(

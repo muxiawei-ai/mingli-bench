@@ -43,10 +43,30 @@ class AgentEvalReportTests(unittest.TestCase):
             analysis["event_type_confusions"][0]["predicted_event_type"],
             "traffic_accident",
         )
+        health_diagnostic = _category_diagnostic(analysis, "健康")
+        self.assertEqual(health_diagnostic["wrong"], 1)
+        self.assertEqual(health_diagnostic["high_confidence_wrong_count"], 1)
+        self.assertEqual(health_diagnostic["low_margin_wrong_count"], 0)
+        self.assertAlmostEqual(
+            health_diagnostic["wrong_average_score_gap_to_expected"],
+            0.3,
+        )
+        self.assertEqual(health_diagnostic["event_type_guard_applied_count"], 1)
+        self.assertEqual(health_diagnostic["event_type_guard_wrong_count"], 1)
+        self.assertEqual(
+            health_diagnostic["event_type_confusions"][0]["answer_event_type"],
+            "mental_health",
+        )
+        year_diagnostic = _category_diagnostic(analysis, "婚姻")
+        self.assertEqual(year_diagnostic["candidate_year_override_applied_count"], 1)
+        self.assertEqual(year_diagnostic["candidate_year_override_correct_count"], 1)
 
         formatted = format_agent_eval_analysis(analysis)
         self.assertIn("Agent Eval Error Report", formatted)
         self.assertIn("Answer Accuracy: 50.00%", formatted)
+        self.assertIn("Category Diagnostics", formatted)
+        self.assertIn("high_confidence_wrong=1", formatted)
+        self.assertIn("event_type_guard=0 correct / 1 wrong", formatted)
         self.assertIn("Event Type Confusions", formatted)
         self.assertIn("mental_health -> traffic_accident: 1", formatted)
         self.assertIn("q_health", formatted)
@@ -177,6 +197,12 @@ def _candidate_year_record():
             },
             "interpretation": {"answer_confidence": 0.55},
         },
+        "candidate_year_override": {
+            "variant": "activation_weighted",
+            "applied": True,
+            "original_predicted_answer": "A",
+            "override_answer": "C",
+        },
     }
 
 
@@ -211,6 +237,13 @@ def _wrong_health_record():
                 },
             },
         },
+        "event_type_guard": {
+            "guard": "cautious_traffic",
+            "applied": True,
+            "original_predicted_answer": "A",
+            "replacement_answer": "C",
+            "reason": "test_guard",
+        },
     }
 
 
@@ -238,6 +271,13 @@ def _record(
             }
         },
     }
+
+
+def _category_diagnostic(analysis, category):
+    for item in analysis["category_diagnostics"]:
+        if item["category"] == category:
+            return item
+    raise AssertionError(f"missing category diagnostic: {category}")
 
 
 if __name__ == "__main__":
