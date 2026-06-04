@@ -187,6 +187,15 @@ def build_local_interpretation(
                 caveats=list(report.hexagram.get("caveats") or []),
             )
         )
+    if report.integrated_analysis:
+        sections.append(
+            InterpretationSection(
+                title="八字卦象联合分析",
+                summary=_integrated_summary(report),
+                evidence=_integrated_evidence(report),
+                caveats=list(report.integrated_analysis.get("caveats") or []),
+            )
+        )
     sections.append(
         InterpretationSection(
             title="输入质量",
@@ -333,6 +342,28 @@ def _hexagram_evidence(report: ChartReport) -> List[str]:
                 if value is not None
             )
         )
+    return evidence
+
+
+def _integrated_summary(report: ChartReport) -> str:
+    integrated = report.integrated_analysis or {}
+    return str(integrated.get("overview") or "")
+
+
+def _integrated_evidence(report: ChartReport) -> List[str]:
+    integrated = report.integrated_analysis or {}
+    evidence: List[str] = []
+    for section in integrated.get("sections") or []:
+        title = section.get("title")
+        summary = section.get("summary")
+        if title and summary:
+            evidence.append(f"{title}: {summary}")
+    for signal in integrated.get("alignment_signals") or []:
+        label = signal.get("label")
+        evidence_text = signal.get("evidence")
+        implication = signal.get("implication")
+        if label and evidence_text:
+            evidence.append(f"{label}: {evidence_text}; {implication or ''}")
     return evidence
 
 

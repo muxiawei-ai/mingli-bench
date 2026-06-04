@@ -43,6 +43,14 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["moving_line_source"], "zhouyi_classic.v1")
         self.assertEqual(response["report"]["hexagram"]["reading"]["domain"], "事业")
         self.assertIn("变卦方向", response["report"]["hexagram"]["reading"]["sections"][2]["title"])
+        self.assertEqual(response["report"]["integrated_analysis"]["domain"], "事业")
+        self.assertIn(
+            "交叉印证",
+            [
+                section["title"]
+                for section in response["report"]["integrated_analysis"]["sections"]
+            ],
+        )
         self.assertEqual(response["intent"]["primary_domain"], "事业")
         self.assertIn("llm_not_called", response["warnings"])
         trace = {stage["name"]: stage for stage in response["trace"]}
@@ -89,6 +97,10 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("hexagramPanel", html)
             self.assertIn("renderHexagramModule", html)
             self.assertIn("renderPrintableHexagramSection", html)
+            self.assertIn("integratedPanel", html)
+            self.assertIn("renderIntegratedAnalysis", html)
+            self.assertIn("renderPrintableIntegratedSection", html)
+            self.assertIn("八字+卦象联合分析", html)
             self.assertIn("hex-print-module", html)
             self.assertIn("井卦", html)
             self.assertIn("六爻详释", html)

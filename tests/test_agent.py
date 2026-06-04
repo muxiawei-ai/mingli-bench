@@ -68,6 +68,8 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("不要自行重新起卦", prompt)
         self.assertIn('"primary": {', prompt)
         self.assertIn('"name": "临卦"', prompt)
+        self.assertIn("report.integrated_analysis", prompt)
+        self.assertIn("八字+卦象联合分析", prompt)
 
     def test_build_interpretation_prompt_includes_event_branch_interactions(self):
         chart = build_bazi_chart(
@@ -194,6 +196,8 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("卦象参考", result.interpretation.to_markdown())
         self.assertIn("咸临，吉，无不利", result.interpretation.to_markdown())
         self.assertIn("变卦方向", result.interpretation.to_markdown())
+        self.assertIn("八字卦象联合分析", result.interpretation.to_markdown())
+        self.assertIn("交叉印证", result.interpretation.to_markdown())
         self.assertIn("trace", result.as_dict())
         self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())

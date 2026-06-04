@@ -10,6 +10,7 @@ from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
 from .hexagram import build_time_hexagram, lookup_hexagram
 from .hexagram_data import get_hexagram_text, get_line_text, validate_hexagram_texts
 from .hexagram_rules import build_hexagram_reading
+from .integrated_analysis import build_integrated_analysis
 from .bazi import (
     bazi_from_birth_info,
     bazi_from_gregorian,
@@ -46,6 +47,7 @@ __all__ = [
     "build_bazi_chart",
     "build_candidate_year_scores",
     "build_hexagram_reading",
+    "build_integrated_analysis",
     "build_interpretation_prompt",
     "build_time_hexagram",
     "day_pillar_for_date",

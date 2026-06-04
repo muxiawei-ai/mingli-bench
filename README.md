@@ -46,6 +46,8 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
     and line texts,
   - local rule-based hexagram reading scaffolds for primary hexagram,
     moving line, changed hexagram, and question-domain guidance,
+  - Bazi + hexagram integrated analysis scaffolds that cross-link element
+    profile, moving-line triggers, and question-domain guidance,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,

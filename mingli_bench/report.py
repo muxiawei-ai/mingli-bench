@@ -12,6 +12,7 @@ from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
 from .hexagram import build_time_hexagram
 from .hexagram_rules import build_hexagram_reading
+from .integrated_analysis import build_integrated_analysis
 from .option_semantics import analyze_option_semantics
 from .relations import analyze_branch_interactions
 
@@ -53,6 +54,7 @@ class ChartReport:
     option_semantics: List[Dict[str, Any]]
     candidate_year_scores: List[Dict[str, Any]]
     hexagram: Optional[Dict[str, Any]]
+    integrated_analysis: Optional[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
 
@@ -68,6 +70,7 @@ class ChartReport:
             "option_semantics": self.option_semantics,
             "candidate_year_scores": self.candidate_year_scores,
             "hexagram": self.hexagram,
+            "integrated_analysis": self.integrated_analysis,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
         }
@@ -186,6 +189,16 @@ class ChartReport:
                 if title and summary:
                     lines.append(f"  - {title}: {summary}")
 
+        if self.integrated_analysis:
+            lines.extend(["", "### 八字+卦象联合分析"])
+            if self.integrated_analysis.get("overview"):
+                lines.append(f"- 概览: {self.integrated_analysis['overview']}")
+            for section in self.integrated_analysis.get("sections") or []:
+                title = section.get("title")
+                summary = section.get("summary")
+                if title and summary:
+                    lines.append(f"- {title}: {summary}")
+
         if self.follow_up_questions:
             lines.extend(["", "### 建议追问"])
             for question in self.follow_up_questions:
@@ -282,6 +295,15 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
     hexagram = build_time_hexagram(chart)
     if hexagram:
         hexagram["reading"] = build_hexagram_reading(hexagram, question)
+    integrated_analysis = build_integrated_analysis(
+        question=question,
+        summary=summary,
+        element_profile=profile,
+        strongest_elements=strongest_elements,
+        missing_elements=missing_elements,
+        event_years=event_years,
+        hexagram=hexagram,
+    )
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
     return ChartReport(
@@ -295,6 +317,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         option_semantics=option_semantics,
         candidate_year_scores=candidate_year_scores,
         hexagram=hexagram,
+        integrated_analysis=integrated_analysis,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )

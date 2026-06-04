@@ -607,6 +607,40 @@ INDEX_HTML = """<!doctype html>
       font-size: 14px;
     }
 
+    .integrated-card {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid rgba(138, 104, 16, 0.24);
+      border-left: 4px solid #8a6810;
+      border-radius: var(--radius);
+      background: #fff9ed;
+      line-height: 1.75;
+    }
+
+    .integrated-card > strong {
+      color: #6b5812;
+      font-size: 15px;
+    }
+
+    .integrated-section {
+      display: grid;
+      gap: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(138, 104, 16, 0.18);
+    }
+
+    .integrated-section strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .integrated-section p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
     .hexagram-panel .detail {
       padding: 10px 12px;
       border-left: 3px solid var(--line);
@@ -1086,6 +1120,11 @@ INDEX_HTML = """<!doctype html>
             <div class="panel-body" id="hexagramContent"></div>
           </section>
 
+          <section class="panel" id="integratedPanel" hidden>
+            <h2>联合分析</h2>
+            <div class="panel-body" id="integratedContent"></div>
+          </section>
+
           <section class="panel">
             <h2>五行分布</h2>
             <div class="panel-body">
@@ -1473,6 +1512,45 @@ INDEX_HTML = """<!doctype html>
             ]
           }
         },
+        integrated_analysis: {
+          schema_version: "mingli_integrated_analysis.v1",
+          domain: "事业",
+          intent_confidence: 0.78,
+          overview: "联合分析以日主癸（水）和五行结构为底盘，以本卦《井卦》、动九五、变卦《升卦》作为当下触发。在事业方向上，重点观察已有资源如何被整理、表达和逐步抬升。",
+          sections: [
+            {
+              title: "八字底盘",
+              summary: "示例八字中火金较显，行动、表达和规则执行感较强；水木相对较弱，提示需要复盘、规划和长期生长线索。"
+            },
+            {
+              title: "卦象触发",
+              summary: "井卦提示已有资源和能力需要被汲取，九五提示资源可用，升卦则指向渐进式上升。"
+            },
+            {
+              title: "交叉印证",
+              summary: "卦象中的井与升，都强调资源整理和阶梯式推进，可与命盘中偏强的执行力形成配合；水木偏弱则提醒不要只靠短期冲劲。"
+            },
+            {
+              title: "事业综合框架",
+              summary: "建议把已有经验、作品和人脉先整理成可展示资产，再用阶段性项目验证方向，避免一次性大幅切换。"
+            }
+          ],
+          alignment_signals: [
+            {
+              type: "demo_alignment",
+              label: "卦象与命盘执行倾向互相参考",
+              evidence: "井卦资源整理 + 火金较显",
+              implication: "适合把资源整理成明确成果，而不是只停留在想法。"
+            }
+          ],
+          next_questions: [
+            "当前事业最需要整理的是作品、资源还是协作关系？",
+            "是否要把未来一年拆成几个阶段来观察？"
+          ],
+          caveats: [
+            "这是示例联合分析，不对应真实排盘判断。"
+          ]
+        },
         strongest_elements: ["火", "金"],
         missing_elements: [],
         caveats: [
@@ -1660,6 +1738,7 @@ INDEX_HTML = """<!doctype html>
       }
 
       appendHexagramMarkdown(lines, report.hexagram);
+      appendIntegratedMarkdown(lines, report.integrated_analysis);
 
       conversationTurns.forEach((turn, index) => {
         const interpretation = normalizeInterpretation(turn.interpretation);
@@ -1721,6 +1800,38 @@ INDEX_HTML = """<!doctype html>
       }
       appendHexagramReadingMarkdown(lines, hexagram.reading);
       appendDetailList(lines, "卦象边界", hexagram.caveats);
+    }
+
+    function appendIntegratedMarkdown(lines, integrated) {
+      if (!integrated || typeof integrated !== "object") {
+        return;
+      }
+      lines.push("## 八字+卦象联合分析");
+      if (integrated.overview) {
+        lines.push(mdText(integrated.overview), "");
+      }
+      if (Array.isArray(integrated.sections)) {
+        integrated.sections.forEach((section) => {
+          if (!section || typeof section !== "object") {
+            return;
+          }
+          lines.push(`### ${mdText(section.title || "未命名段落")}`);
+          if (section.summary) {
+            lines.push(mdText(section.summary));
+          }
+          appendDetailList(lines, "依据", section.evidence);
+          lines.push("");
+        });
+      }
+      const signals = Array.isArray(integrated.alignment_signals) ? integrated.alignment_signals : [];
+      if (signals.length) {
+        lines.push("### 交叉信号");
+        signals.forEach((signal) => {
+          lines.push(`- ${mdText(signal.label)}：${mdText(signal.evidence)}。${mdText(signal.implication)}`);
+        });
+        lines.push("");
+      }
+      appendDetailList(lines, "建议追问", integrated.next_questions);
     }
 
     function appendHexagramReadingMarkdown(lines, reading) {
@@ -2392,6 +2503,36 @@ INDEX_HTML = """<!doctype html>
       color: var(--ink-soft);
       font-size: 14px;
     }
+    .integrated-card {
+      display: grid;
+      gap: 14px;
+      padding: 17px 18px;
+      border: 1px solid rgba(138, 104, 16, 0.24);
+      border-left: 4px solid #8a6810;
+      border-radius: 10px;
+      background: #fff9ed;
+      line-height: 1.75;
+      break-inside: avoid;
+    }
+    .integrated-card > strong {
+      color: #6b5812;
+      font-size: 15px;
+    }
+    .integrated-section {
+      display: grid;
+      gap: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(138, 104, 16, 0.18);
+    }
+    .integrated-section strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .integrated-section p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
     .line-detail-table {
       display: grid;
       overflow: hidden;
@@ -2585,6 +2726,7 @@ INDEX_HTML = """<!doctype html>
     </section>
 
     ${renderPrintableHexagramSection(report.hexagram)}
+    ${renderPrintableIntegratedSection(report.integrated_analysis)}
 
     <section>
       <h2>咨询记录</h2>
@@ -2714,6 +2856,11 @@ INDEX_HTML = """<!doctype html>
           ${renderPrintableCaveats(hexagram.caveats)}
         </div>
       </section>`;
+    }
+
+    function renderPrintableIntegratedSection(integrated) {
+      const content = renderIntegratedAnalysis(integrated);
+      return content ? `<section><h2>八字+卦象联合分析</h2>${content}</section>` : "";
     }
 
     function renderPrintableHexPrintSection(order, title, content) {
@@ -2889,10 +3036,28 @@ INDEX_HTML = """<!doctype html>
       return module ? `<section><h2>卦象参考</h2>${module}</section>` : "";
     }
 
+    function renderHtmlIntegratedSection(integrated) {
+      const module = renderIntegratedAnalysis(integrated);
+      return module ? `<section><h2>八字+卦象联合分析</h2>${module}</section>` : "";
+    }
+
     function renderHexagramPanel(hexagram) {
       const panel = document.getElementById("hexagramPanel");
       const content = document.getElementById("hexagramContent");
       const module = renderHexagramModule(hexagram);
+      if (!module) {
+        panel.hidden = true;
+        content.replaceChildren();
+        return;
+      }
+      content.innerHTML = module;
+      panel.hidden = false;
+    }
+
+    function renderIntegratedPanel(integrated) {
+      const panel = document.getElementById("integratedPanel");
+      const content = document.getElementById("integratedContent");
+      const module = renderIntegratedAnalysis(integrated);
       if (!module) {
         panel.hidden = true;
         content.replaceChildren();
@@ -2980,6 +3145,41 @@ INDEX_HTML = """<!doctype html>
         <strong>规则解读${reading.domain ? ` · ${escapeHtml(reading.domain)}` : ""}</strong>
         ${reading.overview ? `<p>${escapeHtml(reading.overview)}</p>` : ""}
         ${sections}
+      </section>`;
+    }
+
+    function renderIntegratedAnalysis(integrated) {
+      if (!integrated || typeof integrated !== "object") {
+        return "";
+      }
+      const sections = Array.isArray(integrated.sections)
+        ? integrated.sections
+            .filter((section) => section && typeof section === "object")
+            .map((section) => `<div class="integrated-section">
+              <strong>${escapeHtml(section.title || "未命名段落")}</strong>
+              ${section.summary ? `<p>${escapeHtml(section.summary)}</p>` : ""}
+            </div>`)
+            .join("")
+        : "";
+      const signals = Array.isArray(integrated.alignment_signals)
+        ? integrated.alignment_signals
+            .filter((signal) => signal && typeof signal === "object")
+            .map((signal) => `<div class="integrated-section">
+              <strong>${escapeHtml(signal.label || "交叉信号")}</strong>
+              <p>${escapeHtml([signal.evidence, signal.implication].filter(Boolean).join("："))}</p>
+            </div>`)
+            .join("")
+        : "";
+      const nextQuestions = cleanTextList(integrated.next_questions);
+      if (!integrated.overview && !sections && !signals) {
+        return "";
+      }
+      return `<section class="integrated-card">
+        <strong>八字+卦象联合分析${integrated.domain ? ` · ${escapeHtml(integrated.domain)}` : ""}</strong>
+        ${integrated.overview ? `<p>${escapeHtml(integrated.overview)}</p>` : ""}
+        ${sections}
+        ${signals}
+        ${nextQuestions.length ? `<div class="integrated-section"><strong>建议追问</strong><p>${nextQuestions.map(escapeHtml).join("<br>")}</p></div>` : ""}
       </section>`;
     }
 
@@ -3284,6 +3484,7 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
       renderHexagramPanel(report.hexagram);
+      renderIntegratedPanel(report.integrated_analysis);
       renderElements(report.element_profile || []);
       renderSignalTags(report, intent, inputQuality);
       renderTags("caveats", [

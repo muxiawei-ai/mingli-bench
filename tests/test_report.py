@@ -61,9 +61,17 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.hexagram["moving_line_name"], "九二")
         self.assertEqual(report.hexagram["moving_line_text"], "咸临，吉，无不利。")
         self.assertEqual(report.hexagram["reading"]["domain"], "事业")
+        self.assertIsNotNone(report.integrated_analysis)
+        assert report.integrated_analysis is not None
+        self.assertEqual(report.integrated_analysis["domain"], "事业")
+        self.assertIn(
+            "交叉印证",
+            [section["title"] for section in report.integrated_analysis["sections"]],
+        )
         self.assertIn("规则解读", report.to_markdown())
         self.assertIn("本地报告只整理排盘结构", report.to_markdown())
         self.assertIn("卦象参考", report.to_markdown())
+        self.assertIn("八字+卦象联合分析", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())
 
     def test_build_chart_report_extracts_event_years(self):
@@ -171,6 +179,7 @@ class ChartReportTests(unittest.TestCase):
         report = build_chart_report(chart, "")
         self.assertFalse(report.input_quality["has_birth_time"])
         self.assertIsNone(report.hexagram)
+        self.assertIsNone(report.integrated_analysis)
         self.assertGreaterEqual(len(report.follow_up_questions), 2)
         self.assertIn("出生时间未知", "\n".join(report.caveats))
 
