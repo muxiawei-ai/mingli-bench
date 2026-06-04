@@ -61,6 +61,10 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("followUpForm", html)
             self.assertIn("继续追问", html)
             self.assertIn("解读边界", html)
+            self.assertIn("[hidden]", html)
+            self.assertIn("history-item", html)
+            self.assertIn("意图识别", html)
+            self.assertNotIn("`置信度：${intent.confidence", html)
 
             body = json.dumps(
                 {

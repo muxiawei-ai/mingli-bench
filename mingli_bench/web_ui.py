@@ -48,6 +48,10 @@ INDEX_HTML = """<!doctype html>
       box-sizing: border-box;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -335,6 +339,30 @@ INDEX_HTML = """<!doctype html>
       font-size: 13px;
     }
 
+    .tag-strong {
+      background: #e5f3ef;
+      color: #0f5148;
+      border: 1px solid #b8d8d0;
+    }
+
+    .tag-missing {
+      background: #fff0df;
+      color: #7a4308;
+      border: 1px solid #edc08c;
+    }
+
+    .tag-intent {
+      background: #eef0ff;
+      color: #333d7c;
+      border: 1px solid #c9cef7;
+    }
+
+    .tag-source {
+      background: #eeeeea;
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+
     .interpretation {
       display: grid;
       gap: 16px;
@@ -395,10 +423,12 @@ INDEX_HTML = """<!doctype html>
       margin-top: 2px;
       padding-left: 12px;
       border-left: 3px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .detail-group strong {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
     }
 
@@ -410,7 +440,7 @@ INDEX_HTML = """<!doctype html>
     }
 
     .detail-group li {
-      line-height: 1.65;
+      line-height: 1.55;
     }
 
     .option-score-list {
@@ -471,15 +501,63 @@ INDEX_HTML = """<!doctype html>
     }
 
     .history-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdf8;
+      overflow: hidden;
+    }
+
+    .history-item summary {
       display: grid;
-      gap: 5px;
-      padding-top: 10px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .history-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .history-title {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .history-title strong {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .history-title span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .history-toggle {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .history-body {
+      display: grid;
+      gap: 12px;
+      padding: 0 12px 12px;
       border-top: 1px solid var(--line);
     }
 
-    .history-item strong {
-      font-size: 13px;
-      color: var(--muted);
+    .history-body .interpretation-head {
+      padding-top: 12px;
+    }
+
+    .history-body .overview {
+      font-size: 15px;
     }
 
     .history-item p {
@@ -754,7 +832,8 @@ INDEX_HTML = """<!doctype html>
         currentOverview = data.interpretation?.overview || "";
         conversationTurns = [{
           question: payload.question,
-          overview: currentOverview
+          overview: currentOverview,
+          interpretation: data.interpretation
         }];
         renderResult(data);
         renderHistory();
@@ -798,7 +877,8 @@ INDEX_HTML = """<!doctype html>
         currentOverview = data.interpretation?.overview || "";
         conversationTurns.push({
           question: nextQuestion,
-          overview: currentOverview
+          overview: currentOverview,
+          interpretation: data.interpretation
         });
         renderResult(data);
         renderHistory();
@@ -908,13 +988,7 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
       renderElements(report.element_profile || []);
-      renderTags("signalTags", [
-        ...(report.strongest_elements || []).map((item) => `相对较多：${item}`),
-        ...(report.missing_elements || []).map((item) => `未见：${item}`),
-        `问题方向：${intent.primary_domain || "-"}`,
-        `置信度：${intent.confidence ?? "-"}`,
-        `历法来源：${inputQuality.calendar_source || "-"}`
-      ]);
+      renderSignalTags(report, intent, inputQuality);
       renderTags("caveats", [
         ...(report.caveats || []),
         ...(report.follow_up_questions || []).map((item) => `追问：${item}`)
@@ -936,6 +1010,10 @@ INDEX_HTML = """<!doctype html>
       const container = document.getElementById("llmResponse");
       container.replaceChildren();
       container.className = "interpretation";
+      appendInterpretationContent(container, interpretation, {includeBoundary: true});
+    }
+
+    function appendInterpretationContent(container, interpretation, options = {}) {
       if (!interpretation) {
         container.textContent = "";
         return;
@@ -963,7 +1041,9 @@ INDEX_HTML = """<!doctype html>
       if (answerRow.children.length) {
         head.appendChild(answerRow);
       }
-      head.appendChild(makeBoundaryNote());
+      if (options.includeBoundary) {
+        head.appendChild(makeBoundaryNote());
+      }
       container.appendChild(head);
 
       if (interpretation.option_scores && Object.keys(interpretation.option_scores).length) {
@@ -1048,9 +1128,9 @@ INDEX_HTML = """<!doctype html>
       return note;
     }
 
-    function makeTag(text) {
+    function makeTag(text, extraClass = "") {
       const tag = document.createElement("span");
-      tag.className = "tag";
+      tag.className = extraClass ? `tag ${extraClass}` : "tag";
       tag.textContent = text;
       return tag;
     }
@@ -1067,19 +1147,48 @@ INDEX_HTML = """<!doctype html>
 
     function renderHistory() {
       historyList.replaceChildren();
-      conversationTurns.slice(-4).forEach((turn, index) => {
-        const item = document.createElement("div");
+      conversationTurns.slice(-6).forEach((turn, index) => {
+        const absoluteIndex = conversationTurns.length - Math.min(conversationTurns.length, 6) + index;
+        const item = document.createElement("details");
         item.className = "history-item";
+        const summary = document.createElement("summary");
+        const title = document.createElement("span");
+        title.className = "history-title";
         const label = document.createElement("strong");
-        label.textContent = index === 0 && conversationTurns.length <= 4 ? "初始问题" : "追问";
-        const question = document.createElement("p");
+        label.textContent = absoluteIndex === 0 ? "初始问题" : `追问 ${absoluteIndex}`;
+        const question = document.createElement("span");
         question.textContent = turn.question;
-        const overview = document.createElement("p");
-        overview.className = "muted";
-        overview.textContent = turn.overview || "暂无概览";
-        item.append(label, question, overview);
+        title.append(label, question);
+        const toggle = document.createElement("span");
+        toggle.className = "history-toggle";
+        toggle.textContent = "展开";
+        summary.append(title, toggle);
+        item.addEventListener("toggle", () => {
+          toggle.textContent = item.open ? "收起" : "展开";
+        });
+
+        const body = document.createElement("div");
+        body.className = "history-body";
+        appendInterpretationContent(body, turn.interpretation, {includeBoundary: false});
+        item.append(summary, body);
         historyList.appendChild(item);
       });
+    }
+
+    function renderSignalTags(report, intent, inputQuality) {
+      const container = document.getElementById("signalTags");
+      container.replaceChildren();
+      (report.strongest_elements || []).forEach((item) => {
+        container.appendChild(makeTag(`相对较多：${item}`, "tag-strong"));
+      });
+      (report.missing_elements || []).forEach((item) => {
+        container.appendChild(makeTag(`未见：${item}`, "tag-missing"));
+      });
+      container.appendChild(makeTag(`问题方向：${intent.primary_domain || "-"}`, "tag-intent"));
+      if (intent.confidence !== null && intent.confidence !== undefined) {
+        container.appendChild(makeTag(`意图识别：${formatPercent(intent.confidence)}`, "tag-intent"));
+      }
+      container.appendChild(makeTag(`历法来源：${inputQuality.calendar_source || "-"}`, "tag-source"));
     }
 
     function renderElements(profile) {
@@ -1108,10 +1217,7 @@ INDEX_HTML = """<!doctype html>
       const container = document.getElementById(id);
       container.replaceChildren();
       values.filter(Boolean).forEach((value) => {
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.textContent = value;
-        container.appendChild(tag);
+        container.appendChild(makeTag(value));
       });
     }
   </script>
