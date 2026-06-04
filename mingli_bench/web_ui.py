@@ -805,11 +805,12 @@ INDEX_HTML = """<!doctype html>
           <section class="result-toolbar" id="exportPanel" aria-label="报告导出">
             <div class="result-toolbar-title">
               <strong>本次报告</strong>
-              <span>可复制或下载为 Markdown，包含初始问题和追问记录。</span>
+              <span>可复制 Markdown，或下载独立 HTML 打印版。</span>
             </div>
             <div class="export-row">
               <button type="button" id="copyMarkdownButton" class="button-primary">复制 Markdown</button>
               <button type="button" id="downloadMarkdownButton">下载 .md</button>
+              <button type="button" id="downloadHtmlButton">下载 HTML</button>
               <span id="exportStatus" class="export-status" role="status"></span>
             </div>
           </section>
@@ -891,6 +892,7 @@ INDEX_HTML = """<!doctype html>
     const historyList = document.getElementById("historyList");
     const copyMarkdownButton = document.getElementById("copyMarkdownButton");
     const downloadMarkdownButton = document.getElementById("downloadMarkdownButton");
+    const downloadHtmlButton = document.getElementById("downloadHtmlButton");
     const exportStatus = document.getElementById("exportStatus");
     const serviceStatus = document.getElementById("serviceStatus");
     const debugPanel = document.getElementById("debugPanel");
@@ -1057,6 +1059,24 @@ INDEX_HTML = """<!doctype html>
       setExportStatus("已下载");
     });
 
+    downloadHtmlButton.addEventListener("click", () => {
+      const html = buildPrintableHtmlReport();
+      if (!html) {
+        setExportStatus("暂无可导出的报告");
+        return;
+      }
+      const blob = new Blob([html], {type: "text/html;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `mingli-report-${dateSlug(new Date())}.html`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportStatus("HTML 已下载");
+    });
+
     function buildMarkdownReport() {
       if (!latestResultData || !conversationTurns.length) {
         return "";
@@ -1159,6 +1179,327 @@ INDEX_HTML = """<!doctype html>
       });
       appendDetailList(lines, "建议追问", interpretation.follow_up_questions);
       appendDetailList(lines, "整体边界", interpretation.caveats);
+    }
+
+    function buildPrintableHtmlReport() {
+      const context = buildReportContext();
+      if (!context) {
+        return "";
+      }
+      const {data, report, summary, inputQuality, chartInput, generatedAt, exportedAt} = context;
+      const turns = conversationTurns.map((turn, index) => ({
+        label: index === 0 ? "初始问题" : `追问 ${index}`,
+        question: mdText(turn.question),
+        interpretation: normalizeInterpretation(turn.interpretation)
+      }));
+
+      return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MingLi Agent 本地命盘报告</title>
+  <style>
+    :root {
+      --paper: #fffdf8;
+      --ink: #24221f;
+      --muted: #6c675f;
+      --line: #ded9cd;
+      --soft: #f3f0e7;
+      --accent: #16675a;
+      --accent-soft: #e5f3ef;
+      --warn-soft: #fff8e8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #efede6;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+    .page {
+      max-width: 920px;
+      margin: 32px auto;
+      padding: 42px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+    header {
+      display: grid;
+      gap: 14px;
+      padding-bottom: 22px;
+      border-bottom: 2px solid var(--ink);
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.35; letter-spacing: 0; }
+    h1 { font-size: 28px; }
+    h2 {
+      margin-top: 28px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+      font-size: 20px;
+    }
+    h3 { margin-top: 18px; font-size: 16px; }
+    p { margin: 8px 0 0; white-space: pre-wrap; }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 3px 0; }
+    .meta, .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 18px;
+    }
+    .meta div, .field {
+      display: grid;
+      gap: 2px;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(222, 217, 205, 0.75);
+    }
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .value { font-weight: 700; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .chip.accent {
+      background: var(--accent-soft);
+      color: #0f5148;
+      border-color: #b8d8d0;
+    }
+    .turn {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      break-inside: avoid;
+      background: #ffffff;
+    }
+    .question {
+      margin-top: 8px;
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .section {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      break-inside: avoid;
+    }
+    .detail {
+      margin-top: 10px;
+      padding-left: 12px;
+      border-left: 3px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .boundary {
+      margin-top: 20px;
+      padding: 14px;
+      border: 1px solid rgba(138, 90, 0, 0.25);
+      border-radius: 8px;
+      background: var(--warn-soft);
+    }
+    .footer {
+      margin-top: 34px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media print {
+      body { background: white; }
+      .page { margin: 0; padding: 0; border: 0; max-width: none; }
+      h2 { break-after: avoid; }
+      .turn, .section, .boundary { break-inside: avoid; }
+    }
+    @media (max-width: 720px) {
+      .page { margin: 0; padding: 24px; border: 0; }
+      .meta, .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>MingLi Agent 本地命盘报告</h1>
+      <div class="meta">
+        ${htmlField("生成时间", formatDateTime(generatedAt))}
+        ${htmlField("导出时间", formatDateTime(exportedAt))}
+        ${htmlField("模型", serviceStatus.textContent || "-")}
+        ${htmlField("问题方向", data.intent?.primary_domain || "-")}
+      </div>
+    </header>
+
+    <section>
+      <h2>出生信息</h2>
+      <div class="grid">
+        ${htmlField("日期类型", chartInput.calendar_type === "lunar" ? "农历" : "公历")}
+        ${htmlField("出生日期", formatBirthDate(chartInput))}
+        ${htmlField("出生时间", formatBirthTime(chartInput))}
+        ${htmlField("性别", chartInput.gender || "未提供")}
+        ${htmlField("国家/地区", chartInput.country || "未提供")}
+        ${htmlField("出生地", chartInput.location || "未提供")}
+        ${htmlField("时区", inputQuality.timezone || "未提供")}
+      </div>
+    </section>
+
+    <section>
+      <h2>命盘摘要</h2>
+      <div class="grid">
+        ${htmlField("四柱", summary.pillars_text || "-")}
+        ${htmlField("日主", `${summary.day_master || "-"}（${summary.day_master_element || "未知"}）`)}
+        ${htmlField("时辰", summary.hour_branch || "未知")}
+        ${htmlField("历法来源", inputQuality.calendar_source || "-")}
+      </div>
+      ${htmlChips("结构提示", [
+        ...(report.strongest_elements || []).map((item) => `相对较多：${item}`),
+        ...(report.missing_elements || []).map((item) => `未见：${item}`)
+      ], "accent")}
+      ${htmlElementProfile(report.element_profile)}
+    </section>
+
+    <section>
+      <h2>咨询记录</h2>
+      ${turns.map(renderHtmlTurn).join("")}
+    </section>
+
+    ${htmlListSection("输入与限制", report.caveats)}
+
+    <section class="boundary">
+      <h2>解读边界</h2>
+      <p>本报告是传统命理视角下的结构化参考，不等同于确定事实或人生决策依据；涉及健康、财务、法律等现实问题时，仍应以专业意见和现实证据为准。</p>
+    </section>
+
+    <div class="footer">由 MingLi Agent 本地网页导出。导出文件不依赖本地服务，可直接打开或打印为 PDF。</div>
+  </main>
+</body>
+</html>`;
+    }
+
+    function buildReportContext() {
+      if (!latestResultData || !conversationTurns.length) {
+        return null;
+      }
+      const data = latestResultData;
+      const report = data.report || {};
+      return {
+        data,
+        report,
+        summary: report.summary || {},
+        inputQuality: report.input_quality || {},
+        chartInput: currentChartInput || {},
+        generatedAt: reportGeneratedAt || new Date(),
+        exportedAt: new Date()
+      };
+    }
+
+    function renderHtmlTurn(turn) {
+      return `<article class="turn">
+        <h3>${escapeHtml(turn.label)}</h3>
+        <div class="question">${escapeHtml(turn.question)}</div>
+        ${renderHtmlInterpretation(turn.interpretation)}
+      </article>`;
+    }
+
+    function renderHtmlInterpretation(interpretation) {
+      if (!interpretation) {
+        return "";
+      }
+      const meta = [];
+      if (interpretation.answer_choice) {
+        meta.push(`结论选项：${interpretation.answer_choice}`);
+      }
+      if (interpretation.answer_confidence !== null && interpretation.answer_confidence !== undefined) {
+        meta.push(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`);
+      }
+      if (interpretation.mode) {
+        meta.push(`生成方式：${formatModeLabel(interpretation.mode)}`);
+      }
+      return [
+        interpretation.overview ? `<p>${escapeHtml(interpretation.overview)}</p>` : "",
+        htmlChips("", meta),
+        htmlOptionScores(interpretation.option_scores),
+        ...(interpretation.sections || []).map(renderHtmlSection),
+        htmlListBlock("建议追问", interpretation.follow_up_questions),
+        htmlListBlock("整体边界", interpretation.caveats)
+      ].filter(Boolean).join("");
+    }
+
+    function renderHtmlSection(section) {
+      return `<section class="section">
+        <h3>${escapeHtml(section.title || "未命名段落")}</h3>
+        ${section.summary ? `<p>${escapeHtml(section.summary)}</p>` : ""}
+        ${htmlListBlock("依据", section.evidence, "detail")}
+        ${htmlListBlock("限制", section.caveats, "detail")}
+      </section>`;
+    }
+
+    function htmlOptionScores(scores) {
+      if (!scores || !Object.keys(scores).length) {
+        return "";
+      }
+      const items = Object.entries(scores).map(([letter, value]) => (
+        `<li><strong>${escapeHtml(letter)}：${escapeHtml(formatScore(value?.score))}</strong> - ${escapeHtml(value?.rationale || "暂无理由")}</li>`
+      )).join("");
+      return `<div class="detail"><strong>选项比较</strong><ul>${items}</ul></div>`;
+    }
+
+    function htmlElementProfile(profile) {
+      if (!Array.isArray(profile) || !profile.length) {
+        return "";
+      }
+      const items = profile.map((item) => (
+        `<span class="chip">${escapeHtml(item.element)}：${escapeHtml(String(item.count))}（${escapeHtml(item.level)}）</span>`
+      ));
+      return `<div class="chips">${items.join("")}</div>`;
+    }
+
+    function htmlListSection(title, values) {
+      const block = htmlListBlock("", values);
+      return block ? `<section><h2>${escapeHtml(title)}</h2>${block}</section>` : "";
+    }
+
+    function htmlListBlock(title, values, className = "") {
+      const items = cleanTextList(values);
+      if (!items.length) {
+        return "";
+      }
+      const classAttr = className ? ` class="${className}"` : "";
+      return `<div${classAttr}>${title ? `<strong>${escapeHtml(title)}</strong>` : ""}<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
+    }
+
+    function htmlChips(title, values, extraClass = "") {
+      const items = cleanTextList(values);
+      if (!items.length) {
+        return "";
+      }
+      const chipClass = extraClass ? `chip ${extraClass}` : "chip";
+      return `<div class="chips">${title ? `<span class="label">${escapeHtml(title)}</span>` : ""}${items.map((item) => `<span class="${chipClass}">${escapeHtml(item)}</span>`).join("")}</div>`;
+    }
+
+    function htmlField(label, value) {
+      return `<div class="field"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value || "未提供")}</span></div>`;
+    }
+
+    function escapeHtml(value) {
+      return cleanDisplayText(value, "未提供")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
     function appendKeyValue(lines, label, value) {
