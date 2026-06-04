@@ -1440,9 +1440,20 @@ INDEX_HTML = """<!doctype html>
     h1 { font-size: 30px; }
     h2 {
       margin-top: 30px;
-      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding-bottom: 10px;
       border-bottom: 1px solid var(--line);
-      font-size: 20px;
+      font-size: 22px;
+    }
+    h2::before {
+      content: "";
+      width: 6px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--accent);
+      flex: 0 0 auto;
     }
     h3 { margin-top: 18px; font-size: 16px; }
     p { margin: 8px 0 0; white-space: pre-wrap; }
@@ -1483,15 +1494,17 @@ INDEX_HTML = """<!doctype html>
     }
     .summary-card {
       min-height: 86px;
-      padding: 14px;
-      border: 1px solid var(--line);
+      padding: 16px;
+      border: 1px solid rgba(22, 103, 90, 0.22);
+      border-top: 4px solid var(--accent);
       border-radius: 10px;
-      background: #ffffff;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+      box-shadow: 0 8px 22px rgba(36, 34, 31, 0.05);
     }
     .summary-card .label { display: block; margin-bottom: 6px; }
     .summary-card .value {
       display: block;
-      font-size: 18px;
+      font-size: 20px;
       line-height: 1.25;
       overflow-wrap: anywhere;
     }
@@ -1536,9 +1549,11 @@ INDEX_HTML = """<!doctype html>
       gap: 10px;
       align-items: start;
     }
+    .turn-head h3 { margin-top: 0; }
     .turn-number {
-      display: inline-grid;
-      place-items: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: 28px;
       height: 28px;
       border-radius: 999px;
@@ -1546,6 +1561,8 @@ INDEX_HTML = """<!doctype html>
       color: #ffffff;
       font-size: 13px;
       font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
     .question {
       margin-top: 6px;
