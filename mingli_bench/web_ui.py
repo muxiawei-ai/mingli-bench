@@ -793,6 +793,7 @@ INDEX_HTML = """<!doctype html>
 
           <div class="actions">
             <button type="submit" id="submitButton">生成报告</button>
+            <button type="button" id="demoButton">加载示例</button>
             <button type="button" id="resetButton">重置</button>
           </div>
           <div id="formError" class="error" role="alert"></div>
@@ -881,6 +882,7 @@ INDEX_HTML = """<!doctype html>
     const lunarDateWrap = document.getElementById("lunarDateWrap");
     const ymdWrap = document.getElementById("ymdWrap");
     const submitButton = document.getElementById("submitButton");
+    const demoButton = document.getElementById("demoButton");
     const resetButton = document.getElementById("resetButton");
     const formError = document.getElementById("formError");
     const followUpPanel = document.getElementById("followUpPanel");
@@ -928,6 +930,29 @@ INDEX_HTML = """<!doctype html>
       debugPanel.open = false;
       updateDebugToggle();
       setExportStatus("");
+    });
+
+    demoButton.addEventListener("click", () => {
+      const demo = buildDemoReportData();
+      applyFormValues(demo.chartInput, demo.question);
+      currentChartInput = demo.chartInput;
+      currentQuestion = demo.question;
+      latestResultData = demo.data;
+      reportGeneratedAt = demo.generatedAt;
+      debugPanel.open = false;
+      updateDebugToggle();
+      conversationTurns = demo.turns.map((turn) => ({
+        ...turn,
+        overview: turn.interpretation?.overview || "",
+        interpretation: normalizeInterpretation(turn.interpretation)
+      }));
+      currentOverview = conversationTurns[conversationTurns.length - 1]?.overview || "";
+      renderResult(demo.data);
+      renderHistory();
+      followUpQuestion.value = "";
+      formError.textContent = "";
+      followUpError.textContent = "";
+      setExportStatus("已加载示例，未调用 API");
     });
 
     form.addEventListener("submit", async (event) => {
@@ -1077,6 +1102,181 @@ INDEX_HTML = """<!doctype html>
       setExportStatus("HTML 已下载");
     });
 
+    function buildDemoReportData() {
+      const chartInput = {
+        calendar_type: "solar",
+        year: 1990,
+        month: 8,
+        day: 16,
+        hour: 9,
+        minute: 30,
+        gender: "女",
+        country: "中国",
+        location: "上海"
+      };
+      const question = "分析事业和性格";
+      const report = {
+        question,
+        summary: {
+          pillars_text: "庚午 甲申 癸丑 丁巳",
+          day_master: "癸",
+          day_master_element: "水",
+          hour_branch: "巳"
+        },
+        input_quality: {
+          calendar_source: "demo_fixture",
+          timezone: "Asia/Shanghai",
+          has_birth_time: true
+        },
+        element_profile: [
+          {element: "木", count: 1, level: "low"},
+          {element: "火", count: 3, level: "high"},
+          {element: "土", count: 2, level: "medium"},
+          {element: "金", count: 2, level: "medium"},
+          {element: "水", count: 1, level: "low"}
+        ],
+        strongest_elements: ["火", "金"],
+        missing_elements: [],
+        caveats: [
+          "这是前端示例数据，仅用于查看排版和导出效果。",
+          "示例未调用 API，也不代表真实排盘或命理判断。"
+        ],
+        follow_up_questions: [
+          "如果关注 2026 年事业节奏，可以继续追问具体月份。",
+          "如果关注转型窗口，可以补充行业和当前岗位。"
+        ]
+      };
+      const turns = [
+        {
+          question,
+          interpretation: {
+            schema_version: "mingli_interpretation.v1",
+            mode: "local",
+            overview: "示例报告：整体呈现执行力较强、行动节奏偏快的结构，适合用来检查页面层级、依据展示和导出样式。",
+            sections: [
+              {
+                title: "排盘摘要",
+                summary: "四柱示例为庚午、甲申、癸丑、丁巳。日主癸水，局中火金较显，水木相对不强，报告展示时会突出结构提示和五行分布。",
+                evidence: ["pillars_text: 庚午 甲申 癸丑 丁巳", "day_master: 癸（水）", "demo_fixture: true"],
+                caveats: ["该段为假数据，不用于实际分析。"]
+              },
+              {
+                title: "性格观察",
+                summary: "示例文本用于测试长段落阅读效果：火势较明时，表达、行动和推进感较强；金气参与时，规则意识、判断标准和执行边界也会被强调。水木偏弱的设定用于测试报告中关于弹性、复盘和长期规划的提醒是否醒目但不过度抢眼。",
+                evidence: ["strongest_elements: 火, 金", "element_profile: 木1 火3 土2 金2 水1"],
+                caveats: ["性格表述仅为版式示例，不代表确定事实。"]
+              },
+              {
+                title: "事业倾向",
+                summary: "示例结论强调稳健推进、项目制输出和阶段性复盘。适合检查小标题、正文、依据与限制之间的视觉层级。",
+                evidence: ["intent.primary_domain: 事业", "question: 分析事业和性格"],
+                caveats: ["真实职业判断需要结合行业、经验、环境与选择。"]
+              }
+            ],
+            follow_up_questions: ["2026 年事业节奏如何？", "如果考虑转型，适合先做哪些准备？"],
+            caveats: ["示例报告未调用模型。"],
+            parsed_from_response: false,
+            raw_response: null
+          }
+        },
+        {
+          question: "2026年事业节奏如何？",
+          interpretation: {
+            schema_version: "mingli_interpretation.v1",
+            mode: "local",
+            overview: "示例追问 1：2026 年可展示为先整理资源、再推进项目、最后复盘收束的节奏。",
+            sections: [
+              {
+                title: "年度节奏",
+                summary: "上半年适合梳理方向、明确边界和选择重点项目；年中之后更适合推进交付、合作沟通和成果展示。该段用于测试追问历史中的结构化段落排版。",
+                evidence: ["demo_event_year: 2026", "question_domain: 事业"],
+                caveats: ["这是示例节奏，不对应真实流年计算。"]
+              },
+              {
+                title: "行动提示",
+                summary: "建议把目标拆成可观察的里程碑，避免同时打开过多战线。适合测试建议型内容在页面和导出 HTML 中的可读性。",
+                evidence: ["report.follow_up_questions includes career timing"],
+                caveats: ["行动建议是测试文本，不构成现实职业建议。"]
+              }
+            ],
+            follow_up_questions: ["如果想转型，适合什么时候开始准备？"],
+            caveats: ["示例追问未调用 API。"],
+            parsed_from_response: false,
+            raw_response: null
+          }
+        },
+        {
+          question: "如果想转型，适合什么时候开始准备？",
+          interpretation: {
+            schema_version: "mingli_interpretation.v1",
+            mode: "local",
+            overview: "示例追问 2：转型更适合先小步试水，再评估资源与风险，避免直接大幅切换。",
+            sections: [
+              {
+                title: "准备窗口",
+                summary: "示例建议把准备期放在正式行动之前：先整理作品、验证方向、访谈目标行业，再决定是否投入更多资源。这里主要用来检查多轮追问后的历史折叠和导出完整性。",
+                evidence: ["turn_index: 2", "demo_topic: transition"],
+                caveats: ["真实转型判断需要补充行业、财务缓冲和个人约束。"]
+              },
+              {
+                title: "风险边界",
+                summary: "如果当前资源不足，适合先做低成本试验；如果已有明确机会，则可以把风险拆分为时间、现金流、人际支持和技能缺口四类。",
+                evidence: ["demo_risk_categories: time, cashflow, support, skill_gap"],
+                caveats: ["该段为版式和导出测试内容。"]
+              }
+            ],
+            follow_up_questions: ["是否要把 HTML 打印版进一步做成正式报告版式？"],
+            caveats: ["示例追问未调用 API。"],
+            parsed_from_response: false,
+            raw_response: null
+          }
+        }
+      ];
+      return {
+        chartInput,
+        question,
+        generatedAt: new Date(),
+        turns,
+        data: {
+          demo: true,
+          response: "demo_response_no_api_call",
+          chart: {
+            pillars_text: report.summary.pillars_text
+          },
+          report,
+          intent: {
+            primary_domain: "事业",
+            confidence: 0.92
+          },
+          interpretation: turns[turns.length - 1].interpretation,
+          warnings: ["demo_data_no_api_call"],
+          trace: [
+            {
+              name: "demo",
+              status: "completed",
+              summary: "Loaded front-end fixture data without API call."
+            }
+          ]
+        }
+      };
+    }
+
+    function applyFormValues(chartInput, question) {
+      calendarType.value = chartInput.calendar_type || "solar";
+      calendarType.dispatchEvent(new Event("change"));
+      document.getElementById("year").value = chartInput.year || "";
+      document.getElementById("month").value = chartInput.month || "";
+      document.getElementById("day").value = chartInput.day || "";
+      document.getElementById("time").value =
+        chartInput.hour === null || chartInput.hour === undefined
+          ? ""
+          : `${pad2(chartInput.hour)}:${pad2(chartInput.minute || 0)}`;
+      document.getElementById("gender").value = chartInput.gender || "";
+      document.getElementById("country").value = chartInput.country || "";
+      document.getElementById("location").value = chartInput.location || "";
+      document.getElementById("question").value = question || "";
+    }
+
     function buildMarkdownReport() {
       if (!latestResultData || !conversationTurns.length) {
         return "";
@@ -1092,7 +1292,7 @@ INDEX_HTML = """<!doctype html>
       lines.push("# MingLi Agent 本地命盘报告", "");
       lines.push(`生成时间：${formatDateTime(reportGeneratedAt || new Date())}`);
       lines.push(`导出时间：${formatDateTime(new Date())}`);
-      lines.push(`模型：${mdText(serviceStatus.textContent || "-")}`, "");
+      lines.push(`模型：${mdText(reportModelLabel(data))}`, "");
 
       lines.push("## 出生信息");
       appendKeyValue(lines, "日期类型", chartInput.calendar_type === "lunar" ? "农历" : "公历");
@@ -1337,7 +1537,7 @@ INDEX_HTML = """<!doctype html>
       <div class="meta">
         ${htmlField("生成时间", formatDateTime(generatedAt))}
         ${htmlField("导出时间", formatDateTime(exportedAt))}
-        ${htmlField("模型", serviceStatus.textContent || "-")}
+        ${htmlField("模型", reportModelLabel(data))}
         ${htmlField("问题方向", data.intent?.primary_domain || "-")}
       </div>
     </header>
@@ -1491,6 +1691,10 @@ INDEX_HTML = """<!doctype html>
 
     function htmlField(label, value) {
       return `<div class="field"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value || "未提供")}</span></div>`;
+    }
+
+    function reportModelLabel(data = latestResultData) {
+      return data?.demo ? "示例数据（未调用 API）" : (serviceStatus.textContent || "-");
     }
 
     function escapeHtml(value) {
