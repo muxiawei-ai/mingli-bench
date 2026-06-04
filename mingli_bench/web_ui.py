@@ -1409,6 +1409,7 @@ INDEX_HTML = """<!doctype html>
       --accent: #16675a;
       --accent-soft: #e5f3ef;
       --warn-soft: #fff8e8;
+      --paper-shadow: rgba(36, 34, 31, 0.08);
     }
     * { box-sizing: border-box; }
     body {
@@ -1425,17 +1426,20 @@ INDEX_HTML = """<!doctype html>
       padding: 42px;
       background: var(--paper);
       border: 1px solid var(--line);
+      box-shadow: 0 18px 48px var(--paper-shadow);
     }
     header {
       display: grid;
-      gap: 14px;
-      padding-bottom: 22px;
-      border-bottom: 2px solid var(--ink);
+      gap: 18px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
     }
     h1, h2, h3 { margin: 0; line-height: 1.35; letter-spacing: 0; }
-    h1 { font-size: 28px; }
+    h1 { font-size: 30px; }
     h2 {
-      margin-top: 28px;
+      margin-top: 30px;
       padding-bottom: 8px;
       border-bottom: 1px solid var(--line);
       font-size: 20px;
@@ -1444,6 +1448,16 @@ INDEX_HTML = """<!doctype html>
     p { margin: 8px 0 0; white-space: pre-wrap; }
     ul { margin: 8px 0 0; padding-left: 20px; }
     li { margin: 3px 0; }
+    .eyebrow {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
     .meta, .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1461,6 +1475,26 @@ INDEX_HTML = """<!doctype html>
       font-weight: 700;
     }
     .value { font-weight: 700; }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .summary-card {
+      min-height: 86px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+    }
+    .summary-card .label { display: block; margin-bottom: 6px; }
+    .summary-card .value {
+      display: block;
+      font-size: 18px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .chip {
       display: inline-flex;
@@ -1478,6 +1512,16 @@ INDEX_HTML = """<!doctype html>
       color: #0f5148;
       border-color: #b8d8d0;
     }
+    .print-tip {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border: 1px solid rgba(22, 103, 90, 0.22);
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: #0f5148;
+      font-size: 13px;
+      font-weight: 650;
+    }
     .turn {
       margin-top: 18px;
       padding: 18px;
@@ -1486,8 +1530,25 @@ INDEX_HTML = """<!doctype html>
       break-inside: avoid;
       background: #ffffff;
     }
+    .turn-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+    .turn-number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+    }
     .question {
-      margin-top: 8px;
+      margin-top: 6px;
       color: var(--accent);
       font-weight: 800;
     }
@@ -1499,13 +1560,18 @@ INDEX_HTML = """<!doctype html>
     }
     .detail {
       margin-top: 10px;
-      padding-left: 12px;
+      padding: 10px 12px;
       border-left: 3px solid var(--line);
+      background: #fbfaf5;
       color: var(--muted);
       font-size: 13px;
     }
+    .detail strong {
+      color: var(--muted);
+      font-size: 12px;
+    }
     .boundary {
-      margin-top: 20px;
+      margin-top: 28px;
       padding: 14px;
       border: 1px solid rgba(138, 90, 0, 0.25);
       border-radius: 8px;
@@ -1520,26 +1586,30 @@ INDEX_HTML = """<!doctype html>
     }
     @media print {
       body { background: white; }
-      .page { margin: 0; padding: 0; border: 0; max-width: none; }
+      .page { margin: 0; padding: 0; border: 0; max-width: none; box-shadow: none; }
       h2 { break-after: avoid; }
       .turn, .section, .boundary { break-inside: avoid; }
     }
     @media (max-width: 720px) {
       .page { margin: 0; padding: 24px; border: 0; }
-      .meta, .grid { grid-template-columns: 1fr; }
+      header { padding: 20px; }
+      .meta, .grid, .summary-cards { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <main class="page">
     <header>
+      <div class="eyebrow">STRUCTURED MINGLI REPORT</div>
       <h1>MingLi Agent 本地命盘报告</h1>
+      <p class="subtitle">面向归档与打印的独立 HTML 报告，内容来自当前本地结构化会话。</p>
       <div class="meta">
         ${htmlField("生成时间", formatDateTime(generatedAt))}
         ${htmlField("导出时间", formatDateTime(exportedAt))}
         ${htmlField("模型", reportModelLabel(data))}
         ${htmlField("问题方向", data.intent?.primary_domain || "-")}
       </div>
+      <div class="print-tip">打印提示：打开此 HTML 后，可使用浏览器“打印”或“另存为 PDF”保存正式版报告。</div>
     </header>
 
     <section>
@@ -1557,11 +1627,11 @@ INDEX_HTML = """<!doctype html>
 
     <section>
       <h2>命盘摘要</h2>
-      <div class="grid">
-        ${htmlField("四柱", summary.pillars_text || "-")}
-        ${htmlField("日主", `${summary.day_master || "-"}（${summary.day_master_element || "未知"}）`)}
-        ${htmlField("时辰", summary.hour_branch || "未知")}
-        ${htmlField("历法来源", inputQuality.calendar_source || "-")}
+      <div class="summary-cards">
+        ${htmlSummaryCard("四柱", summary.pillars_text || "-")}
+        ${htmlSummaryCard("日主", `${summary.day_master || "-"}（${summary.day_master_element || "未知"}）`)}
+        ${htmlSummaryCard("时辰", summary.hour_branch || "未知")}
+        ${htmlSummaryCard("历法来源", inputQuality.calendar_source || "-")}
       </div>
       ${htmlChips("结构提示", [
         ...(report.strongest_elements || []).map((item) => `相对较多：${item}`),
@@ -1572,7 +1642,7 @@ INDEX_HTML = """<!doctype html>
 
     <section>
       <h2>咨询记录</h2>
-      ${turns.map(renderHtmlTurn).join("")}
+      ${turns.map((turn, index) => renderHtmlTurn(turn, index)).join("")}
     </section>
 
     ${htmlListSection("输入与限制", report.caveats)}
@@ -1605,10 +1675,15 @@ INDEX_HTML = """<!doctype html>
       };
     }
 
-    function renderHtmlTurn(turn) {
+    function renderHtmlTurn(turn, index) {
       return `<article class="turn">
-        <h3>${escapeHtml(turn.label)}</h3>
-        <div class="question">${escapeHtml(turn.question)}</div>
+        <div class="turn-head">
+          <span class="turn-number">${index + 1}</span>
+          <div>
+            <h3>${escapeHtml(turn.label)}</h3>
+            <div class="question">${escapeHtml(turn.question)}</div>
+          </div>
+        </div>
         ${renderHtmlInterpretation(turn.interpretation)}
       </article>`;
     }
@@ -1691,6 +1766,10 @@ INDEX_HTML = """<!doctype html>
 
     function htmlField(label, value) {
       return `<div class="field"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value || "未提供")}</span></div>`;
+    }
+
+    function htmlSummaryCard(label, value) {
+      return `<div class="summary-card"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value || "未提供")}</span></div>`;
     }
 
     function reportModelLabel(data = latestResultData) {
