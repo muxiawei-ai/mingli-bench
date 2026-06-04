@@ -827,6 +827,7 @@ INDEX_HTML = """<!doctype html>
         if (!response.ok) {
           throw new Error(data.error?.message || "请求失败");
         }
+        data.interpretation = normalizeInterpretation(data.interpretation);
         currentChartInput = payload.chart_input;
         currentQuestion = payload.question;
         currentOverview = data.interpretation?.overview || "";
@@ -873,6 +874,7 @@ INDEX_HTML = """<!doctype html>
         if (!response.ok) {
           throw new Error(data.error?.message || "请求失败");
         }
+        data.interpretation = normalizeInterpretation(data.interpretation);
         currentQuestion = nextQuestion;
         currentOverview = data.interpretation?.overview || "";
         conversationTurns.push({
@@ -975,6 +977,7 @@ INDEX_HTML = """<!doctype html>
     }
 
     function renderResult(data) {
+      data.interpretation = normalizeInterpretation(data.interpretation);
       document.getElementById("emptyState").hidden = true;
       document.getElementById("result").hidden = false;
 
@@ -1004,6 +1007,61 @@ INDEX_HTML = """<!doctype html>
         followUpPanel.hidden = true;
       }
       document.getElementById("rawJson").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function normalizeInterpretation(interpretation) {
+      if (!interpretation || typeof interpretation !== "object") {
+        return interpretation;
+      }
+      const embedded = parseEmbeddedJsonObject(interpretation.overview);
+      if (!embedded || !embedded.sections) {
+        return interpretation;
+      }
+      return {
+        ...interpretation,
+        ...embedded,
+        mode: embedded.mode || "llm_json",
+        parsed_from_response: true,
+        raw_response: interpretation.raw_response || interpretation.overview
+      };
+    }
+
+    function parseEmbeddedJsonObject(value) {
+      if (typeof value !== "string") {
+        return null;
+      }
+      const trimmed = value.trim();
+      const start = trimmed.indexOf("{");
+      const end = trimmed.lastIndexOf("}");
+      const candidates = [trimmed];
+      if (start >= 0 && end > start) {
+        candidates.push(trimmed.slice(start, end + 1));
+      }
+      for (const candidate of candidates) {
+        const parsed = parseJsonCandidate(candidate);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      return null;
+    }
+
+    function parseJsonCandidate(candidate) {
+      let current = candidate;
+      for (let index = 0; index < 3; index += 1) {
+        if (current && typeof current === "object" && !Array.isArray(current)) {
+          return current;
+        }
+        if (typeof current !== "string") {
+          return null;
+        }
+        try {
+          current = JSON.parse(current.trim());
+        } catch (_error) {
+          return null;
+        }
+      }
+      return current && typeof current === "object" && !Array.isArray(current) ? current : null;
     }
 
     function renderInterpretation(interpretation) {

@@ -1,4 +1,5 @@
 import unittest
+import json
 
 from mingli_bench.chart_api import build_bazi_chart
 from mingli_bench.interpretation import (
@@ -71,6 +72,32 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertEqual(interpretation.answer_choice, "B")
         self.assertEqual(interpretation.answer_confidence, 0.72)
         self.assertEqual(interpretation.option_scores["B"]["score"], 0.72)
+
+    def test_parse_double_encoded_json_interpretation_response(self):
+        payload = {
+            "schema_version": "mingli_interpretation.v1",
+            "overview": "双重编码也应解析",
+            "sections": [
+                {
+                    "title": "排盘摘要",
+                    "summary": "不是原始 JSON 字符串",
+                    "evidence": ["pillars_text"],
+                    "caveats": [],
+                }
+            ],
+            "follow_up_questions": [],
+            "caveats": [],
+        }
+
+        interpretation = parse_interpretation_response(
+            json.dumps(json.dumps(payload, ensure_ascii=False), ensure_ascii=False),
+            self.report,
+        )
+
+        self.assertEqual(interpretation.mode, "llm_json")
+        self.assertTrue(interpretation.parsed_from_response)
+        self.assertEqual(interpretation.overview, "双重编码也应解析")
+        self.assertEqual(interpretation.sections[0].summary, "不是原始 JSON 字符串")
 
     def test_parse_plain_text_response_falls_back(self):
         interpretation = parse_interpretation_response("普通文本解读", self.report)

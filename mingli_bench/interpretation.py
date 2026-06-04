@@ -340,18 +340,34 @@ def _load_json_object(text: str) -> Optional[Dict[str, Any]]:
     cleaned = text.strip()
     if not cleaned:
         return None
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError:
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start < 0 or end <= start:
+
+    candidates = [cleaned]
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(cleaned[start : end + 1])
+
+    for candidate in candidates:
+        parsed = _loads_json_object_candidate(candidate)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _loads_json_object_candidate(text: str, *, max_depth: int = 2) -> Optional[Dict[str, Any]]:
+    """Parse a JSON object, including common double-encoded model responses."""
+
+    current: Any = text
+    for _ in range(max_depth + 1):
+        if isinstance(current, dict):
+            return current
+        if not isinstance(current, str):
             return None
         try:
-            parsed = json.loads(cleaned[start : end + 1])
+            current = json.loads(current.strip())
         except json.JSONDecodeError:
             return None
-    return parsed if isinstance(parsed, dict) else None
+    return current if isinstance(current, dict) else None
 
 
 def _section_from_mapping(payload: Any) -> InterpretationSection:
