@@ -69,6 +69,11 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("报告导出", html)
             self.assertIn("copyMarkdownButton", html)
             self.assertIn("buildMarkdownReport", html)
+            self.assertIn("当前解读", html)
+            self.assertIn("追问与历史", html)
+            self.assertIn("debugPanel", html)
+            self.assertIn("调试信息（原始 JSON）", html)
+            self.assertIn("formatModeLabel", html)
             self.assertNotIn("`置信度：${intent.confidence", html)
 
             body = json.dumps(

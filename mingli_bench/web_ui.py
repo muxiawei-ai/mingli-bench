@@ -263,6 +263,35 @@ INDEX_HTML = """<!doctype html>
       margin-bottom: 16px;
     }
 
+    .result-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .result-toolbar-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .result-toolbar-title strong {
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .result-toolbar-title span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
     .metric,
     .panel {
       border: 1px solid var(--line);
@@ -306,6 +335,34 @@ INDEX_HTML = """<!doctype html>
 
     .panel-body {
       padding: 15px;
+    }
+
+    .debug-panel summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 13px 15px;
+      cursor: pointer;
+      list-style: none;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+      font-weight: 750;
+      font-size: 15px;
+    }
+
+    .debug-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .debug-panel:not([open]) summary {
+      border-bottom: 0;
+    }
+
+    .debug-toggle {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 750;
     }
 
     .element-list {
@@ -378,6 +435,7 @@ INDEX_HTML = """<!doctype html>
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: flex-end;
       gap: 10px;
     }
 
@@ -647,6 +705,15 @@ INDEX_HTML = """<!doctype html>
       .summary-bar {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .result-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .export-row {
+        justify-content: flex-start;
+      }
     }
 
     @media (max-width: 560px) {
@@ -735,23 +802,24 @@ INDEX_HTML = """<!doctype html>
       <section class="result-pane">
         <div id="emptyState" class="empty">填写信息后生成本地命盘报告</div>
         <div id="result" hidden>
+          <section class="result-toolbar" id="exportPanel" aria-label="报告导出">
+            <div class="result-toolbar-title">
+              <strong>本次报告</strong>
+              <span>可复制或下载为 Markdown，包含初始问题和追问记录。</span>
+            </div>
+            <div class="export-row">
+              <button type="button" id="copyMarkdownButton" class="button-primary">复制 Markdown</button>
+              <button type="button" id="downloadMarkdownButton">下载 .md</button>
+              <span id="exportStatus" class="export-status" role="status"></span>
+            </div>
+          </section>
+
           <div class="summary-bar">
             <div class="metric"><span>四柱</span><strong id="pillarsText">-</strong></div>
             <div class="metric"><span>日主</span><strong id="dayMaster">-</strong></div>
             <div class="metric"><span>时辰</span><strong id="hourBranch">-</strong></div>
             <div class="metric"><span>问题方向</span><strong id="intentDomain">-</strong></div>
           </div>
-
-          <section class="panel" id="exportPanel">
-            <h2>报告导出</h2>
-            <div class="panel-body">
-              <div class="export-row">
-                <button type="button" id="copyMarkdownButton" class="button-primary">复制 Markdown</button>
-                <button type="button" id="downloadMarkdownButton">下载 .md</button>
-                <span id="exportStatus" class="export-status" role="status"></span>
-              </div>
-            </div>
-          </section>
 
           <section class="panel">
             <h2>五行分布</h2>
@@ -775,12 +843,12 @@ INDEX_HTML = """<!doctype html>
           </section>
 
           <section class="panel" id="llmPanel" hidden>
-            <h2>LLM 解读</h2>
+            <h2>当前解读</h2>
             <div class="panel-body" id="llmResponse"></div>
           </section>
 
           <section class="panel" id="followUpPanel" hidden>
-            <h2>继续追问</h2>
+            <h2>追问与历史</h2>
             <div class="panel-body">
               <form id="followUpForm" class="follow-up-form">
                 <label>
@@ -797,10 +865,10 @@ INDEX_HTML = """<!doctype html>
             </div>
           </section>
 
-          <section class="panel">
-            <h2>原始 JSON</h2>
+          <details class="panel debug-panel" id="debugPanel">
+            <summary><span>调试信息（原始 JSON）</span><span class="debug-toggle" id="debugToggle">展开</span></summary>
             <div class="panel-body"><pre id="rawJson"></pre></div>
-          </section>
+          </details>
         </div>
       </section>
     </main>
@@ -825,6 +893,8 @@ INDEX_HTML = """<!doctype html>
     const downloadMarkdownButton = document.getElementById("downloadMarkdownButton");
     const exportStatus = document.getElementById("exportStatus");
     const serviceStatus = document.getElementById("serviceStatus");
+    const debugPanel = document.getElementById("debugPanel");
+    const debugToggle = document.getElementById("debugToggle");
 
     let currentChartInput = null;
     let currentQuestion = "";
@@ -853,6 +923,8 @@ INDEX_HTML = """<!doctype html>
       latestResultData = null;
       reportGeneratedAt = null;
       conversationTurns = [];
+      debugPanel.open = false;
+      updateDebugToggle();
       setExportStatus("");
     });
 
@@ -875,6 +947,8 @@ INDEX_HTML = """<!doctype html>
         data.interpretation = normalizeInterpretation(data.interpretation);
         latestResultData = data;
         reportGeneratedAt = new Date();
+        debugPanel.open = false;
+        updateDebugToggle();
         currentChartInput = payload.chart_input;
         currentQuestion = payload.question;
         currentOverview = data.interpretation?.overview || "";
@@ -923,6 +997,8 @@ INDEX_HTML = """<!doctype html>
         }
         data.interpretation = normalizeInterpretation(data.interpretation);
         latestResultData = data;
+        debugPanel.open = false;
+        updateDebugToggle();
         currentQuestion = nextQuestion;
         currentOverview = data.interpretation?.overview || "";
         conversationTurns.push({
@@ -946,6 +1022,8 @@ INDEX_HTML = """<!doctype html>
       followUpError.textContent = "";
       followUpQuestion.focus();
     });
+
+    debugPanel.addEventListener("toggle", updateDebugToggle);
 
     copyMarkdownButton.addEventListener("click", async () => {
       const markdown = buildMarkdownReport();
@@ -1056,7 +1134,7 @@ INDEX_HTML = """<!doctype html>
         meta.push(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`);
       }
       if (interpretation.mode) {
-        meta.push(`模式：${interpretation.mode}`);
+        meta.push(`生成方式：${formatModeLabel(interpretation.mode)}`);
       }
       if (meta.length) {
         lines.push(meta.map((item) => `\`${mdText(item)}\``).join(" "), "");
@@ -1177,6 +1255,10 @@ INDEX_HTML = """<!doctype html>
 
     function setExportStatus(text) {
       exportStatus.textContent = text;
+    }
+
+    function updateDebugToggle() {
+      debugToggle.textContent = debugPanel.open ? "收起" : "展开";
     }
 
     function buildPayload() {
@@ -1527,7 +1609,7 @@ INDEX_HTML = """<!doctype html>
         answerRow.appendChild(makeTag(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`));
       }
       if (interpretation.mode) {
-        answerRow.appendChild(makeTag(`模式：${interpretation.mode}`));
+        answerRow.appendChild(makeTag(`生成方式：${formatModeLabel(interpretation.mode)}`, "tag-source"));
       }
       if (answerRow.children.length) {
         head.appendChild(answerRow);
@@ -1634,6 +1716,19 @@ INDEX_HTML = """<!doctype html>
     function formatScore(value) {
       const number = Number(value);
       return Number.isFinite(number) ? number.toFixed(2) : "-";
+    }
+
+    function formatModeLabel(mode) {
+      if (mode === "llm_json") {
+        return "LLM 结构化";
+      }
+      if (mode === "llm_text") {
+        return "LLM 文本兜底";
+      }
+      if (mode === "local") {
+        return "本地规则";
+      }
+      return mode || "未知";
     }
 
     function renderHistory() {
