@@ -81,6 +81,8 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("htmlSummaryCard", html)
             self.assertIn("hexagramPanel", html)
             self.assertIn("renderHexagramModule", html)
+            self.assertIn("renderPrintableHexagramSection", html)
+            self.assertIn("hex-print-module", html)
             self.assertIn("井卦", html)
             self.assertIn("六爻详释", html)
             self.assertIn("当前解读", html)

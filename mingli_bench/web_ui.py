@@ -1823,6 +1823,318 @@ INDEX_HTML = """<!doctype html>
       color: #0f5148;
       border-color: #b8d8d0;
     }
+    .hex-print-module {
+      margin-top: 16px;
+      display: grid;
+      gap: 28px;
+      padding: 28px;
+      border: 1px solid #e3dcc9;
+      border-radius: 12px;
+      background: #faf7f0;
+      color: #211e17;
+      break-inside: avoid;
+    }
+    .hex-print-head {
+      text-align: center;
+      padding-bottom: 22px;
+      border-bottom: 1px solid #e3dcc9;
+    }
+    .hex-print-eyebrow {
+      margin-bottom: 10px;
+      color: #2f5042;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.24em;
+    }
+    .hex-print-title {
+      margin: 0;
+      font-family: "Songti SC", "STSong", "SimSun", serif;
+      font-size: 32px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: 0.1em;
+    }
+    .hex-print-title span {
+      color: #938b76;
+      font-size: 22px;
+      margin: 0 0.18em;
+    }
+    .hex-print-summary {
+      margin-top: 8px;
+      color: #56503f;
+      font-size: 13px;
+    }
+    .hex-print-section {
+      display: grid;
+      gap: 14px;
+    }
+    .hex-print-section-title {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      color: #2f5042;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+    }
+    .hex-print-section-title::after {
+      content: "";
+      height: 1px;
+      background: #e3dcc9;
+    }
+    .hex-print-basis {
+      display: grid;
+      gap: 8px;
+    }
+    .hex-print-basis-row {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid #ece6d6;
+      background: #fcfaf4;
+    }
+    .hex-print-step {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid #2f5042;
+      border-radius: 999px;
+      color: #2f5042;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .hex-print-basis-text {
+      color: #56503f;
+      font-family: "SF Mono", "Menlo", "Consolas", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .hex-print-compare {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 78px minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+    .hex-print-card {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      min-height: 282px;
+      padding: 24px 20px;
+      border: 1px solid #e3dcc9;
+      background: #fcfaf4;
+      text-align: center;
+      break-inside: avoid;
+    }
+    .hex-print-role {
+      margin-bottom: 18px;
+      color: #2f5042;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.24em;
+    }
+    .hex-print-lines {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .hex-print-yao {
+      position: relative;
+      display: flex;
+      gap: 14px;
+      width: 146px;
+      height: 12px;
+    }
+    .hex-print-yao .hex-print-bar {
+      flex: 1;
+      border-radius: 2px;
+      background: #211e17;
+    }
+    .hex-print-yao.is-moving .hex-print-bar {
+      background: #9a7836;
+    }
+    .hex-print-yao-mark {
+      position: absolute;
+      right: -28px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7d6026;
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .hex-print-symbol {
+      margin-bottom: 8px;
+      color: #211e17;
+      font-family: "Apple Symbols", "Segoe UI Symbol", "Songti SC", serif;
+      font-size: 38px;
+      line-height: 1;
+    }
+    .hex-print-name {
+      margin-bottom: 4px;
+      font-family: "Songti SC", "STSong", "SimSun", serif;
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: 0.1em;
+    }
+    .hex-print-order {
+      margin-bottom: 12px;
+      color: #938b76;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+    .hex-print-trigrams {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .hex-print-trigram {
+      padding: 3px 9px;
+      border: 1px solid #dde6dd;
+      background: #eef2ec;
+      color: #2f5042;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .hex-print-description {
+      color: #56503f;
+      font-size: 13px;
+    }
+    .hex-print-arrow {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 8px;
+      color: #9a7836;
+      text-align: center;
+    }
+    .hex-print-arrow-glyph {
+      font-size: 30px;
+      line-height: 1;
+    }
+    .hex-print-arrow-caption {
+      color: #7d6026;
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.5;
+    }
+    .hex-print-focus {
+      padding: 26px 32px;
+      border: 1px solid #cbb277;
+      background: #f6efdd;
+      text-align: center;
+      break-inside: avoid;
+    }
+    .hex-print-focus-kicker {
+      margin-bottom: 10px;
+      color: #7d6026;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+    }
+    .hex-print-quote {
+      margin: 0 0 12px;
+      font-family: "Songti SC", "STSong", "SimSun", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.55;
+      letter-spacing: 0.08em;
+    }
+    .hex-print-focus-note {
+      max-width: 620px;
+      margin: 0 auto;
+      color: #56503f;
+      font-size: 14px;
+      line-height: 1.85;
+      white-space: pre-wrap;
+    }
+    .hex-print-line-table {
+      overflow: hidden;
+      border: 1px solid #e3dcc9;
+      background: #fcfaf4;
+      break-inside: avoid;
+    }
+    .hex-print-line-head,
+    .hex-print-line-row {
+      display: grid;
+      grid-template-columns: 92px 118px minmax(0, 1fr) minmax(0, 1.3fr);
+      align-items: center;
+    }
+    .hex-print-line-head {
+      background: #eef2ec;
+      color: #2f5042;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+    }
+    .hex-print-line-head > div,
+    .hex-print-line-row > div {
+      padding: 12px 14px;
+    }
+    .hex-print-line-row {
+      border-top: 1px solid #ece6d6;
+    }
+    .hex-print-line-row.is-moving {
+      background: #f6efdd;
+    }
+    .hex-print-line-pos {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hex-print-line-index {
+      width: 18px;
+      color: #211e17;
+      font-family: "Songti SC", "STSong", "SimSun", serif;
+      font-size: 16px;
+      text-align: center;
+    }
+    .hex-print-line-row.is-moving .hex-print-line-index,
+    .hex-print-line-row.is-moving .hex-print-line-name {
+      color: #7d6026;
+      font-weight: 800;
+    }
+    .hex-print-yao.is-small {
+      width: 48px;
+      height: 8px;
+      gap: 7px;
+    }
+    .hex-print-line-name {
+      color: #56503f;
+      font-size: 13px;
+    }
+    .hex-print-line-text {
+      font-family: "Songti SC", "STSong", "SimSun", serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .hex-print-line-note {
+      color: #56503f;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .hex-print-caveats {
+      padding-top: 16px;
+      border-top: 1px solid #e3dcc9;
+      color: #938b76;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .hex-print-caveats strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+    }
+    .hex-print-caveats ul {
+      margin: 0;
+      padding-left: 18px;
+    }
     .hexagram-panel {
       display: grid;
       gap: 18px;
@@ -2046,12 +2358,32 @@ INDEX_HTML = """<!doctype html>
       body { background: white; }
       .page { margin: 0; padding: 0; border: 0; max-width: none; box-shadow: none; }
       h2 { break-after: avoid; }
-      .turn, .section, .boundary { break-inside: avoid; }
+      .turn, .section, .boundary, .hex-print-card, .hex-print-focus, .hex-print-line-table { break-inside: avoid; }
     }
     @media (max-width: 720px) {
       .page { margin: 0; padding: 24px; border: 0; }
       header { padding: 20px; }
       .meta, .grid, .summary-cards { grid-template-columns: 1fr; }
+      .hex-print-module { padding: 22px; }
+      .hex-print-title { font-size: 28px; }
+      .hex-print-compare { grid-template-columns: 1fr; }
+      .hex-print-arrow {
+        grid-template-columns: auto auto;
+        justify-content: center;
+        min-height: 54px;
+      }
+      .hex-print-arrow-glyph { transform: rotate(90deg); }
+      .hex-print-line-head { display: none; }
+      .hex-print-line-row {
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 4px 12px;
+        padding: 14px;
+      }
+      .hex-print-line-row > div { padding: 0; }
+      .hex-print-line-pos { grid-row: 1 / span 3; align-self: start; }
+      .hex-print-line-name,
+      .hex-print-line-text,
+      .hex-print-line-note { grid-column: 2; }
       .hexagram-pair { grid-template-columns: 1fr; }
       .hex-arrow { transform: rotate(90deg); justify-self: center; }
       .line-detail-row { grid-template-columns: 40px minmax(0, 1fr); }
@@ -2102,7 +2434,7 @@ INDEX_HTML = """<!doctype html>
       ${htmlElementProfile(report.element_profile)}
     </section>
 
-    ${renderHtmlHexagramSection(report.hexagram)}
+    ${renderPrintableHexagramSection(report.hexagram)}
 
     <section>
       <h2>咨询记录</h2>
@@ -2203,6 +2535,201 @@ INDEX_HTML = """<!doctype html>
         `<span class="chip">${escapeHtml(item.element)}：${escapeHtml(String(item.count))}（${escapeHtml(item.level)}）</span>`
       ));
       return `<div class="chips">${items.join("")}</div>`;
+    }
+
+    function renderPrintableHexagramSection(hexagram) {
+      if (!hexagram || typeof hexagram !== "object") {
+        return "";
+      }
+      const primary = hexagram.primary || {};
+      const changed = hexagram.changed || {};
+      if (!primary.name && !changed.name) {
+        return "";
+      }
+      const primaryName = stripHexSuffix(primary.name || "本卦");
+      const changedName = stripHexSuffix(changed.name || "变卦");
+      return `<section>
+        <h2>卦象参考</h2>
+        <div class="hex-print-module">
+          <header class="hex-print-head">
+            <div class="hex-print-eyebrow">${escapeHtml(hexagram.method || "卦象展示")}</div>
+            <div class="hex-print-title">${escapeHtml(primaryName)}<span>之</span>${escapeHtml(changedName)}</div>
+            <div class="hex-print-summary">本卦《${escapeHtml(primaryName)}》 · 动 ${escapeHtml(hexagram.moving_line_name || `第${hexagram.moving_line || "-"}爻`)} · 变《${escapeHtml(changedName)}》</div>
+          </header>
+          ${renderPrintableHexPrintSection("壹", "起卦依据", renderPrintableBasis(hexagram.basis))}
+          ${renderPrintableHexPrintSection("贰", "本卦 · 变卦", renderPrintableCompare(hexagram))}
+          ${renderPrintableHexPrintSection("叁", "动爻爻辞", renderPrintableFocus(hexagram))}
+          ${renderPrintableHexPrintSection("肆", "六爻详释", renderPrintableLineDetails(hexagram))}
+          ${renderPrintableCaveats(hexagram.caveats)}
+        </div>
+      </section>`;
+    }
+
+    function renderPrintableHexPrintSection(order, title, content) {
+      if (!content) {
+        return "";
+      }
+      return `<section class="hex-print-section">
+        <div class="hex-print-section-title"><span>${escapeHtml(order)} · ${escapeHtml(title)}</span></div>
+        ${content}
+      </section>`;
+    }
+
+    function renderPrintableBasis(values) {
+      const items = cleanTextList(values);
+      if (!items.length) {
+        return "";
+      }
+      const labels = ["一", "二", "三", "四", "五", "六"];
+      return `<div class="hex-print-basis">${items.map((item, index) => (
+        `<div class="hex-print-basis-row">
+          <span class="hex-print-step">${escapeHtml(labels[index] || String(index + 1))}</span>
+          <span class="hex-print-basis-text">${escapeHtml(item).replace(/-&gt;/g, "→")}</span>
+        </div>`
+      )).join("")}</div>`;
+    }
+
+    function renderPrintableCompare(hexagram) {
+      const movingIndex = Number(hexagram.moving_line) - 1;
+      return `<div class="hex-print-compare">
+        ${renderPrintableHexCard(hexagram.primary || {}, movingIndex, "动")}
+        <div class="hex-print-arrow">
+          <span class="hex-print-arrow-glyph">→</span>
+          <span class="hex-print-arrow-caption">动${escapeHtml(hexagram.moving_line_name || "爻")}<br>之卦</span>
+        </div>
+        ${renderPrintableHexCard(hexagram.changed || {}, movingIndex, "变")}
+      </div>`;
+    }
+
+    function renderPrintableHexCard(card, movingIndex, mark) {
+      const title = card.name || "-";
+      const upper = card.upper || "";
+      const lower = card.lower || "";
+      return `<article class="hex-print-card">
+        <div class="hex-print-role">${escapeHtml(card.role || "卦象")}</div>
+        ${renderPrintableHexLines(card.lines, movingIndex, mark)}
+        <div class="hex-print-symbol">${escapeHtml(card.symbol || "")}</div>
+        <div class="hex-print-name">${escapeHtml(title || "-")}</div>
+        <div class="hex-print-order">${card.number ? `第 ${escapeHtml(toChineseNumber(card.number))} 卦` : "卦序未提供"}</div>
+        <div class="hex-print-trigrams">
+          ${upper ? `<span class="hex-print-trigram">上 ${escapeHtml(upper)} ${escapeHtml(trigramSymbol(upper))}</span>` : ""}
+          ${lower ? `<span class="hex-print-trigram">下 ${escapeHtml(lower)} ${escapeHtml(trigramSymbol(lower))}</span>` : ""}
+        </div>
+        <div class="hex-print-description">${escapeHtml(card.description || "-")}</div>
+      </article>`;
+    }
+
+    function renderPrintableHexLines(lines, movingIndex, mark) {
+      if (!Array.isArray(lines) || !lines.length) {
+        return "";
+      }
+      const rows = lines
+        .map((line, index) => ({line, index}))
+        .reverse()
+        .map(({line, index}) => renderPrintableYao(line, {
+          moving: Number.isFinite(movingIndex) && index === movingIndex,
+          mark
+        }));
+      return `<div class="hex-print-lines" aria-label="六爻卦象">${rows.join("")}</div>`;
+    }
+
+    function renderPrintableYao(line, options = {}) {
+      const type = isYangLine(line) ? "yang" : "yin";
+      const classes = ["hex-print-yao", `is-${type}`];
+      if (options.moving) {
+        classes.push("is-moving");
+      }
+      if (options.small) {
+        classes.push("is-small");
+      }
+      const bars = type === "yang"
+        ? `<span class="hex-print-bar"></span>`
+        : `<span class="hex-print-bar"></span><span class="hex-print-bar"></span>`;
+      const marker = options.moving && options.mark
+        ? `<span class="hex-print-yao-mark">${escapeHtml(options.mark)}</span>`
+        : "";
+      return `<div class="${classes.join(" ")}">${bars}${marker}</div>`;
+    }
+
+    function renderPrintableFocus(hexagram) {
+      if (!hexagram.moving_line_name && !hexagram.moving_line_text && !hexagram.interpretation) {
+        return "";
+      }
+      return `<section class="hex-print-focus">
+        <div class="hex-print-focus-kicker">${escapeHtml(hexagram.moving_line_name || "动爻")} · 动爻爻辞</div>
+        ${hexagram.moving_line_text ? `<blockquote class="hex-print-quote">${escapeHtml(hexagram.moving_line_text)}</blockquote>` : ""}
+        ${hexagram.interpretation ? `<p class="hex-print-focus-note">${escapeHtml(hexagram.interpretation)}</p>` : ""}
+      </section>`;
+    }
+
+    function renderPrintableLineDetails(hexagram) {
+      const rows = Array.isArray(hexagram.line_details) ? hexagram.line_details : [];
+      if (!rows.length) {
+        return "";
+      }
+      const primaryLines = hexagram.primary?.lines || [];
+      const movingLine = Number(hexagram.moving_line);
+      const content = rows
+        .slice()
+        .sort((left, right) => Number(right.index) - Number(left.index))
+        .map((row) => {
+          const index = Number(row.index);
+          const line = primaryLines[index - 1];
+          const moving = movingLine === index;
+          return `<div class="hex-print-line-row${moving ? " is-moving" : ""}">
+            <div class="hex-print-line-pos">
+              <span class="hex-print-line-index">${escapeHtml(lineIndexLabel(index))}</span>
+              ${renderPrintableYao(line, {moving, small: true})}
+            </div>
+            <div class="hex-print-line-name">${escapeHtml(row.name || "")}</div>
+            <div class="hex-print-line-text">${escapeHtml(row.text || "")}</div>
+            <div class="hex-print-line-note">${escapeHtml(row.note || "")}</div>
+          </div>`;
+        }).join("");
+      return `<div class="hex-print-line-table">
+        <div class="hex-print-line-head"><div>爻位</div><div>爻名</div><div>爻辞</div><div>释义</div></div>
+        ${content}
+      </div>`;
+    }
+
+    function renderPrintableCaveats(values) {
+      const items = cleanTextList(values);
+      if (!items.length) {
+        return "";
+      }
+      return `<div class="hex-print-caveats">
+        <strong>边界说明</strong>
+        <ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </div>`;
+    }
+
+    function stripHexSuffix(value) {
+      return cleanDisplayText(value, "-").replace(/卦$/, "");
+    }
+
+    function trigramSymbol(name) {
+      const symbols = {乾: "☰", 兑: "☱", 离: "☲", 震: "☳", 巽: "☴", 坎: "☵", 艮: "☶", 坤: "☷"};
+      return symbols[name] || "";
+    }
+
+    function toChineseNumber(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number) || number < 0 || number > 99) {
+        return String(value || "-");
+      }
+      const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+      if (number < 10) {
+        return digits[number];
+      }
+      if (number === 10) {
+        return "十";
+      }
+      if (number < 20) {
+        return `十${number % 10 ? digits[number % 10] : ""}`;
+      }
+      const tens = Math.floor(number / 10);
+      const ones = number % 10;
+      return `${digits[tens]}十${ones ? digits[ones] : ""}`;
     }
 
     function renderHtmlHexagramSection(hexagram) {
