@@ -154,9 +154,6 @@ class ModelFactory:
         provider_config = config.get(provider, {})
 
         # Resolve client class (lazy import)
-        if provider not in cls._registry:
-            logger.warning(f"Unknown provider: {provider}, defaulting to OpenAI client")
-            provider = 'openai'
         client_class = cls._load_client_class(provider)
 
         # Build merged configuration
@@ -186,15 +183,15 @@ class ModelFactory:
 
     @classmethod
     def list_supported_models(cls) -> Dict[str, list]:
-        """Get supported models by provider."""
+        """Get representative current models by provider (non-exhaustive)."""
         return {
-            'openai': ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'],
-            'anthropic': ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku', 'claude-3-5-sonnet'],
-            'google': ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-            'deepseek': ['deepseek-chat', 'deepseek-coder'],
-            'doubao': ['doubao-pro', 'doubao-lite'],
+            'openai': ['gpt-4o', 'gpt-4o-mini', 'o3', 'o4-mini'],
+            'anthropic': ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+            'google': ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro'],
+            'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
+            'doubao': ['doubao-pro-32k', 'doubao-lite-32k'],
             'openrouter': [
-                'openai/gpt-4', 'anthropic/claude-3-sonnet', 'google/gemini-2.0-flash',
-                'x-ai/grok-4', 'moonshotai/kimi-k2', 'deepseek/deepseek-r1'
+                'openai/gpt-4o', 'anthropic/claude-sonnet-4-6', 'google/gemini-2.0-flash',
+                'x-ai/grok-3', 'moonshotai/kimi-k2', 'deepseek/deepseek-r1',
             ],
         }

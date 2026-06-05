@@ -3,8 +3,9 @@ Base class for model clients.
 """
 
 import os
+import time
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Any, Callable, Dict, List, Optional
 
 from ..utils.logger import get_logger
 
@@ -59,7 +60,11 @@ class ModelClient(ABC):
         
         # Store additional config
         self.config = kwargs
-        
+
+        # Retry parameters (shared across all providers)
+        self.max_retries = max(0, int(os.getenv("LLM_MAX_RETRIES", "2")))
+        self.retry_delay = max(0.0, float(os.getenv("LLM_RETRY_DELAY", "1.0")))
+
         logger.info(f"Initialized {self.__class__.__name__} with model: {model_name}")
     
     def _get_api_key(self, api_key: Optional[str], env_vars: List[str]) -> str:
@@ -143,7 +148,7 @@ class ModelClient(ABC):
     def get_config(self) -> Dict[str, Any]:
         """
         Get current configuration.
-        
+
         Returns:
             Configuration dictionary
         """
@@ -153,3 +158,30 @@ class ModelClient(ABC):
             'max_tokens': self.max_tokens,
             **self.config
         }
+
+    def _is_retryable(self, error: Exception) -> bool:
+        """Return True for transient network, rate-limit, and server-side errors."""
+        status_code = getattr(error, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code in {408, 409, 429} or status_code >= 500
+        error_name = error.__class__.__name__
+        if error_name in {"APIConnectionError", "APITimeoutError", "RateLimitError", "InternalServerError"}:
+            return True
+        return "connection error" in str(error).lower()
+
+    def _call_with_retry(self, fn: Callable, *args: Any, **kwargs: Any) -> Any:
+        """Call fn(*args, **kwargs) with exponential-backoff retry on transient errors."""
+        current_delay = self.retry_delay
+        for attempt in range(self.max_retries + 1):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as error:
+                if attempt >= self.max_retries or not self._is_retryable(error):
+                    raise
+                logger.warning(
+                    "Transient API error for %s: %s. Retrying in %.1fs (%d/%d).",
+                    self.model_name, error, current_delay, attempt + 1, self.max_retries,
+                )
+                time.sleep(current_delay)
+                current_delay *= 2
+        raise RuntimeError("unreachable retry state")

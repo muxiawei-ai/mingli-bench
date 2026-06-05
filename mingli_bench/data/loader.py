@@ -199,12 +199,20 @@ class DataLoader:
         Returns:
             Sorted list of benchmark years
         """
-        questions = self.load_questions(use_astro=use_astro, shuffle=False)
-        years = {
-            q['benchmark_year']
-            for q in questions
-            if q.get('benchmark_year') is not None
-        }
+        data_path = (
+            self.astro_data_path
+            if use_astro and self.astro_data_path.exists()
+            else self.data_path
+        )
+        if not data_path.exists():
+            raise FileNotFoundError(f"Data file not found: {data_path}")
+        with open(data_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        years = set()
+        for q in raw.get("questions", []):
+            year = self.infer_benchmark_year(q)
+            if year is not None:
+                years.add(year)
         return sorted(years)
 
     def get_available_raw_years(self) -> List[int]:

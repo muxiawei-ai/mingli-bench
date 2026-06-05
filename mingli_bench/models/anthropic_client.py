@@ -56,34 +56,29 @@ class AnthropicClient(ModelClient):
     def generate(self, prompt: str, **kwargs) -> str:
         """
         Generate response using Anthropic API.
-        
+
         Args:
             prompt: Input prompt
             **kwargs: Override generation parameters
-            
+
         Returns:
             Generated text
         """
         try:
-            # Get parameters with overrides using base class method
             gen_params = self.get_generation_params(**kwargs)
-            
-            # Create message
-            message = self.client.messages.create(
-                model=self.model_name,
-                max_tokens=gen_params.get("max_tokens"),
-                temperature=gen_params.get("temperature"),
-                system=self.SYSTEM_PROMPT,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            # Extract text
-            text = message.content[0].text.strip()
-            
-            return text
-            
+
+            def _call():
+                return self.client.messages.create(
+                    model=self.model_name,
+                    max_tokens=gen_params.get("max_tokens"),
+                    temperature=gen_params.get("temperature"),
+                    system=self.SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+
+            message = self._call_with_retry(_call)
+            return message.content[0].text.strip()
+
         except Exception as e:
             self.handle_api_error("Anthropic generation", e)
             raise
