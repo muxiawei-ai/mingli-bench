@@ -319,6 +319,53 @@ INDEX_HTML = """<!doctype html>
       overflow-wrap: anywhere;
     }
 
+    .profile-card {
+      display: grid;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdf8;
+    }
+
+    .profile-card > strong {
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .profile-card p {
+      margin: 0;
+      line-height: 1.75;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .profile-stat {
+      min-height: 72px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .profile-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .profile-stat strong {
+      display: block;
+      padding-top: 6px;
+      font-size: 17px;
+      line-height: 1.35;
+    }
+
     .panel {
       margin-bottom: 16px;
       overflow: hidden;
@@ -1156,6 +1203,11 @@ INDEX_HTML = """<!doctype html>
 
           <div class="llm-cache-status" id="llmCacheStatus" hidden></div>
 
+          <section class="panel" id="baziProfilePanel" hidden>
+            <h2>八字画像</h2>
+            <div class="panel-body" id="baziProfileContent"></div>
+          </section>
+
           <section class="panel" id="hexagramPanel" hidden>
             <h2>卦象参考</h2>
             <div class="panel-body" id="hexagramContent"></div>
@@ -1478,6 +1530,40 @@ INDEX_HTML = """<!doctype html>
           {element: "金", count: 2, level: "medium"},
           {element: "水", count: 1, level: "low"}
         ],
+        bazi_profile: {
+          schema_version: "bazi_profile.v1",
+          source: "demo_fixture",
+          overview: "日主癸（水）画像显示：支持与消耗相对均衡；较显十神组为财星/资源、印星/支持。优先观察财星线索可见、印星支持可见。",
+          day_master: {
+            stem: "癸",
+            element: "水",
+            polarity: "yin",
+            polarity_label: "阴"
+          },
+          ten_god_groups: {
+            peer: {count: 1, label: "同类/自我", details: {比肩: 1}},
+            output: {count: 1, label: "食伤/表达", details: {伤官: 1}},
+            wealth: {count: 3, label: "财星/资源", details: {正财: 2, 偏财: 1}},
+            officer: {count: 1, label: "官杀/规则", details: {七杀: 1}},
+            resource: {count: 2, label: "印星/支持", details: {正印: 1, 偏印: 1}}
+          },
+          day_master_strength: {
+            level: "balanced",
+            label: "支持与消耗相对均衡",
+            support_index: 0.48,
+            support_score: 4,
+            pressure_score: 4.3
+          },
+          structure_signals: [
+            {label: "财星/资源较显", summary: "财星线索较多，适合观察资源承接、定价和现实交换。"},
+            {label: "印星/支持可见", summary: "印星可见，适合观察学习、方法论和外部支持。"}
+          ],
+          practical_focus: [
+            {label: "财星线索可见", summary: "事业或财务问题中可关注资源承接、现金流和现实交换。"},
+            {label: "印星支持可见", summary: "适合把学习、资质、方法论和长期补给纳入分析。"}
+          ],
+          caveats: ["这是前端示例画像，不对应真实排盘判断。"]
+        },
         hexagram: {
           method: "梅花易数时间法示例",
           basis: [
@@ -1788,6 +1874,7 @@ INDEX_HTML = """<!doctype html>
         lines.push("");
       }
 
+      appendBaziProfileMarkdown(lines, report.bazi_profile);
       appendHexagramMarkdown(lines, report.hexagram);
       appendIntegratedMarkdown(lines, report.integrated_analysis);
 
@@ -1883,6 +1970,29 @@ INDEX_HTML = """<!doctype html>
         lines.push("");
       }
       appendDetailList(lines, "建议追问", integrated.next_questions);
+    }
+
+    function appendBaziProfileMarkdown(lines, profile) {
+      if (!profile || typeof profile !== "object") {
+        return;
+      }
+      lines.push("## 八字画像");
+      if (profile.overview) {
+        lines.push(mdText(profile.overview), "");
+      }
+      const strength = profile.day_master_strength || {};
+      if (strength.label) {
+        lines.push(`- 日主支持：${mdText(strength.label)}（support_index=${mdText(strength.support_index)}）`);
+      }
+      const groups = profile.ten_god_groups || {};
+      Object.values(groups).forEach((group) => {
+        if (group && group.label) {
+          lines.push(`- ${mdText(group.label)}：${mdText(group.count)}`);
+        }
+      });
+      appendDetailList(lines, "结构信号", (profile.structure_signals || []).map((item) => `${item.label}: ${item.summary}`));
+      appendDetailList(lines, "观察重点", (profile.practical_focus || []).map((item) => `${item.label}: ${item.summary}`));
+      lines.push("");
     }
 
     function appendHexagramReadingMarkdown(lines, reading) {
@@ -2093,6 +2203,52 @@ INDEX_HTML = """<!doctype html>
       background: var(--accent-soft);
       color: #0f5148;
       border-color: #b8d8d0;
+    }
+    .profile-card {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+      padding: 18px;
+      border: 1px solid rgba(22, 103, 90, 0.22);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      background: #fbfdfb;
+      break-inside: avoid;
+    }
+    .profile-card > strong {
+      color: #0f5148;
+      font-size: 15px;
+    }
+    .profile-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .profile-stat {
+      display: grid;
+      gap: 4px;
+      min-height: 68px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .profile-stat span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .profile-stat strong {
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
     }
     .hex-print-module {
       margin-top: 16px;
@@ -2705,7 +2861,7 @@ INDEX_HTML = """<!doctype html>
     @media (max-width: 720px) {
       .page { margin: 0; padding: 24px; border: 0; }
       header { padding: 20px; }
-      .meta, .grid, .summary-cards { grid-template-columns: 1fr; }
+      .meta, .grid, .summary-cards, .profile-grid { grid-template-columns: 1fr; }
       .hex-print-module { padding: 22px; }
       .hex-print-title { font-size: 28px; }
       .hex-print-compare { grid-template-columns: 1fr; }
@@ -2776,6 +2932,7 @@ INDEX_HTML = """<!doctype html>
       ${htmlElementProfile(report.element_profile)}
     </section>
 
+    ${renderPrintableBaziProfileSection(report.bazi_profile)}
     ${renderPrintableHexagramSection(report.hexagram)}
     ${renderPrintableIntegratedSection(report.integrated_analysis)}
 
@@ -2878,6 +3035,11 @@ INDEX_HTML = """<!doctype html>
         `<span class="chip">${escapeHtml(item.element)}：${escapeHtml(String(item.count))}（${escapeHtml(item.level)}）</span>`
       ));
       return `<div class="chips">${items.join("")}</div>`;
+    }
+
+    function renderPrintableBaziProfileSection(profile) {
+      const content = renderBaziProfileModule(profile);
+      return content ? `<section><h2>八字画像</h2>${content}</section>` : "";
     }
 
     function renderPrintableHexagramSection(hexagram) {
@@ -3535,6 +3697,7 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
       renderLlmCacheStatus(data);
+      renderBaziProfilePanel(report.bazi_profile);
       renderHexagramPanel(report.hexagram);
       renderIntegratedPanel(report.integrated_analysis);
       renderElements(report.element_profile || []);
@@ -3599,6 +3762,55 @@ INDEX_HTML = """<!doctype html>
     function getTraceStage(data, name) {
       const trace = Array.isArray(data?.trace) ? data.trace : [];
       return trace.find((stage) => stage && stage.name === name) || null;
+    }
+
+    function renderBaziProfilePanel(profile) {
+      const panel = document.getElementById("baziProfilePanel");
+      const content = document.getElementById("baziProfileContent");
+      const module = renderBaziProfileModule(profile);
+      if (!module) {
+        panel.hidden = true;
+        content.replaceChildren();
+        return;
+      }
+      content.innerHTML = module;
+      panel.hidden = false;
+    }
+
+    function renderBaziProfileModule(profile) {
+      if (!profile || typeof profile !== "object") {
+        return "";
+      }
+      const strength = profile.day_master_strength || {};
+      const groups = profile.ten_god_groups || {};
+      const groupCards = Object.values(groups)
+        .filter((group) => group && typeof group === "object")
+        .map((group) => `<div class="profile-stat">
+          <span>${escapeHtml(group.label || "十神组")}</span>
+          <strong>${escapeHtml(String(group.count ?? "-"))}</strong>
+        </div>`)
+        .join("");
+      const signals = cleanTextList((profile.structure_signals || []).map((item) => (
+        item?.label && item?.summary ? `${item.label}: ${item.summary}` : ""
+      )));
+      const focus = cleanTextList((profile.practical_focus || []).map((item) => (
+        item?.label && item?.summary ? `${item.label}: ${item.summary}` : ""
+      )));
+      if (!profile.overview && !strength.label && !groupCards) {
+        return "";
+      }
+      return `<div class="profile-card">
+        <strong>本地八字画像${profile.day_master?.stem ? ` · 日主${escapeHtml(profile.day_master.stem)}` : ""}</strong>
+        ${profile.overview ? `<p>${escapeHtml(profile.overview)}</p>` : ""}
+        <div class="profile-grid">
+          <div class="profile-stat"><span>日主支持</span><strong>${escapeHtml(strength.label || "-")}</strong></div>
+          <div class="profile-stat"><span>support_index</span><strong>${escapeHtml(String(strength.support_index ?? "-"))}</strong></div>
+          <div class="profile-stat"><span>画像来源</span><strong>${escapeHtml(profile.source || "-")}</strong></div>
+          ${groupCards}
+        </div>
+        ${signals.length ? `<div class="detail"><strong>结构信号</strong><ul>${signals.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+        ${focus.length ? `<div class="detail"><strong>观察重点</strong><ul>${focus.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+      </div>`;
     }
 
     function normalizeInterpretation(interpretation) {

@@ -3,6 +3,7 @@
 __version__ = "0.1.0"
 
 from .agent import AgentResult, MingLiAgent, build_interpretation_prompt
+from .bazi_profile import build_bazi_profile, ten_god_for
 from .calendar import hour_branch, parse_bazi_pillars
 from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
@@ -45,6 +46,7 @@ __all__ = [
     "bazi_from_birth_info",
     "bazi_from_gregorian",
     "build_bazi_chart",
+    "build_bazi_profile",
     "build_candidate_year_scores",
     "build_hexagram_reading",
     "build_integrated_analysis",
@@ -67,6 +69,7 @@ __all__ = [
     "solar_month_branch_for_datetime",
     "solar_term_datetime",
     "solar_from_lunar_date",
+    "ten_god_for",
     "validate_hexagram_texts",
     "year_pillar_for_date",
     "year_pillar_for_datetime",

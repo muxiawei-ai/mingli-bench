@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .bazi import year_pillar_for_date
+from .bazi_profile import build_bazi_profile
 from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
@@ -47,6 +48,7 @@ class ChartReport:
     question: str
     summary: Dict[str, Any]
     element_profile: List[ElementSignal]
+    bazi_profile: Dict[str, Any]
     strongest_elements: List[str]
     missing_elements: List[str]
     input_quality: Dict[str, Any]
@@ -63,6 +65,7 @@ class ChartReport:
             "question": self.question,
             "summary": self.summary,
             "element_profile": [signal.as_dict() for signal in self.element_profile],
+            "bazi_profile": self.bazi_profile,
             "strongest_elements": self.strongest_elements,
             "missing_elements": self.missing_elements,
             "input_quality": self.input_quality,
@@ -105,6 +108,28 @@ class ChartReport:
             lines.append(f"- 相对较多: {'、'.join(self.strongest_elements)}")
         if self.missing_elements:
             lines.append(f"- 未见元素: {'、'.join(self.missing_elements)}")
+
+        if self.bazi_profile:
+            lines.extend(["", "### 八字画像"])
+            if self.bazi_profile.get("overview"):
+                lines.append(f"- 概览: {self.bazi_profile['overview']}")
+            strength = self.bazi_profile.get("day_master_strength") or {}
+            if strength:
+                lines.append(
+                    "- 日主支持: "
+                    f"{strength.get('label')} "
+                    f"(support_index={strength.get('support_index')})"
+                )
+            groups = self.bazi_profile.get("ten_god_groups") or {}
+            if groups:
+                group_text = "；".join(
+                    f"{payload.get('label')}: {payload.get('count')}"
+                    for payload in groups.values()
+                )
+                lines.append(f"- 十神组: {group_text}")
+            for signal in self.bazi_profile.get("structure_signals") or []:
+                if signal.get("label") and signal.get("summary"):
+                    lines.append(f"- {signal['label']}: {signal['summary']}")
 
         lines.extend(["", "### 输入与限制"])
         lines.append(f"- 历法来源: {self.input_quality['calendar_source']}")
@@ -257,6 +282,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
     """Create a deterministic report scaffold for local agent output."""
 
     profile = build_element_profile(chart)
+    bazi_profile = build_bazi_profile(chart)
     max_count = max(signal.count for signal in profile)
     strongest_elements = [
         signal.element for signal in profile if signal.count == max_count and max_count > 0
@@ -310,6 +336,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         question=question,
         summary=summary,
         element_profile=profile,
+        bazi_profile=bazi_profile,
         strongest_elements=strongest_elements,
         missing_elements=missing_elements,
         input_quality=input_quality,

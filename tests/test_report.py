@@ -53,6 +53,9 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.summary["pillars_text"], "戊午 丙辰 丁酉 己酉")
         self.assertEqual(report.strongest_elements, ["火", "土"])
         self.assertEqual(report.missing_elements, ["木", "水"])
+        self.assertEqual(report.bazi_profile["schema_version"], "bazi_profile.v1")
+        self.assertEqual(report.bazi_profile["day_master_strength"]["level"], "self_supported")
+        self.assertEqual(report.bazi_profile["ten_god_groups"]["wealth"]["count"], 2)
         self.assertTrue(report.input_quality["has_birth_time"])
         self.assertIsNotNone(report.hexagram)
         assert report.hexagram is not None
@@ -70,6 +73,8 @@ class ChartReportTests(unittest.TestCase):
         )
         self.assertIn("规则解读", report.to_markdown())
         self.assertIn("本地报告只整理排盘结构", report.to_markdown())
+        self.assertIn("八字画像", report.to_markdown())
+        self.assertIn("日主支持", report.to_markdown())
         self.assertIn("卦象参考", report.to_markdown())
         self.assertIn("八字+卦象联合分析", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())

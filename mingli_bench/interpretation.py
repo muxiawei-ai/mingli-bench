@@ -156,6 +156,15 @@ def build_local_interpretation(
             caveats=["这是基于四柱显性天干地支的数量统计，不等同于完整格局判断。"],
         ),
     ]
+    if report.bazi_profile:
+        sections.append(
+            InterpretationSection(
+                title="八字画像",
+                summary=_bazi_profile_summary(report),
+                evidence=_bazi_profile_evidence(report),
+                caveats=list(report.bazi_profile.get("caveats") or []),
+            )
+        )
     if report.event_years:
         sections.append(
             InterpretationSection(
@@ -300,6 +309,31 @@ def _input_quality_summary(report: ChartReport) -> str:
         f"历法来源为 {report.input_quality.get('calendar_source')}，"
         f"时区为 {report.input_quality.get('timezone')}，出生时间{time_text}。"
     )
+
+
+def _bazi_profile_summary(report: ChartReport) -> str:
+    profile = report.bazi_profile or {}
+    return str(profile.get("overview") or "")
+
+
+def _bazi_profile_evidence(report: ChartReport) -> List[str]:
+    profile = report.bazi_profile or {}
+    evidence: List[str] = []
+    strength = profile.get("day_master_strength") or {}
+    if strength:
+        evidence.append(
+            "day_master_strength="
+            f"{strength.get('label')} support_index={strength.get('support_index')}"
+        )
+    groups = profile.get("ten_god_groups") or {}
+    for key, payload in groups.items():
+        evidence.append(
+            f"ten_god_group.{key}={payload.get('label')}:{payload.get('count')}"
+        )
+    for signal in profile.get("structure_signals") or []:
+        if signal.get("label") and signal.get("summary"):
+            evidence.append(f"{signal['label']}: {signal['summary']}")
+    return evidence
 
 
 def _hexagram_summary(report: ChartReport) -> str:

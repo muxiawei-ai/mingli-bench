@@ -48,6 +48,8 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
     moving line, changed hexagram, and question-domain guidance,
   - Bazi + hexagram integrated analysis scaffolds that cross-link element
     profile, moving-line triggers, and question-domain guidance,
+  - structured Bazi profile calculation with visible ten-god groups,
+    day-master support heuristics, structure signals, and practical focus hints,
   - exact-match local LLM response caching to avoid repeat API spend during
     web UI refreshes and benchmark replays,
   - compact chart summary extraction.
@@ -245,6 +247,7 @@ For long eval runs on OpenAI-compatible providers, transient network errors are 
 ```python
 from mingli_bench.agent import MingLiAgent
 from mingli_bench.bazi import bazi_from_birth_info, bazi_from_gregorian
+from mingli_bench.bazi_profile import build_bazi_profile
 from mingli_bench.calendar import hour_branch, parse_bazi_pillars
 from mingli_bench.chart_api import build_bazi_chart
 from mingli_bench.charts import get_chart_summary
@@ -264,6 +267,10 @@ chart = build_bazi_chart({
 })
 print(chart.as_dict()["pillars_text"])  # 戊午 丙辰 丁酉 己酉
 print(chart.day_master)                 # 丁
+
+profile = build_bazi_profile(chart)
+print(profile["day_master_strength"]["label"])
+print(profile["ten_god_groups"]["peer"]["count"])
 
 agent_result = MingLiAgent().run(
     {
@@ -337,6 +344,8 @@ The Bazi year pillar follows the Li Chun convention. Around January/February, th
 
 `mingli_bench.chart_api` is the recommended application-facing API. It accepts solar or fixture-backed lunar `ChartInput` data and returns a stable `BaziChart` object with pillars, day master, five-element summary, timezone metadata, lunar metadata, source, and warnings.
 
+`mingli_bench.bazi_profile` builds a structured local profile from a `BaziChart`: visible ten-god grouping, day-master support heuristics, structure signals, and practical focus hints. It intentionally uses visible stems/branch main elements only for now, so hidden stems, Da Yun, and Liu Nian overlays should be added by later modules rather than inferred by the LLM.
+
 `mingli_bench.agent` is the recommended first integration point for an actual fortune-telling agent. It keeps deterministic chart calculation local, then optionally calls an LLM for interpretation when a model client is configured.
 
 `mingli_bench.locations` currently uses a small auditable alias table rather than a full geocoder. Ambiguous inputs such as `usa` fall back to UTC+8 and return warnings so callers can ask for a state/city or pass an explicit offset in future integrations.
@@ -359,6 +368,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 
 - Keep hardening the stable `ChartInput -> BaziChart` API contract.
 - Add higher-level agent conversation memory and follow-up question handling.
+- Expand Bazi profile calculation with hidden stems, ten-god strength weighting, Da Yun, and Liu Nian overlays.
 - Add a full standalone lunar / solar conversion engine.
 - Expand solar-term validation fixtures and boundary-case coverage.
 - Expand birthplace normalization beyond bundled fixture locations.

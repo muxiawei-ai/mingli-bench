@@ -42,6 +42,8 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["moving_line_text"], "咸临，吉，无不利。")
         self.assertEqual(response["report"]["hexagram"]["moving_line_source"], "zhouyi_classic.v1")
         self.assertEqual(response["report"]["hexagram"]["reading"]["domain"], "事业")
+        self.assertEqual(response["report"]["bazi_profile"]["schema_version"], "bazi_profile.v1")
+        self.assertEqual(response["report"]["bazi_profile"]["ten_god_groups"]["peer"]["count"], 3)
         self.assertIn("变卦方向", response["report"]["hexagram"]["reading"]["sections"][2]["title"])
         self.assertEqual(response["report"]["integrated_analysis"]["domain"], "事业")
         self.assertIn(
@@ -98,6 +100,9 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("renderLlmCacheStatus", html)
             self.assertIn("命中本地缓存", html)
             self.assertIn("已调用模型并写入缓存", html)
+            self.assertIn("baziProfilePanel", html)
+            self.assertIn("renderBaziProfileModule", html)
+            self.assertIn("八字画像", html)
             self.assertIn("hexagramPanel", html)
             self.assertIn("renderHexagramModule", html)
             self.assertIn("renderPrintableHexagramSection", html)
