@@ -4,6 +4,8 @@ from mingli_bench.benchmark import FortuneTellingBenchmark
 
 
 class DummyModelClient:
+    model_name = "dummy-model"
+
     def generate(self, prompt: str) -> str:
         return "答案：A"
 
@@ -52,6 +54,25 @@ class FortuneTellingBenchmarkTests(unittest.TestCase):
         self.assertIn("A. 甲", prompt)
         self.assertIn("B. 乙", prompt)
         self.assertIn("C. 丙", prompt)
+
+    def test_evaluate_records_seed_question_ids_and_run_metadata(self):
+        first = self.benchmark.evaluate(
+            sample_size=3,
+            shuffle_options=False,
+            seed=42,
+            max_workers=1,
+        )
+        second = self.benchmark.evaluate(
+            sample_size=3,
+            shuffle_options=False,
+            seed=42,
+            max_workers=1,
+        )
+
+        self.assertEqual(first["seed"], 42)
+        self.assertEqual(first["question_ids"], second["question_ids"])
+        self.assertEqual(len(first["question_ids"]), 3)
+        self.assertIn("git_commit", first["run_metadata"])
 
 
 if __name__ == "__main__":

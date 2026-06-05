@@ -15,6 +15,7 @@ from .agent import MingLiAgent
 from .data.loader import DataLoader
 from .interpretation import INTERPRETATION_SCHEMA_VERSION
 from .models.base import ModelClient
+from .run_metadata import build_run_metadata
 
 
 EXPECTED_TRACE = ["input", "intent", "chart", "report", "prompt", "llm", "interpretation"]
@@ -48,6 +49,7 @@ class AgentEvalConfig:
     question_ids: Optional[List[str]] = None
     year: Optional[int] = None
     categories: Optional[List[str]] = None
+    seed: Optional[int] = None
     data_path: Optional[str] = None
     fortune_data_path: Optional[str] = None
     model_name: Optional[str] = None
@@ -63,6 +65,7 @@ class AgentEvalConfig:
             "question_ids": self.question_ids,
             "year": self.year,
             "categories": self.categories,
+            "seed": self.seed,
             "data_path": self.data_path,
             "fortune_data_path": self.fortune_data_path,
             "model_name": self.model_name,
@@ -84,8 +87,9 @@ def load_agent_eval_questions(config: AgentEvalConfig) -> List[Dict[str, Any]]:
         sample_size=None if config.question_ids else config.sample_size,
         year=config.year,
         categories=config.categories,
-        shuffle=False,
+        shuffle=config.seed is not None and not config.question_ids,
         shuffle_options=False,
+        seed=config.seed,
     )
     if not config.question_ids:
         return questions
@@ -491,6 +495,8 @@ def summarize_agent_eval(
     summary = {
         "timestamp": datetime.now().isoformat(),
         "config": config.as_dict() if config else None,
+        "run_metadata": build_run_metadata(),
+        "question_ids": [str(record.get("question_id")) for record in records],
         "total_questions": total,
         "successes": len(successes),
         "errors": len(errors),

@@ -159,6 +159,15 @@ Examples:
     )
 
     parser.add_argument(
+        "--seed",
+        type=int,
+        help=(
+            "Random seed for reproducible question ordering when sampling "
+            "benchmark or eval-agent runs"
+        ),
+    )
+
+    parser.add_argument(
         "--question-ids",
         nargs="+",
         help=(
@@ -512,6 +521,7 @@ Examples:
                 question_ids=_parse_question_ids(args.question_ids),
                 year=args.year,
                 categories=args.categories,
+                seed=args.seed,
                 data_path=args.data_path,
                 fortune_data_path=args.fortune_data_path,
                 model_name=model_name,
@@ -841,6 +851,7 @@ Examples:
             year=args.year,
             categories=args.categories,
             shuffle_options=getattr(args, 'shuffle_options', False),
+            seed=args.seed,
             max_workers=args.max_workers
         )
         

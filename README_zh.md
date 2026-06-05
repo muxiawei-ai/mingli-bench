@@ -101,7 +101,7 @@ python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
 mingli-bench eval-agent --sample 10
-mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10 --seed 42
 mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
@@ -127,13 +127,15 @@ mingli-bench eval-agent --sample 10
 如需评测真实模型的结构化输出解析率：
 
 ```bash
-mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10 --seed 42
 ```
 
 默认会保存：
 
 - `summary.json`：整体指标、分布和错误样例。
 - `records.jsonl`：每条 case 的完整 Agent 结果。
+
+配合 `--sample` 使用 `--seed` 可以复现同一批题目顺序。保存的 summary 会包含配置、实际题目 ID、git commit、dirty 状态、Python 版本和平台信息。
 
 对于带 A-D 标准答案的 benchmark 问题，summary 也会报告答案选项解析率和答案准确率。
 
@@ -335,7 +337,7 @@ python -m unittest discover -s tests
 - 扩展出生地标准化范围，不只覆盖当前 fixture 中出现的地点。
 - 增加显式时区偏移覆盖和历史 DST 策略钩子。
 - 增加更完整的紫微斗数命盘标准化 API。
-- 增加模型响应缓存和可复现实验 manifest。
+- 持续完善可复现 benchmark/eval manifest 和对比工具。
 - API 稳定后发布 PyPI 包。
 
 ## 贡献方式

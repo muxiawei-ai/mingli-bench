@@ -107,7 +107,7 @@ python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
 mingli-bench eval-agent --sample 10
-mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10 --seed 42
 mingli-bench serve --port 8765
 python -m mingli_bench.cli --show-chart case_1
 ```
@@ -137,13 +137,15 @@ mingli-bench eval-agent --sample 10
 To evaluate real model output parsing:
 
 ```bash
-mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10
+mingli-bench eval-agent --model google/gemini-2.5-pro --sample 10 --seed 42
 ```
 
 By default it saves:
 
 - `summary.json`: aggregate metrics, distributions, and error samples.
 - `records.jsonl`: one full agent result per benchmark case, appended incrementally as each case finishes.
+
+Use `--seed` with `--sample` to replay the same question ordering across runs. Saved summaries include the config, selected question IDs, git commit, dirty state, Python version, and platform metadata.
 
 For benchmark questions with A-D answers, the summary also reports answer-choice parse rate, answer-choice accuracy, option-score diagnostics, high-confidence wrong answers, low-margin wrong answers, and local candidate-year diagnostics for timing questions, including focus-level scoring variant accuracy and simulated overall accuracy if a candidate-year scoring variant overrides only timing-year answers.
 
@@ -379,7 +381,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 - Expand birthplace normalization beyond bundled fixture locations.
 - Add explicit timezone-offset override and historical DST policy hooks.
 - Add richer Ziwei chart normalization APIs.
-- Add model-response caching and deterministic benchmark run manifests.
+- Keep expanding reproducible benchmark/eval manifests and comparison tooling.
 - Publish package builds to PyPI once the API stabilizes.
 
 ## Contributing

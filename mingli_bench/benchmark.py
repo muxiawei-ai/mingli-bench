@@ -15,6 +15,7 @@ from .models.base import ModelClient
 from .utils.logger import get_logger
 from .data.loader import DataLoader
 from .data.schema import ANSWER_PATTERNS, VALID_OPTIONS, EvaluationResult
+from .run_metadata import build_run_metadata
 from dataclasses import asdict
 
 logger = get_logger(__name__)
@@ -42,6 +43,7 @@ class FortuneTellingBenchmark:
                  year: Optional[int] = None,
                  categories: Optional[List[str]] = None,
                  shuffle_options: bool = True,
+                 seed: Optional[int] = None,
                  max_workers: int = 5) -> Dict[str, Any]:
         """
         Run the benchmark evaluation.
@@ -53,6 +55,7 @@ class FortuneTellingBenchmark:
             year: Specific benchmark year to evaluate
             categories: Specific categories to evaluate
             shuffle_options: Whether to shuffle options within each question
+            seed: Random seed for reproducible question ordering
             max_workers: Maximum number of concurrent API calls
             
         Returns:
@@ -61,7 +64,7 @@ class FortuneTellingBenchmark:
         logger.info(f"Starting evaluation with model: {self.model_client.model_name}")
         logger.info(
             f"Settings: CoT={use_cot}, Astro={use_astro}, Year={year}, "
-            f"Sample={sample_size}, ShuffleOptions={shuffle_options}"
+            f"Sample={sample_size}, ShuffleOptions={shuffle_options}, Seed={seed}"
         )
         
         # Load questions
@@ -70,7 +73,8 @@ class FortuneTellingBenchmark:
             sample_size=sample_size,
             year=year,
             categories=categories,
-            shuffle_options=shuffle_options
+            shuffle_options=shuffle_options,
+            seed=seed,
         )
         
         logger.info(f"Loaded {len(questions)} questions")
@@ -87,12 +91,15 @@ class FortuneTellingBenchmark:
         stats['use_cot'] = use_cot
         stats['use_astro'] = use_astro
         stats['selected_year'] = year
+        stats['seed'] = seed
+        stats['question_ids'] = [str(q.get("id")) for q in questions]
         stats['evaluated_years'] = sorted({
             q.get('benchmark_year')
             for q in questions
             if q.get('benchmark_year') is not None
         })
         stats['shuffle_options'] = shuffle_options
+        stats['run_metadata'] = build_run_metadata()
         stats['timestamp'] = datetime.now().isoformat()
         
         logger.info(f"Evaluation completed in {stats['evaluation_time']:.2f} seconds")

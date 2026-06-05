@@ -33,6 +33,14 @@ class AgentEvalTests(unittest.TestCase):
         self.assertEqual(len(questions), 3)
         self.assertIn("birth_info", questions[0])
 
+    def test_load_agent_eval_questions_seed_is_reproducible(self):
+        first = load_agent_eval_questions(AgentEvalConfig(sample_size=3, seed=42))
+        second = load_agent_eval_questions(AgentEvalConfig(sample_size=3, seed=42))
+        different = load_agent_eval_questions(AgentEvalConfig(sample_size=3, seed=43))
+
+        self.assertEqual([q["id"] for q in first], [q["id"] for q in second])
+        self.assertNotEqual([q["id"] for q in first], [q["id"] for q in different])
+
     def test_load_agent_eval_questions_filters_by_question_ids_in_order(self):
         questions = load_agent_eval_questions(
             AgentEvalConfig(question_ids=["ftb_0002", "ftb_0001"])
@@ -52,10 +60,19 @@ class AgentEvalTests(unittest.TestCase):
     def test_evaluate_agent_questions_and_summary(self):
         questions = load_agent_eval_questions(AgentEvalConfig(sample_size=2))
         records = evaluate_agent_questions(questions)
-        summary = summarize_agent_eval(records, config=AgentEvalConfig(sample_size=2))
+        summary = summarize_agent_eval(
+            records,
+            config=AgentEvalConfig(sample_size=2, seed=7),
+        )
 
         self.assertEqual(summary["total_questions"], 2)
         self.assertEqual(summary["successes"], 2)
+        self.assertEqual(summary["config"]["seed"], 7)
+        self.assertEqual(
+            summary["question_ids"],
+            [record["question_id"] for record in records],
+        )
+        self.assertIn("git_commit", summary["run_metadata"])
         self.assertEqual(summary["errors"], 0)
         self.assertEqual(summary["chart_success_rate"], 1.0)
         self.assertEqual(summary["trace_complete_rate"], 1.0)
