@@ -68,22 +68,6 @@ class EvaluationResult:
     prompt: Optional[str] = None
 
 
-@dataclass
-class BenchmarkStats:
-    """Benchmark statistics."""
-    total_questions: int
-    correct_answers: int
-    errors: int
-    overall_accuracy: float
-    category_stats: Dict[str, Dict[str, Any]]
-    average_response_time: float
-    model_name: str
-    use_cot: bool
-    use_astro: bool
-    evaluation_time: float
-    timestamp: str
-    results: List[Dict[str, Any]]
-
 
 # Question categories
 QUESTION_CATEGORIES = {

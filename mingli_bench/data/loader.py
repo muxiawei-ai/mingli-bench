@@ -48,16 +48,17 @@ class DataLoader:
         self.fortune_data_path = Path("data/fortune_api_results.json")
         self.raw_data_path = Path("data/raw")
         
-    def load_questions(self, 
+    def load_questions(self,
                       use_astro: bool = False,
                       sample_size: Optional[int] = None,
                       year: Optional[int] = None,
                       categories: Optional[List[str]] = None,
                       shuffle: bool = True,
-                      shuffle_options: bool = False) -> List[Dict[str, Any]]:
+                      shuffle_options: bool = False,
+                      seed: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Load questions from data file.
-        
+
         Args:
             use_astro: Whether to use astronomical data
             sample_size: Number of questions to sample
@@ -65,7 +66,8 @@ class DataLoader:
             categories: Filter by categories
             shuffle: Whether to shuffle questions
             shuffle_options: Whether to shuffle options within each question
-            
+            seed: Random seed for reproducible question ordering (None = non-deterministic)
+
         Returns:
             List of question dictionaries
         """
@@ -149,9 +151,11 @@ class DataLoader:
             questions = [self.shuffle_question_options(q) for q in questions]
             logger.info(f"Shuffled options for {len(questions)} questions")
         
-        # Shuffle if requested
+        # Shuffle if requested; use a local RNG when seed is given so we don't
+        # perturb the global random state.
         if shuffle:
-            random.shuffle(questions)
+            rng = random.Random(seed) if seed is not None else random
+            rng.shuffle(questions)
         
         # Sample if specified
         if sample_size and sample_size < len(questions):
@@ -380,22 +384,13 @@ class DataLoader:
     
     def get_categories(self) -> List[str]:
         """
-        Get list of available categories.
-        
+        Get list of available categories from validated questions.
+
         Returns:
             List of category names
         """
-        if not self.data:
-            # Load all data but don't shuffle
-            self.load_questions(shuffle=False)
-        
-        categories = set()
-        for q in self.data.get('questions', []):
-            category = q.get('category')
-            if category:  # Only add non-empty categories
-                categories.add(category)
-        
-        return sorted(list(categories))
+        questions = self.load_questions(shuffle=False)
+        return sorted({q['category'] for q in questions if q.get('category')})
     
     def get_statistics(self, year: Optional[int] = None, use_astro: bool = False) -> Dict[str, Any]:
         """
