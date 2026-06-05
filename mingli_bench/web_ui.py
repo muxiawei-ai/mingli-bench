@@ -721,6 +721,45 @@ INDEX_HTML = """<!doctype html>
       font-weight: 650;
     }
 
+    .llm-cache-status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: -6px 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .llm-cache-status[hidden] {
+      display: none;
+    }
+
+    .cache-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f5f2ea;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .cache-pill.is-hit {
+      border-color: rgba(17, 111, 96, 0.28);
+      background: #e8f5f1;
+      color: var(--accent-strong);
+    }
+
+    .cache-pill.is-miss {
+      border-color: rgba(200, 138, 37, 0.35);
+      background: #fff5e3;
+      color: #8a5b13;
+    }
+
     .interpretation {
       display: grid;
       gap: 16px;
@@ -1114,6 +1153,8 @@ INDEX_HTML = """<!doctype html>
             <div class="metric"><span>时辰</span><strong id="hourBranch">-</strong></div>
             <div class="metric"><span>问题方向</span><strong id="intentDomain">-</strong></div>
           </div>
+
+          <div class="llm-cache-status" id="llmCacheStatus" hidden></div>
 
           <section class="panel" id="hexagramPanel" hidden>
             <h2>卦象参考</h2>
@@ -1671,6 +1712,16 @@ INDEX_HTML = """<!doctype html>
               name: "demo",
               status: "completed",
               summary: "Loaded front-end fixture data without API call."
+            },
+            {
+              name: "llm",
+              status: "skipped",
+              summary: "Demo fixture loaded without LLM call.",
+              data: {
+                model: null,
+                cache_hit: null
+              },
+              warnings: ["demo_data_no_api_call"]
             }
           ]
         }
@@ -3483,6 +3534,7 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("hourBranch").textContent = summary.hour_branch || "未知";
       document.getElementById("intentDomain").textContent = intent.primary_domain || "-";
 
+      renderLlmCacheStatus(data);
       renderHexagramPanel(report.hexagram);
       renderIntegratedPanel(report.integrated_analysis);
       renderElements(report.element_profile || []);
@@ -3502,6 +3554,51 @@ INDEX_HTML = """<!doctype html>
         followUpPanel.hidden = true;
       }
       document.getElementById("rawJson").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function renderLlmCacheStatus(data) {
+      const container = document.getElementById("llmCacheStatus");
+      const llmStage = getTraceStage(data, "llm");
+      if (!llmStage) {
+        container.hidden = true;
+        container.replaceChildren();
+        return;
+      }
+      const stageData = llmStage.data || {};
+      const model = stageData.model || data.model || null;
+      const cacheHit = stageData.cache_hit;
+      let pillClass = "cache-pill";
+      let label = "LLM：本地模式，未调用模型";
+      let detail = "";
+      if (llmStage.status === "skipped") {
+        detail = (llmStage.warnings || []).includes("llm_not_called")
+          ? "未消耗 API"
+          : "示例数据";
+      } else if (cacheHit === true) {
+        pillClass += " is-hit";
+        label = "LLM：命中本地缓存";
+        detail = model ? `模型 ${model}` : "";
+      } else if (cacheHit === false) {
+        pillClass += " is-miss";
+        label = "LLM：已调用模型并写入缓存";
+        detail = model ? `模型 ${model}` : "";
+      } else {
+        pillClass += " is-miss";
+        label = "LLM：已调用模型";
+        detail = model ? `模型 ${model}` : "";
+      }
+      const cacheKey = stageData.cache_key ? `缓存键 ${String(stageData.cache_key).slice(0, 8)}` : "";
+      container.innerHTML = `
+        <span class="${pillClass}">${escapeHtml(label)}</span>
+        ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+        ${cacheKey ? `<span>${escapeHtml(cacheKey)}</span>` : ""}
+      `;
+      container.hidden = false;
+    }
+
+    function getTraceStage(data, name) {
+      const trace = Array.isArray(data?.trace) ? data.trace : [];
+      return trace.find((stage) => stage && stage.name === name) || null;
     }
 
     function normalizeInterpretation(interpretation) {
