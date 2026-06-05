@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+from .bazi import year_pillar_for_datetime
+from .calendar import hour_branch as _hour_branch
 from .chart_api import BaziChart
 from .hexagram_data import get_hexagram_text, get_line_text
+from .solar_terms import DEFAULT_TZ_OFFSET_HOURS
 
 
 Line = str
@@ -189,6 +193,199 @@ KING_WEN_BY_TRIGRAMS: Dict[Tuple[str, str], int] = {
     ("艮", "坤"): 23,
     ("坤", "坤"): 2,
 }
+
+
+@dataclass(frozen=True)
+class HexagramInput:
+    """All time-derived numbers needed for one Meihua Yi Shu cast.
+
+    Prefer constructing this via :func:`hexagram_input_from_datetime` rather
+    than setting fields directly.  The dataclass is frozen so instances can be
+    cached or used as dict keys.
+
+    Attributes:
+        year_branch:   Bazi year *branch* character, e.g. ``"午"``.
+        month_number:  Lunar month 1-12, or solar month used as proxy.
+        day_number:    Lunar day 1-30, or solar day used as proxy.
+        hour_branch:   Hour branch derived from cast time, e.g. ``"酉"``.
+        number_source: ``"lunar_date"`` when lunar values were supplied,
+                       ``"solar_input_proxy"`` otherwise.
+        source_type:   Intent label — ``"birth_time"``, ``"question_time"``,
+                       or ``"casting_time"``.
+        source_label:  Human-readable provenance string for audit logs.
+    """
+
+    year_branch: str
+    month_number: int
+    day_number: int
+    hour_branch: str
+    number_source: str
+    source_type: str
+    source_label: str
+
+
+def hexagram_input_from_datetime(
+    dt: datetime,
+    *,
+    source_type: str = "casting_time",
+    lunar_month: Optional[int] = None,
+    lunar_day: Optional[int] = None,
+    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+) -> HexagramInput:
+    """Build a :class:`HexagramInput` from any Python datetime.
+
+    Meihua Yi Shu (梅花易数) traditionally uses the Chinese lunar calendar for
+    month and day numbers.  When *lunar_month* and *lunar_day* are both provided
+    those values are used directly.  Otherwise the solar calendar values are
+    substituted as a proxy and the caveat is recorded in the
+    :func:`cast_hexagram` output.
+
+    Args:
+        dt: The datetime to cast from.
+        source_type: Intent label — ``"birth_time"``, ``"question_time"``, or
+            ``"casting_time"``.  Does not change the calculation; used for
+            provenance in the output.
+        lunar_month: Known lunar month (1-12).  Must be provided together with
+            *lunar_day* to activate accurate lunar calculation.
+        lunar_day: Known lunar day (1-30).  Must be provided together with
+            *lunar_month* to activate accurate lunar calculation.
+        tz_offset_hours: UTC offset hours used for the Li Chun year-boundary
+            when determining the Bazi year branch.
+
+    Returns:
+        :class:`HexagramInput` ready to pass to :func:`cast_hexagram`.
+    """
+    year_pillar = year_pillar_for_datetime(dt, tz_offset_hours=tz_offset_hours)
+    year_br = year_pillar[1]  # stem(0) + branch(1); we want the branch
+    hour_br = _hour_branch(dt.hour, dt.minute)
+
+    if lunar_month is not None and lunar_day is not None:
+        number_source = "lunar_date"
+        m, d = lunar_month, lunar_day
+        source_label = (
+            f"{dt.strftime('%Y-%m-%d %H:%M')}"
+            f"（农历{m}月{d}日，{source_type}）"
+        )
+    else:
+        number_source = "solar_input_proxy"
+        m, d = dt.month, dt.day
+        source_label = (
+            f"{dt.strftime('%Y-%m-%d %H:%M')}"
+            f"（公历月日代入，{source_type}）"
+        )
+
+    return HexagramInput(
+        year_branch=year_br,
+        month_number=m,
+        day_number=d,
+        hour_branch=hour_br,
+        number_source=number_source,
+        source_type=source_type,
+        source_label=source_label,
+    )
+
+
+def cast_hexagram(hi: HexagramInput) -> Dict[str, Any]:
+    """Cast a Meihua Yi Shu time hexagram from a :class:`HexagramInput`.
+
+    This is a **pure function**: the result depends only on the four
+    integer/string fields inside *hi*.  No network calls, no ``BaziChart``
+    object, no LLM.
+
+    Formula (standard Meihua time-number method)::
+
+        upper_total   = year_number + month_number + day_number
+        lower_total   = upper_total + hour_number
+        upper_trigram = upper_total mod 8  (1-based)
+        lower_trigram = lower_total mod 8  (1-based)
+        moving_line   = lower_total mod 6  (1-based)
+
+    Returns a dict with the same schema as :func:`build_time_hexagram`, plus
+    two provenance fields: ``"source_type"`` and ``"source_label"``.
+    """
+    year_number = BRANCH_NUMBERS[hi.year_branch]
+    hour_number = BRANCH_NUMBERS[hi.hour_branch]
+    upper_total = year_number + hi.month_number + hi.day_number
+    lower_total = upper_total + hour_number
+    upper_number = _mod_one_based(upper_total, 8)
+    lower_number = _mod_one_based(lower_total, 8)
+    moving_line = _mod_one_based(lower_total, 6)
+
+    upper = TRIGRAMS_BY_NUMBER[upper_number]
+    lower = TRIGRAMS_BY_NUMBER[lower_number]
+    primary = lookup_hexagram(upper.name, lower.name, role="本卦")
+    changed_lines = _change_line(primary["lines"], moving_line)
+    changed_lower_tri = TRIGRAMS_BY_LINES[tuple(changed_lines[:3])]
+    changed_upper_tri = TRIGRAMS_BY_LINES[tuple(changed_lines[3:])]
+    changed = lookup_hexagram(changed_upper_tri.name, changed_lower_tri.name, role="变卦")
+
+    moving_line_name = _line_name(moving_line, primary["lines"][moving_line - 1])
+    moving_line_data = get_line_text(primary["number"], moving_line)
+
+    caveats: List[str] = [
+        "卦象由本地梅花易数时间法规则生成，不代表确定事实。",
+        "当前版本已接入 64 卦基础卦辞/爻辞资料；细分断语仍需结合问题语境。",
+    ]
+    if hi.number_source == "solar_input_proxy":
+        caveats.append(
+            "当前为公历输入，月日数暂按公历月日代入；"
+            "如需准确农历数，请在 hexagram_input_from_datetime() 中"
+            "传入 lunar_month 和 lunar_day 参数。"
+        )
+
+    return {
+        "method": "梅花易数时间法",
+        "source_type": hi.source_type,
+        "source_label": hi.source_label,
+        "basis": [
+            (
+                f"年支数({year_number}，{hi.year_branch}年)"
+                f"+月数({hi.month_number})"
+                f"+日数({hi.day_number})={upper_total}"
+                f" -> 余{upper_number} -> 上卦：{upper.name}{upper.symbol}"
+            ),
+            (
+                f"加时支数({hour_number}，{hi.hour_branch}时)={lower_total}"
+                f" -> 余{lower_number} -> 下卦：{lower.name}{lower.symbol}"
+                f" · 动爻：第{moving_line}爻"
+            ),
+        ],
+        "number_source": {
+            "year_branch": hi.year_branch,
+            "year_number": year_number,
+            "month_number": hi.month_number,
+            "day_number": hi.day_number,
+            "hour_branch": hi.hour_branch,
+            "hour_number": hour_number,
+            "calendar_source": hi.number_source,
+            "upper_total": upper_total,
+            "lower_total": lower_total,
+        },
+        "primary": primary,
+        "changed": changed,
+        "moving_line": moving_line,
+        "moving_line_name": moving_line_name,
+        "moving_line_text": (
+            moving_line_data["text"]
+            if moving_line_data
+            else f"{moving_line_name}为本次动爻；经典爻辞库待补充。"
+        ),
+        "moving_line_note": (
+            moving_line_data.get("note")
+            if moving_line_data
+            else "本地规则定位此爻为动爻，解读时应重点关注。"
+        ),
+        "moving_line_source": (
+            moving_line_data.get("source") if moving_line_data else "pending"
+        ),
+        "interpretation": (
+            f"本地时间法生成本卦《{primary['name'].removesuffix('卦')}》"
+            f"，动{moving_line_name}，变卦为《{changed['name'].removesuffix('卦')}》。"
+            "该结果用于提供可审计的卦象结构，后续解读应基于此结构展开。"
+        ),
+        "caveats": caveats,
+        "line_details": _line_details(primary["number"], primary["lines"], moving_line),
+    }
 
 
 def build_time_hexagram(chart: BaziChart) -> Optional[Dict[str, Any]]:
@@ -385,8 +582,11 @@ def _hexagram_caveats(chart: BaziChart, date_source: str) -> List[str]:
 __all__ = [
     "BRANCH_NUMBERS",
     "HEXAGRAM_NAMES",
+    "HexagramInput",
     "KING_WEN_BY_TRIGRAMS",
     "TRIGRAMS_BY_NUMBER",
     "build_time_hexagram",
+    "cast_hexagram",
+    "hexagram_input_from_datetime",
     "lookup_hexagram",
 ]
