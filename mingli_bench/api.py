@@ -58,6 +58,8 @@ def agent_response(
         raise ValueError("chart_input must be a JSON object")
 
     question = str(payload.get("question") or DEFAULT_AGENT_QUESTION)
+    hexagram_time_source = str(payload.get("hexagram_time_source") or "birth_time")
+    hexagram_time = payload.get("hexagram_time")
     return MingLiAgent(
         model_client,
         include_candidate_year_diagnostics=bool(
@@ -67,6 +69,8 @@ def agent_response(
         chart_input,
         question=question,
         fortune_data_path=fortune_data_path,
+        hexagram_time_source=hexagram_time_source,
+        hexagram_time=hexagram_time,
     ).as_dict()
 
 

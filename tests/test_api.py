@@ -66,6 +66,33 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(trace["llm"]["status"], "skipped")
         self.assertEqual(response["interpretation"]["mode"], "local")
 
+    def test_agent_response_accepts_specified_hexagram_time(self):
+        response = agent_response(
+            {
+                "chart_input": {
+                    "calendar_type": "solar",
+                    "year": 1978,
+                    "month": 4,
+                    "day": 5,
+                    "hour": 18,
+                    "location": "台湾",
+                },
+                "question": "分析事业",
+                "hexagram_time_source": "specified_time",
+                "hexagram_time": "2026-06-05T20:52",
+            }
+        )
+
+        hexagram = response["report"]["hexagram"]
+        self.assertEqual(hexagram["time_source"], "specified_time")
+        self.assertEqual(hexagram["time_source_label"], "指定时间起卦")
+        self.assertEqual(hexagram["input_datetime"], "2026-06-05T20:52")
+        self.assertEqual(hexagram["primary"]["name"], "大过卦")
+        self.assertEqual(hexagram["changed"]["name"], "恒卦")
+        trace = {stage["name"]: stage for stage in response["trace"]}
+        self.assertEqual(trace["input"]["data"]["hexagram_time_source"], "specified_time")
+        self.assertEqual(trace["report"]["data"]["hexagram_time_source"], "specified_time")
+
     def test_http_health_and_agent_endpoints(self):
         server = create_server("127.0.0.1", 0)
         thread = threading.Thread(target=server.serve_forever, daemon=True)

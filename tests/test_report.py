@@ -85,6 +85,34 @@ class ChartReportTests(unittest.TestCase):
         self.assertIn("八字+卦象联合分析", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())
 
+    def test_build_chart_report_can_use_specified_hexagram_time(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "分析事业",
+            hexagram_time_source="specified_time",
+            hexagram_time="2026-06-05T20:52",
+        )
+
+        self.assertIsNotNone(report.hexagram)
+        assert report.hexagram is not None
+        self.assertEqual(report.hexagram["time_source"], "specified_time")
+        self.assertEqual(report.hexagram["input_datetime"], "2026-06-05T20:52")
+        self.assertEqual(report.hexagram["primary"]["name"], "大过卦")
+        self.assertEqual(report.hexagram["changed"]["name"], "恒卦")
+        self.assertEqual(report.hexagram["moving_line_name"], "九五")
+        self.assertIsNotNone(report.integrated_analysis)
+        self.assertIn("指定时间起卦", report.to_markdown())
+
     def test_build_chart_report_extracts_event_years(self):
         chart = build_bazi_chart(
             {

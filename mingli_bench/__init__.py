@@ -9,7 +9,12 @@ from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
 from .chart_api import BaziChart, BaziPillars, ChartInput, build_bazi_chart
 from .dayun import DAYUN_SCHEMA_VERSION, build_dayun_analysis, dayun_direction, normalize_gender
-from .hexagram import build_time_hexagram, lookup_hexagram
+from .hexagram import (
+    build_time_hexagram,
+    build_time_hexagram_from_datetime,
+    build_time_hexagram_from_numbers,
+    lookup_hexagram,
+)
 from .hexagram_data import get_hexagram_text, get_line_text, validate_hexagram_texts
 from .hexagram_rules import build_hexagram_reading
 from .integrated_analysis import build_integrated_analysis
@@ -55,6 +60,8 @@ __all__ = [
     "build_integrated_analysis",
     "build_interpretation_prompt",
     "build_time_hexagram",
+    "build_time_hexagram_from_datetime",
+    "build_time_hexagram_from_numbers",
     "day_pillar_for_date",
     "dayun_direction",
     "extract_options",

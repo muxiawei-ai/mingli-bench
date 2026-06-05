@@ -385,6 +385,25 @@ Examples:
     )
 
     parser.add_argument(
+        "--hexagram-time-source",
+        choices=["birth_time", "question_time", "specified_time"],
+        default="birth_time",
+        help=(
+            "For agent runs: choose whether the hexagram uses birth time, "
+            "current question time, or a specified time."
+        ),
+    )
+
+    parser.add_argument(
+        "--hexagram-time",
+        metavar="ISO_DATETIME",
+        help=(
+            "For agent runs with --hexagram-time-source specified_time or "
+            "question_time: explicit ISO datetime, e.g. 2026-06-05T20:52."
+        ),
+    )
+
+    parser.add_argument(
         "--candidate-year-override-variant",
         choices=sorted(SCORING_VARIANTS),
         help=(
@@ -472,6 +491,8 @@ Examples:
                 payload,
                 question=question,
                 fortune_data_path=args.fortune_data_path,
+                hexagram_time_source=args.hexagram_time_source,
+                hexagram_time=args.hexagram_time,
             )
             print(
                 format_agent_result(
@@ -725,6 +746,8 @@ Examples:
                 payload,
                 question=args.agent_question,
                 fortune_data_path=args.fortune_data_path,
+                hexagram_time_source=args.hexagram_time_source,
+                hexagram_time=args.hexagram_time,
             )
             print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
             return 0

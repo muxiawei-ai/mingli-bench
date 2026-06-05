@@ -2014,6 +2014,12 @@ INDEX_HTML = """<!doctype html>
       if (hexagram.method) {
         lines.push(`- 起卦方法：${mdText(hexagram.method)}`);
       }
+      if (hexagram.time_source_label) {
+        lines.push(`- 起卦来源：${mdText(hexagram.time_source_label)}`);
+      }
+      if (hexagram.input_datetime) {
+        lines.push(`- 起卦时间：${mdText(hexagram.input_datetime)}`);
+      }
       cleanTextList(hexagram.basis).forEach((item) => {
         lines.push(`- ${mdText(item)}`);
       });
@@ -3260,7 +3266,7 @@ INDEX_HTML = """<!doctype html>
         <h2>卦象参考</h2>
         <div class="hex-print-module">
           <header class="hex-print-head">
-            <div class="hex-print-eyebrow">${escapeHtml(hexagram.method || "卦象展示")}</div>
+            <div class="hex-print-eyebrow">${escapeHtml([hexagram.method || "卦象展示", hexagram.time_source_label || ""].filter(Boolean).join(" · "))}</div>
             <div class="hex-print-title">${escapeHtml(primaryName)}<span>之</span>${escapeHtml(changedName)}</div>
             <div class="hex-print-summary">本卦《${escapeHtml(primaryName)}》 · 动 ${escapeHtml(hexagram.moving_line_name || `第${hexagram.moving_line || "-"}爻`)} · 变《${escapeHtml(changedName)}》</div>
           </header>
@@ -3496,7 +3502,8 @@ INDEX_HTML = """<!doctype html>
       const caveats = cleanTextList(hexagram.caveats);
       return `<div class="hexagram-panel">
         ${basis.length ? `<div class="divination-basis">
-          <strong>起卦依据${hexagram.method ? `（${escapeHtml(hexagram.method)}）` : ""}</strong>
+          <strong>起卦依据${hexagram.method ? `（${escapeHtml([hexagram.method, hexagram.time_source_label || ""].filter(Boolean).join(" · "))}）` : ""}</strong>
+          ${hexagram.input_datetime ? `<div>起卦时间：${escapeHtml(hexagram.input_datetime)}</div>` : ""}
           ${basis.map((item) => `<div>${escapeHtml(item)}</div>`).join("")}
         </div>` : ""}
         <div class="hexagram-pair">

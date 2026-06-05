@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .bazi import year_pillar_for_datetime
 from .calendar import hour_branch as _hour_branch
@@ -15,6 +15,17 @@ from .solar_terms import DEFAULT_TZ_OFFSET_HOURS
 
 Line = str
 TrigramLines = Tuple[Line, Line, Line]
+DateTimeLike = Union[str, date, datetime]
+
+
+HEXAGRAM_SCHEMA_VERSION = "hexagram.v1"
+TIME_SOURCE_LABELS = {
+    "birth_time": "出生时间起卦",
+    "question_time": "问事时间起卦",
+    "specified_time": "指定时间起卦",
+    "casting_time": "起卦时间起卦",
+    "manual_numbers": "手动数字起卦",
+}
 
 
 BRANCH_NUMBERS = {
@@ -213,6 +224,7 @@ class HexagramInput:
         source_type:   Intent label — ``"birth_time"``, ``"question_time"``,
                        or ``"casting_time"``.
         source_label:  Human-readable provenance string for audit logs.
+        input_datetime: Optional ISO local datetime string for replayability.
     """
 
     year_branch: str
@@ -222,15 +234,16 @@ class HexagramInput:
     number_source: str
     source_type: str
     source_label: str
+    input_datetime: Optional[str] = None
 
 
 def hexagram_input_from_datetime(
-    dt: datetime,
+    dt: DateTimeLike,
     *,
     source_type: str = "casting_time",
     lunar_month: Optional[int] = None,
     lunar_day: Optional[int] = None,
-    tz_offset_hours: int = DEFAULT_TZ_OFFSET_HOURS,
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
 ) -> HexagramInput:
     """Build a :class:`HexagramInput` from any Python datetime.
 
@@ -241,7 +254,8 @@ def hexagram_input_from_datetime(
     :func:`cast_hexagram` output.
 
     Args:
-        dt: The datetime to cast from.
+        dt: The datetime, date, or ISO string to cast from. Date-only values
+            use local noon as a transparent fallback.
         source_type: Intent label — ``"birth_time"``, ``"question_time"``, or
             ``"casting_time"``.  Does not change the calculation; used for
             provenance in the output.
@@ -255,22 +269,29 @@ def hexagram_input_from_datetime(
     Returns:
         :class:`HexagramInput` ready to pass to :func:`cast_hexagram`.
     """
-    year_pillar = year_pillar_for_datetime(dt, tz_offset_hours=tz_offset_hours)
+    normalized, _ = _normalize_hexagram_datetime(
+        dt,
+        tz_offset_hours=tz_offset_hours,
+    )
+    year_pillar = year_pillar_for_datetime(
+        normalized,
+        tz_offset_hours=tz_offset_hours,
+    )
     year_br = year_pillar[1]  # stem(0) + branch(1); we want the branch
-    hour_br = _hour_branch(dt.hour, dt.minute)
+    hour_br = _hour_branch(normalized.hour, normalized.minute)
 
     if lunar_month is not None and lunar_day is not None:
         number_source = "lunar_date"
         m, d = lunar_month, lunar_day
         source_label = (
-            f"{dt.strftime('%Y-%m-%d %H:%M')}"
+            f"{normalized.strftime('%Y-%m-%d %H:%M')}"
             f"（农历{m}月{d}日，{source_type}）"
         )
     else:
         number_source = "solar_input_proxy"
-        m, d = dt.month, dt.day
+        m, d = normalized.month, normalized.day
         source_label = (
-            f"{dt.strftime('%Y-%m-%d %H:%M')}"
+            f"{normalized.strftime('%Y-%m-%d %H:%M')}"
             f"（公历月日代入，{source_type}）"
         )
 
@@ -282,6 +303,7 @@ def hexagram_input_from_datetime(
         number_source=number_source,
         source_type=source_type,
         source_label=source_label,
+        input_datetime=normalized.isoformat(timespec="minutes"),
     )
 
 
@@ -303,9 +325,17 @@ def cast_hexagram(hi: HexagramInput) -> Dict[str, Any]:
     Returns a dict with the same schema as :func:`build_time_hexagram`, plus
     two provenance fields: ``"source_type"`` and ``"source_label"``.
     """
+    _validate_number_inputs(
+        hi.year_branch,
+        hi.month_number,
+        hi.day_number,
+        hi.hour_branch,
+    )
+    month_number = int(hi.month_number)
+    day_number = int(hi.day_number)
     year_number = BRANCH_NUMBERS[hi.year_branch]
     hour_number = BRANCH_NUMBERS[hi.hour_branch]
-    upper_total = year_number + hi.month_number + hi.day_number
+    upper_total = year_number + month_number + day_number
     lower_total = upper_total + hour_number
     upper_number = _mod_one_based(upper_total, 8)
     lower_number = _mod_one_based(lower_total, 8)
@@ -322,26 +352,21 @@ def cast_hexagram(hi: HexagramInput) -> Dict[str, Any]:
     moving_line_name = _line_name(moving_line, primary["lines"][moving_line - 1])
     moving_line_data = get_line_text(primary["number"], moving_line)
 
-    caveats: List[str] = [
-        "卦象由本地梅花易数时间法规则生成，不代表确定事实。",
-        "当前版本已接入 64 卦基础卦辞/爻辞资料；细分断语仍需结合问题语境。",
-    ]
-    if hi.number_source == "solar_input_proxy":
-        caveats.append(
-            "当前为公历输入，月日数暂按公历月日代入；"
-            "如需准确农历数，请在 hexagram_input_from_datetime() 中"
-            "传入 lunar_month 和 lunar_day 参数。"
-        )
+    caveats = _base_hexagram_caveats(hi.number_source, hi.source_type)
 
     return {
+        "schema_version": HEXAGRAM_SCHEMA_VERSION,
         "method": "梅花易数时间法",
         "source_type": hi.source_type,
         "source_label": hi.source_label,
+        "time_source": hi.source_type,
+        "time_source_label": TIME_SOURCE_LABELS.get(hi.source_type, hi.source_type),
+        "input_datetime": hi.input_datetime,
         "basis": [
             (
                 f"年支数({year_number}，{hi.year_branch}年)"
-                f"+月数({hi.month_number})"
-                f"+日数({hi.day_number})={upper_total}"
+                f"+月数({month_number})"
+                f"+日数({day_number})={upper_total}"
                 f" -> 余{upper_number} -> 上卦：{upper.name}{upper.symbol}"
             ),
             (
@@ -353,11 +378,13 @@ def cast_hexagram(hi: HexagramInput) -> Dict[str, Any]:
         "number_source": {
             "year_branch": hi.year_branch,
             "year_number": year_number,
-            "month_number": hi.month_number,
-            "day_number": hi.day_number,
+            "month_number": month_number,
+            "day_number": day_number,
             "hour_branch": hi.hour_branch,
             "hour_number": hour_number,
             "calendar_source": hi.number_source,
+            "time_source": hi.source_type,
+            "input_datetime": hi.input_datetime,
             "upper_total": upper_total,
             "lower_total": lower_total,
         },
@@ -388,7 +415,11 @@ def cast_hexagram(hi: HexagramInput) -> Dict[str, Any]:
     }
 
 
-def build_time_hexagram(chart: BaziChart) -> Optional[Dict[str, Any]]:
+def build_time_hexagram(
+    chart: BaziChart,
+    *,
+    time_source: str = "birth_time",
+) -> Optional[Dict[str, Any]]:
     """Build a Meihua-style time hexagram from a deterministic Bazi chart.
 
     The rule used here is the common time-number scaffold:
@@ -401,80 +432,96 @@ def build_time_hexagram(chart: BaziChart) -> Optional[Dict[str, Any]]:
     conversion engine is available for all dates.
     """
 
+    if time_source != "birth_time":
+        raise ValueError(
+            "build_time_hexagram(chart) only supports birth_time; "
+            "use build_time_hexagram_from_datetime for question/specified time"
+        )
+
     if chart.hour_branch is None:
         return None
 
     date_numbers = _date_numbers(chart)
     year_branch = chart.pillars.year[1]
-    year_number = BRANCH_NUMBERS[year_branch]
-    hour_number = BRANCH_NUMBERS[chart.hour_branch]
-    upper_total = year_number + date_numbers["month"] + date_numbers["day"]
-    lower_total = upper_total + hour_number
-    upper_number = _mod_one_based(upper_total, 8)
-    lower_number = _mod_one_based(lower_total, 8)
-    moving_line = _mod_one_based(lower_total, 6)
+    result = build_time_hexagram_from_numbers(
+        year_branch=year_branch,
+        month_number=date_numbers["month"],
+        day_number=date_numbers["day"],
+        hour_branch=chart.hour_branch,
+        time_source=time_source,
+        calendar_source=date_numbers["source"],
+        input_datetime=_chart_input_datetime(chart),
+        source_label=_chart_source_label(chart, date_numbers["source"]),
+        caveats=_hexagram_caveats(
+            chart,
+            date_numbers["source"],
+            time_source=time_source,
+        ),
+    )
+    return result
 
-    upper = TRIGRAMS_BY_NUMBER[upper_number]
-    lower = TRIGRAMS_BY_NUMBER[lower_number]
-    primary = lookup_hexagram(upper.name, lower.name, role="本卦")
-    changed_lines = _change_line(primary["lines"], moving_line)
-    changed_lower = TRIGRAMS_BY_LINES[tuple(changed_lines[:3])]
-    changed_upper = TRIGRAMS_BY_LINES[tuple(changed_lines[3:])]
-    changed = lookup_hexagram(changed_upper.name, changed_lower.name, role="变卦")
 
-    moving_line_name = _line_name(moving_line, primary["lines"][moving_line - 1])
-    moving_line_data = get_line_text(primary["number"], moving_line)
-    return {
-        "method": "梅花易数时间法",
-        "basis": [
-            (
-                f"年支数({year_number}，{year_branch}年)"
-                f"+月数({date_numbers['month']})"
-                f"+日数({date_numbers['day']})={upper_total}"
-                f" -> 余{upper_number} -> 上卦：{upper.name}{upper.symbol}"
-            ),
-            (
-                f"加时支数({hour_number}，{chart.hour_branch}时)={lower_total}"
-                f" -> 余{lower_number} -> 下卦：{lower.name}{lower.symbol}"
-                f" · 动爻：第{moving_line}爻"
-            ),
-        ],
-        "number_source": {
-            "year_branch": year_branch,
-            "year_number": year_number,
-            "month_number": date_numbers["month"],
-            "day_number": date_numbers["day"],
-            "hour_branch": chart.hour_branch,
-            "hour_number": hour_number,
-            "calendar_source": date_numbers["source"],
-            "upper_total": upper_total,
-            "lower_total": lower_total,
-        },
-        "primary": primary,
-        "changed": changed,
-        "moving_line": moving_line,
-        "moving_line_name": moving_line_name,
-        "moving_line_text": (
-            moving_line_data["text"]
-            if moving_line_data
-            else f"{moving_line_name}为本次动爻；经典爻辞库待补充。"
-        ),
-        "moving_line_note": (
-            moving_line_data.get("note")
-            if moving_line_data
-            else "本地规则定位此爻为动爻，解读时应重点关注。"
-        ),
-        "moving_line_source": (
-            moving_line_data.get("source") if moving_line_data else "pending"
-        ),
-        "interpretation": (
-            f"本地时间法生成本卦《{primary['name'].removesuffix('卦')}》"
-            f"，动{moving_line_name}，变卦为《{changed['name'].removesuffix('卦')}》。"
-            "该结果用于提供可审计的卦象结构，后续解读应基于此结构展开。"
-        ),
-        "caveats": _hexagram_caveats(chart, date_numbers["source"]),
-        "line_details": _line_details(primary["number"], primary["lines"], moving_line),
-    }
+def build_time_hexagram_from_datetime(
+    value: DateTimeLike,
+    *,
+    time_source: str = "specified_time",
+    calendar_source: str = "solar_input_proxy",
+    tz_offset_hours: float = DEFAULT_TZ_OFFSET_HOURS,
+    caveats: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Build a Meihua-style time hexagram from an explicit local datetime."""
+
+    normalized, parse_caveats = _normalize_hexagram_datetime(
+        value,
+        tz_offset_hours=tz_offset_hours,
+    )
+    year_branch = year_pillar_for_datetime(
+        normalized,
+        tz_offset_hours=tz_offset_hours,
+    )[1]
+    selected_caveats = list(caveats or [])
+    selected_caveats.extend(parse_caveats)
+    return build_time_hexagram_from_numbers(
+        year_branch=year_branch,
+        month_number=normalized.month,
+        day_number=normalized.day,
+        hour_branch=_hour_branch(normalized.hour, normalized.minute),
+        time_source=time_source,
+        calendar_source=calendar_source,
+        input_datetime=normalized.isoformat(timespec="minutes"),
+        source_label=_datetime_source_label(normalized, calendar_source, time_source),
+        caveats=selected_caveats,
+    )
+
+
+def build_time_hexagram_from_numbers(
+    *,
+    year_branch: str,
+    month_number: int,
+    day_number: int,
+    hour_branch: str,
+    time_source: str = "manual_numbers",
+    calendar_source: str = "manual_numbers",
+    input_datetime: Optional[str] = None,
+    source_label: Optional[str] = None,
+    caveats: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Build a Meihua-style time hexagram from validated number inputs."""
+
+    _validate_number_inputs(year_branch, month_number, day_number, hour_branch)
+    hi = HexagramInput(
+        year_branch=year_branch,
+        month_number=int(month_number),
+        day_number=int(day_number),
+        hour_branch=hour_branch,
+        number_source=calendar_source,
+        source_type=time_source,
+        source_label=source_label or TIME_SOURCE_LABELS.get(time_source, time_source),
+        input_datetime=input_datetime,
+    )
+    result = cast_hexagram(hi)
+    result["caveats"] = _dedupe(result["caveats"] + list(caveats or []))
+    return result
 
 
 def lookup_hexagram(upper: str, lower: str, *, role: str = "卦象") -> Dict[str, Any]:
@@ -517,6 +564,93 @@ def _date_numbers(chart: BaziChart) -> Dict[str, Any]:
         "day": int(chart.input.day),
         "source": "solar_input_proxy",
     }
+
+
+def _chart_input_datetime(chart: BaziChart) -> Optional[str]:
+    if chart.input.hour is None:
+        return None
+    return (
+        f"{chart.solar_date}T"
+        f"{int(chart.input.hour):02d}:{int(chart.input.minute):02d}"
+    )
+
+
+def _chart_source_label(chart: BaziChart, date_source: str) -> str:
+    input_datetime = _chart_input_datetime(chart) or chart.solar_date
+    if date_source == "lunar_date" and chart.lunar:
+        return (
+            f"{input_datetime}"
+            f"（农历{chart.lunar['month']}月{chart.lunar['day']}日，birth_time）"
+        )
+    return f"{input_datetime}（公历月日代入，birth_time）"
+
+
+def _datetime_source_label(
+    value: datetime,
+    calendar_source: str,
+    time_source: str,
+) -> str:
+    if calendar_source == "lunar_date":
+        return f"{value.strftime('%Y-%m-%d %H:%M')}（农历月日，{time_source}）"
+    return f"{value.strftime('%Y-%m-%d %H:%M')}（公历月日代入，{time_source}）"
+
+
+def _normalize_hexagram_datetime(
+    value: DateTimeLike,
+    *,
+    tz_offset_hours: float,
+) -> Tuple[datetime, List[str]]:
+    caveats: List[str] = []
+    has_explicit_time = True
+    if isinstance(value, datetime):
+        selected = value
+    elif isinstance(value, date):
+        selected = datetime(value.year, value.month, value.day, 12, 0)
+        has_explicit_time = False
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            raise ValueError("hexagram time must not be empty")
+        if "T" not in text and " " not in text:
+            parsed_date = date.fromisoformat(text)
+            selected = datetime(
+                parsed_date.year,
+                parsed_date.month,
+                parsed_date.day,
+                12,
+                0,
+            )
+            has_explicit_time = False
+        else:
+            selected = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    else:
+        raise TypeError("hexagram time must be a datetime, date, or ISO string")
+
+    if not has_explicit_time:
+        caveats.append("起卦时间未提供具体时分，已按午时 12:00 代入。")
+
+    if selected.tzinfo is not None:
+        target_tz = timezone(timedelta(hours=tz_offset_hours))
+        selected = selected.astimezone(target_tz).replace(tzinfo=None)
+        caveats.append(f"带时区时间已转换为 UTC{tz_offset_hours:+g} 本地时间后起卦。")
+
+    return selected.replace(second=0, microsecond=0), caveats
+
+
+def _validate_number_inputs(
+    year_branch: str,
+    month_number: int,
+    day_number: int,
+    hour_branch: str,
+) -> None:
+    if year_branch not in BRANCH_NUMBERS:
+        raise ValueError(f"unsupported year branch: {year_branch!r}")
+    if hour_branch not in BRANCH_NUMBERS:
+        raise ValueError(f"unsupported hour branch: {hour_branch!r}")
+    if not 1 <= int(month_number) <= 12:
+        raise ValueError("month_number must be in 1..12")
+    if not 1 <= int(day_number) <= 31:
+        raise ValueError("day_number must be in 1..31")
 
 
 def _mod_one_based(total: int, base: int) -> int:
@@ -567,24 +701,52 @@ def _line_details(
     return details
 
 
-def _hexagram_caveats(chart: BaziChart, date_source: str) -> List[str]:
+def _base_hexagram_caveats(date_source: str, time_source: str) -> List[str]:
     caveats = [
         "卦象由本地梅花易数时间法规则生成，不代表确定事实。",
         "当前版本已接入 64 卦基础卦辞/爻辞资料；细分断语仍需结合问题语境。",
     ]
+    if time_source == "birth_time":
+        caveats.append("当前卦象按出生时间起卦；若用于具体问事，可改用问事时间或指定时间起卦。")
+    elif time_source == "question_time":
+        caveats.append("当前卦象按问事时间起卦，主要用于观察当下问题触发点。")
+    elif time_source == "specified_time":
+        caveats.append("当前卦象按用户指定时间起卦，适合复盘或固定时间窗口分析。")
     if date_source == "solar_input_proxy":
         caveats.append("当前为公历输入，月日数暂按公历月日代入；未来接入完整农历引擎后可改用农历月日。")
+    return caveats
+
+
+def _hexagram_caveats(
+    chart: BaziChart,
+    date_source: str,
+    *,
+    time_source: str,
+) -> List[str]:
+    caveats = _base_hexagram_caveats(date_source, time_source)
     if chart.timezone.get("warnings"):
         caveats.append("出生地或时区存在标准化假设，时辰数可能受地点校正影响。")
     return caveats
 
 
+def _dedupe(values: List[str]) -> List[str]:
+    result: List[str] = []
+    for value in values:
+        if value and value not in result:
+            result.append(value)
+    return result
+
+
 __all__ = [
     "BRANCH_NUMBERS",
+    "HEXAGRAM_SCHEMA_VERSION",
     "HEXAGRAM_NAMES",
     "HexagramInput",
     "KING_WEN_BY_TRIGRAMS",
+    "TIME_SOURCE_LABELS",
     "TRIGRAMS_BY_NUMBER",
+    "build_time_hexagram_from_datetime",
+    "build_time_hexagram_from_numbers",
     "build_time_hexagram",
     "cast_hexagram",
     "hexagram_input_from_datetime",

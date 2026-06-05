@@ -82,10 +82,17 @@ def build_interpretation_prompt(
     report: Optional[ChartReport] = None,
     intent: Optional[QuestionIntent] = None,
     include_candidate_year_diagnostics: bool = False,
+    hexagram_time_source: str = "birth_time",
+    hexagram_time: Optional[Any] = None,
 ) -> str:
     """Build the prompt sent to an LLM for chart interpretation."""
 
-    report = report or build_chart_report(chart, question)
+    report = report or build_chart_report(
+        chart,
+        question,
+        hexagram_time_source=hexagram_time_source,
+        hexagram_time=hexagram_time,
+    )
     intent = intent or parse_question_intent(question)
     intent_json = json.dumps(intent.as_dict(), ensure_ascii=False, indent=2)
     report_for_prompt = report.as_dict()
@@ -213,6 +220,8 @@ class MingLiAgent:
         *,
         question: str = DEFAULT_AGENT_QUESTION,
         fortune_data_path: Optional[str] = None,
+        hexagram_time_source: str = "birth_time",
+        hexagram_time: Optional[Any] = None,
     ) -> AgentResult:
         trace = [
             AgentStage(
@@ -222,6 +231,8 @@ class MingLiAgent:
                 data={
                     "input_type": type(chart_input).__name__,
                     "question_chars": len(question),
+                    "hexagram_time_source": hexagram_time_source,
+                    "has_hexagram_time": hexagram_time is not None,
                 },
                 warnings=[],
             )
@@ -256,7 +267,12 @@ class MingLiAgent:
                 warnings=list(chart.warnings),
             )
         )
-        report = build_chart_report(chart, question)
+        report = build_chart_report(
+            chart,
+            question,
+            hexagram_time_source=hexagram_time_source,
+            hexagram_time=hexagram_time,
+        )
         trace.append(
             AgentStage(
                 name="report",
@@ -266,6 +282,9 @@ class MingLiAgent:
                     "strongest_elements": list(report.strongest_elements),
                     "missing_elements": list(report.missing_elements),
                     "has_hexagram": report.hexagram is not None,
+                    "hexagram_time_source": (
+                        (report.hexagram or {}).get("time_source")
+                    ),
                     "caveat_count": len(report.caveats),
                     "follow_up_count": len(report.follow_up_questions),
                 },

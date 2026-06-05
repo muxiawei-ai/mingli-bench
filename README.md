@@ -42,6 +42,7 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - text-derived A-D option semantic diagnostics,
   - local candidate-year scoring diagnostics and scoring variants for timing questions,
   - deterministic Meihua-style time hexagram generation for report modules,
+    with birth-time, question-time, or specified-time sources,
   - a complete 64-hexagram I Ching text corpus for judgments, Great Image text,
     and line texts,
   - local rule-based hexagram reading scaffolds for primary hexagram,
@@ -104,6 +105,7 @@ python -m mingli_bench.cli --lunar-from-solar 1978-04-05
 python -m mingli_bench.cli --solar-from-lunar "一九七八年二月廿八"
 python -m mingli_bench.cli --chart-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾","country":"中国"}'
 python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业和性格"
+python -m mingli_bench.cli --agent-input-json '{"calendar_type":"solar","year":1978,"month":4,"day":5,"hour":18,"location":"台湾"}' --agent-question "分析事业" --hexagram-time-source specified_time --hexagram-time 2026-06-05T20:52
 python -m mingli_bench.cli agent --no-llm
 mingli-bench agent --model google/gemini-2.5-pro
 mingli-bench eval-agent --sample 10
@@ -113,6 +115,7 @@ python -m mingli_bench.cli --show-chart case_1
 ```
 
 `--agent-input-json` runs locally by default and returns the chart, a deterministic local report, and the LLM prompt. Add `--agent-model google/gemini-2.5-pro` or another supported model to call an actual LLM using your `.env` credentials.
+For hexagram reports, `--hexagram-time-source` can keep the default birth-time method, use the current question time, or replay a specified ISO datetime via `--hexagram-time`.
 Agent JSON results include a `trace` field for auditing input, chart building, local reporting, prompt construction, and LLM call/skip stages.
 They also include an `interpretation` field using the `mingli_interpretation.v1` structured contract; local mode returns a deterministic scaffold, while LLM mode attempts to parse model JSON output into the same schema.
 They also include an `intent` field that routes the user question into coarse domains such as career, wealth, relationship, health, personality, study, family, timing, or general analysis.

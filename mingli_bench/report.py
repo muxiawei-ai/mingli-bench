@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from .bazi import year_pillar_for_date
@@ -12,7 +13,7 @@ from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
 from .dayun import build_dayun_analysis
-from .hexagram import build_time_hexagram
+from .hexagram import build_time_hexagram, build_time_hexagram_from_datetime
 from .hexagram_rules import build_hexagram_reading
 from .integrated_analysis import build_integrated_analysis
 from .option_semantics import analyze_option_semantics
@@ -219,6 +220,8 @@ class ChartReport:
             changed = self.hexagram.get("changed") or {}
             lines.extend(["", "### 卦象参考"])
             lines.append(f"- 起卦方法: {self.hexagram.get('method')}")
+            if self.hexagram.get("time_source_label"):
+                lines.append(f"- 起卦来源: {self.hexagram['time_source_label']}")
             lines.append(
                 "- 本卦: "
                 f"{primary.get('name')} {primary.get('symbol')} "
@@ -315,7 +318,13 @@ def build_element_profile(chart: BaziChart) -> List[ElementSignal]:
     ]
 
 
-def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
+def build_chart_report(
+    chart: BaziChart,
+    question: str,
+    *,
+    hexagram_time_source: str = "birth_time",
+    hexagram_time: Optional[Any] = None,
+) -> ChartReport:
     """Create a deterministic report scaffold for local agent output."""
 
     profile = build_element_profile(chart)
@@ -356,7 +365,11 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         event_years,
         option_semantics,
     )
-    hexagram = build_time_hexagram(chart)
+    hexagram = _build_report_hexagram(
+        chart,
+        time_source=hexagram_time_source,
+        hexagram_time=hexagram_time,
+    )
     if hexagram:
         hexagram["reading"] = build_hexagram_reading(hexagram, question)
     integrated_analysis = build_integrated_analysis(
@@ -386,6 +399,36 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         integrated_analysis=integrated_analysis,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
+    )
+
+
+def _build_report_hexagram(
+    chart: BaziChart,
+    *,
+    time_source: str,
+    hexagram_time: Optional[Any],
+) -> Optional[Dict[str, Any]]:
+    if time_source == "birth_time":
+        return build_time_hexagram(chart, time_source=time_source)
+
+    if time_source not in {"question_time", "specified_time"}:
+        raise ValueError(f"unsupported hexagram_time_source: {time_source!r}")
+
+    caveats: List[str] = []
+    selected_time = hexagram_time
+    if selected_time is None:
+        if time_source == "specified_time":
+            raise ValueError("hexagram_time is required for specified_time hexagrams")
+        selected_time = datetime.now().replace(second=0, microsecond=0)
+        caveats.append(
+            "未提供明确问事时间，已使用程序运行时的当前本地时间起卦；如需复现请传入 hexagram_time。"
+        )
+
+    return build_time_hexagram_from_datetime(
+        selected_time,
+        time_source=time_source,
+        tz_offset_hours=float(chart.timezone.get("utc_offset_hours") or 8),
+        caveats=caveats,
     )
 
 
