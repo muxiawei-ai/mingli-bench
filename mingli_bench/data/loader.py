@@ -2,6 +2,7 @@
 Data loader for benchmark questions.
 """
 
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -270,9 +271,10 @@ class DataLoader:
         
         # Create shuffled order
         shuffled_indices = list(range(len(original_options)))
-        # Use question ID hash as seed for consistent shuffling per question
+        # Use a stable hash of the question ID as seed so shuffle is reproducible
+        # across Python versions and processes regardless of PYTHONHASHSEED.
         question_id = question.get('id')
-        base_seed = hash(question_id) % (2**32)  # Ensure seed is within int32 range
+        base_seed = int(hashlib.sha256(str(question_id).encode()).hexdigest(), 16) % (2**32)
         
         # Keep shuffling until no option maps to itself
         seed_offset = 0

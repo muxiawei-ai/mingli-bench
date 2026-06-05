@@ -3,6 +3,7 @@ Core benchmark framework for evaluating LLMs on fortune telling tasks.
 """
 
 import json
+import re
 import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -293,21 +294,16 @@ class FortuneTellingBenchmark:
             raise ValueError(f"Question {question.get('id')} has no options")
         
         # Handle different option formats and sort by letter
-        formatted_options = []
-        for option in options:
-            if isinstance(option, dict) and 'letter' in option:
-                # Option has explicit letter
-                formatted_options.append(option)
-            else:
-                # Need to assign letters
-                for i, opt in enumerate(options[:4]):  # Max 4 options
-                    letter = chr(65 + i)  # A, B, C, D
-                    if isinstance(opt, dict):
-                        text = opt.get('text', str(opt))
-                    else:
-                        text = str(opt)
-                    formatted_options.append({'letter': letter, 'text': text})
-                break
+        if options and isinstance(options[0], dict) and 'letter' in options[0]:
+            formatted_options = list(options)
+        else:
+            formatted_options = [
+                {
+                    'letter': chr(65 + i),
+                    'text': opt.get('text', str(opt)) if isinstance(opt, dict) else str(opt),
+                }
+                for i, opt in enumerate(options[:4])
+            ]
         
         # Sort by letter to ensure consistent order
         sorted_options = sorted(formatted_options, key=lambda x: x.get('letter', 'Z'))
@@ -323,48 +319,31 @@ class FortuneTellingBenchmark:
     def _extract_answer(self, response: str, use_cot: bool = False) -> Optional[str]:
         """
         Extract the answer from model response with improved logic.
-        
+
         Args:
             response: Model response text
             use_cot: Whether CoT was used
-            
+
         Returns:
             Extracted answer (A, B, C, or D) or None
         """
-        import re
-
         # Clean response text
         response = response.strip()
-        response = re.sub(r'[\*_`]+', '', response)
-        response = re.sub(r'[\"\'"""‘’「」『』（）\(\)\[\]【】<>《》]', '', response)
+        response = re.sub(r’[\*_`]+’, ‘’, response)
+        response = re.sub(r’[\"\’"""’’「」『』（）\(\)\[\]【】<>《》]’, ‘’, response)
 
-        # Answer extraction patterns (in priority order)
-        patterns = [
-            # Explicit answer formats
-            r'答案[：:]\s*([A-Za-z])',
-            r'答案是[：:]\s*([A-Za-z])',
-            r'选择[：:]\s*([A-Za-z])',
-            r'选[：:]\s*([A-Za-z])',
-            # Single letter on its own line
-            r'^([A-Za-z])$',
-            # Answer at end of sentence
-            r'[。，]([A-Za-z])[。]?$',
-        ]
-        
-        for pattern in patterns:
+        for pattern in ANSWER_PATTERNS:
             matches = list(re.finditer(pattern, response, re.MULTILINE))
             if matches:
-                # If multiple matches, take the last one (final answer)
                 return matches[-1].group(1).upper()
-        
+
         # Last resort: find all standalone letters and take the last valid one
-        all_letters = re.findall(r'\b([A-Za-z])\b', response)
+        all_letters = re.findall(r’\b([A-Za-z])\b’, response)
         if all_letters:
-            # Filter for valid option letters
-            valid_letters = [l.upper() for l in all_letters if l.upper() in ['A', 'B', 'C', 'D', 'E', 'F']]
+            valid_letters = [l.upper() for l in all_letters if l.upper() in VALID_OPTIONS]
             if valid_letters:
                 return valid_letters[-1]
-        
+
         return None
     
     def _calculate_statistics(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:

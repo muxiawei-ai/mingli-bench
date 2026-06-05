@@ -64,7 +64,7 @@ class EvaluationResult:
     response: Optional[str]
     response_time: float
     error: Optional[str] = None
-    option_shuffle_info: Optional[str] = None
+    option_shuffle_info: Optional[Dict[str, Any]] = None
     prompt: Optional[str] = None
 
 
@@ -101,17 +101,18 @@ QUESTION_CATEGORIES = {
 # Valid answer options
 VALID_OPTIONS = 'ABCDEFGH'
 
-# Answer patterns for extraction
+# Answer patterns for extraction (applied in priority order; match is uppercased after)
 ANSWER_PATTERNS = [
-    r'答案[：:]\s*([A-H])',
-    r'答案是\s*([A-H])',
-    r'选择[：:]\s*([A-H])',
-    r'选\s*([A-H])',
-    r'我选择\s*([A-H])',
-    r'应该选\s*([A-H])',
-    r'正确答案[是：:]\s*([A-H])',
-    r'^([A-H])[\.、。]',  # A. or A、 at start
-    r'^([A-H])$',  # Just the letter
+    r'答案[：:]\s*([A-Za-z])',
+    r'答案是[：:]?\s*([A-Za-z])',
+    r'选择[：:]\s*([A-Za-z])',
+    r'选[：:]?\s*([A-Za-z])',
+    r'我选择\s*([A-Za-z])',
+    r'应该选\s*([A-Za-z])',
+    r'正确答案[是：:]\s*([A-Za-z])',
+    r'^([A-Za-z])[\.、。]',
+    r'^([A-Za-z])$',
+    r'[。，]([A-Za-z])[。]?$',
 ]
 
 # Answer markers in raw data
