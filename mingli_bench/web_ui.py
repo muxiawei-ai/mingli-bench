@@ -375,6 +375,49 @@ INDEX_HTML = """<!doctype html>
       line-height: 1.3;
     }
 
+    .cycle-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .cycle-row {
+      display: grid;
+      grid-template-columns: minmax(70px, 0.35fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .cycle-row.is-active {
+      border-color: #a9d4cb;
+      background: #f3fbf8;
+    }
+
+    .cycle-main {
+      display: grid;
+      gap: 3px;
+    }
+
+    .cycle-main strong {
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .cycle-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .overlay-list {
+      display: grid;
+      gap: 8px;
+    }
+
     .panel {
       margin-bottom: 16px;
       overflow: hidden;
@@ -1217,6 +1260,11 @@ INDEX_HTML = """<!doctype html>
             <div class="panel-body" id="baziProfileContent"></div>
           </section>
 
+          <section class="panel" id="dayunPanel" hidden>
+            <h2>大运时间轴</h2>
+            <div class="panel-body" id="dayunContent"></div>
+          </section>
+
           <section class="panel" id="hexagramPanel" hidden>
             <h2>卦象参考</h2>
             <div class="panel-body" id="hexagramContent"></div>
@@ -1532,6 +1580,15 @@ INDEX_HTML = """<!doctype html>
           timezone: "Asia/Shanghai",
           has_birth_time: true
         },
+        event_years: [
+          {
+            year: 2026,
+            year_pillar: "丙午",
+            age: 36,
+            nominal_age: 37,
+            branch: "午"
+          }
+        ],
         element_profile: [
           {element: "木", count: 1, level: "low"},
           {element: "火", count: 3, level: "high"},
@@ -1577,6 +1634,42 @@ INDEX_HTML = """<!doctype html>
             {label: "印星支持可见", summary: "适合把学习、资质、方法论和长期补给纳入分析。"}
           ],
           caveats: ["这是前端示例画像，不对应真实排盘判断。"]
+        },
+        dayun: {
+          schema_version: "dayun.v1",
+          available: true,
+          gender: "female",
+          year_stem: "庚",
+          year_stem_polarity: "yang",
+          year_stem_polarity_label: "阳",
+          direction: "backward",
+          direction_label: "逆排",
+          rule: "阳男阴女顺排，阴男阳女逆排",
+          start_timing: {
+            method: "jie_boundary_3_days_per_year.v1",
+            anchor_direction: "previous_jie",
+            anchor_direction_label: "上一个节令",
+            anchor_term: "立秋",
+            days_delta: 16.42,
+            start_age_years: 5.47,
+            start_age_months: 66
+          },
+          cycles: [
+            {index: 1, pillar: "癸未", stem: "癸", branch: "未", stem_element: "水", branch_element: "土", stem_ten_god: "比肩", branch_ten_god: "七杀", age_start: 5.47, age_end: 15.47, approx_start_year: 1995, approx_end_year: 2005},
+            {index: 2, pillar: "壬午", stem: "壬", branch: "午", stem_element: "水", branch_element: "火", stem_ten_god: "劫财", branch_ten_god: "偏财", age_start: 15.47, age_end: 25.47, approx_start_year: 2005, approx_end_year: 2015},
+            {index: 3, pillar: "辛巳", stem: "辛", branch: "巳", stem_element: "金", branch_element: "火", stem_ten_god: "偏印", branch_ten_god: "偏财", age_start: 25.47, age_end: 35.47, approx_start_year: 2015, approx_end_year: 2025},
+            {index: 4, pillar: "庚辰", stem: "庚", branch: "辰", stem_element: "金", branch_element: "土", stem_ten_god: "正印", branch_ten_god: "正官", age_start: 35.47, age_end: 45.47, approx_start_year: 2025, approx_end_year: 2035}
+          ],
+          event_overlays: [
+            {
+              year: 2026,
+              age: 36,
+              year_pillar: "丙午",
+              active_cycle: {index: 4, pillar: "庚辰", age_start: 35.47, age_end: 45.47},
+              flow_to_dayun_interactions: [{label: "午辰相邻参考", type: "demo_reference"}]
+            }
+          ],
+          caveats: ["这是前端示例大运，不对应真实起运计算。"]
         },
         hexagram: {
           method: "梅花易数时间法示例",
@@ -1889,6 +1982,7 @@ INDEX_HTML = """<!doctype html>
       }
 
       appendBaziProfileMarkdown(lines, report.bazi_profile);
+      appendDayunMarkdown(lines, report.dayun);
       appendHexagramMarkdown(lines, report.hexagram);
       appendIntegratedMarkdown(lines, report.integrated_analysis);
 
@@ -2010,6 +2104,47 @@ INDEX_HTML = """<!doctype html>
       }
       appendDetailList(lines, "结构信号", (profile.structure_signals || []).map((item) => `${item.label}: ${item.summary}`));
       appendDetailList(lines, "观察重点", (profile.practical_focus || []).map((item) => `${item.label}: ${item.summary}`));
+      lines.push("");
+    }
+
+    function appendDayunMarkdown(lines, dayun) {
+      if (!dayun || typeof dayun !== "object") {
+        return;
+      }
+      lines.push("## 大运时间轴");
+      if (!dayun.available) {
+        appendList(lines, "未生成原因", dayun.missing_inputs);
+        appendDetailList(lines, "大运边界", dayun.caveats);
+        return;
+      }
+      const start = dayun.start_timing || {};
+      appendKeyValue(lines, "顺逆", [dayun.direction_label, dayun.rule].filter(Boolean).join(" · "));
+      appendKeyValue(lines, "起运", `约 ${start.start_age_years ?? "-"} 岁（${start.anchor_term || "-"}，${start.anchor_direction_label || start.anchor_direction || "-"}）`);
+      const cycles = Array.isArray(dayun.cycles) ? dayun.cycles.slice(0, 6) : [];
+      if (cycles.length) {
+        lines.push("");
+        lines.push("### 前六步大运");
+        cycles.forEach((cycle) => {
+          lines.push(
+            `- ${mdText(cycle.pillar)}：${mdText(cycle.age_start)}-${mdText(cycle.age_end)}岁，约${mdText(cycle.approx_start_year)}-${mdText(cycle.approx_end_year)}年`
+          );
+        });
+      }
+      const overlays = Array.isArray(dayun.event_overlays) ? dayun.event_overlays : [];
+      if (overlays.length) {
+        lines.push("");
+        lines.push("### 题目年份叠加");
+        overlays.forEach((overlay) => {
+          const active = overlay.active_cycle || {};
+          const text = active.pillar
+            ? `${overlay.year}年（${overlay.year_pillar || "-"}，${overlay.age ?? "-"}岁）约落在 ${active.pillar} 大运`
+            : `${overlay.year}年未落入当前生成的大运范围`;
+          lines.push(`- ${mdText(text)}`);
+          const interactions = cleanTextList((overlay.flow_to_dayun_interactions || []).map((item) => item?.label || item));
+          interactions.forEach((item) => lines.push(`  - ${mdText(item)}`));
+        });
+      }
+      appendDetailList(lines, "大运边界", dayun.caveats);
       lines.push("");
     }
 
@@ -2275,6 +2410,42 @@ INDEX_HTML = """<!doctype html>
       font-size: 11px;
       font-weight: 700;
       line-height: 1.3;
+    }
+    .cycle-list {
+      display: grid;
+      gap: 8px;
+    }
+    .cycle-row {
+      display: grid;
+      grid-template-columns: minmax(70px, 0.35fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .cycle-row.is-active {
+      border-color: #aad2ca;
+      background: #f1faf7;
+    }
+    .cycle-main {
+      display: grid;
+      gap: 3px;
+    }
+    .cycle-main strong {
+      font-size: 15px;
+      line-height: 1.3;
+    }
+    .cycle-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .overlay-list {
+      display: grid;
+      gap: 8px;
     }
     .hex-print-module {
       margin-top: 16px;
@@ -2959,6 +3130,7 @@ INDEX_HTML = """<!doctype html>
     </section>
 
     ${renderPrintableBaziProfileSection(report.bazi_profile)}
+    ${renderPrintableDayunSection(report.dayun)}
     ${renderPrintableHexagramSection(report.hexagram)}
     ${renderPrintableIntegratedSection(report.integrated_analysis)}
 
@@ -3066,6 +3238,11 @@ INDEX_HTML = """<!doctype html>
     function renderPrintableBaziProfileSection(profile) {
       const content = renderBaziProfileModule(profile);
       return content ? `<section><h2>八字画像</h2>${content}</section>` : "";
+    }
+
+    function renderPrintableDayunSection(dayun) {
+      const content = renderDayunModule(dayun);
+      return content ? `<section><h2>大运时间轴</h2>${content}</section>` : "";
     }
 
     function renderPrintableHexagramSection(hexagram) {
@@ -3724,6 +3901,7 @@ INDEX_HTML = """<!doctype html>
 
       renderLlmCacheStatus(data);
       renderBaziProfilePanel(report.bazi_profile);
+      renderDayunPanel(report.dayun);
       renderHexagramPanel(report.hexagram);
       renderIntegratedPanel(report.integrated_analysis);
       renderElements(report.element_profile || []);
@@ -3847,6 +4025,104 @@ INDEX_HTML = """<!doctype html>
         ${signals.length ? `<div class="detail"><strong>结构信号</strong><ul>${signals.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
         ${focus.length ? `<div class="detail"><strong>观察重点</strong><ul>${focus.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
       </div>`;
+    }
+
+    function renderDayunPanel(dayun) {
+      const panel = document.getElementById("dayunPanel");
+      const content = document.getElementById("dayunContent");
+      const module = renderDayunModule(dayun);
+      if (!module) {
+        panel.hidden = true;
+        content.replaceChildren();
+        return;
+      }
+      content.innerHTML = module;
+      panel.hidden = false;
+    }
+
+    function renderDayunModule(dayun) {
+      if (!dayun || typeof dayun !== "object") {
+        return "";
+      }
+      const caveats = cleanTextList(dayun.caveats);
+      if (!dayun.available) {
+        const missing = cleanTextList(dayun.missing_inputs).join("、") || "必要输入";
+        return `<div class="profile-card">
+          <strong>大运未生成</strong>
+          <p>当前缺少 ${escapeHtml(missing)}，无法按“阳男阴女顺排，阴男阳女逆排”确定大运顺逆。</p>
+          ${caveats.length ? `<div class="detail"><strong>大运边界</strong><ul>${caveats.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+        </div>`;
+      }
+      const start = dayun.start_timing || {};
+      const overlays = Array.isArray(dayun.event_overlays) ? dayun.event_overlays : [];
+      const activeIndexes = overlays
+        .map((overlay) => overlay?.active_cycle?.index)
+        .filter((value) => value !== undefined && value !== null);
+      const cycles = Array.isArray(dayun.cycles) ? dayun.cycles.slice(0, 6) : [];
+      const cycleRows = cycles
+        .map((cycle) => renderDayunCycleRow(cycle, activeIndexes.includes(cycle.index)))
+        .join("");
+      const overlayRows = overlays.map(renderDayunOverlayRow).join("");
+      return `<div class="profile-card">
+        <strong>大运时间轴 · ${escapeHtml(dayun.direction_label || "-")}</strong>
+        <p>按${escapeHtml(dayun.rule || "本地规则")}生成，起运年龄为近似值；阶段性运势分析应优先引用下方周期和题目年份叠加。</p>
+        <div class="profile-grid">
+          <div class="profile-stat"><span>顺逆</span><strong>${escapeHtml(dayun.direction_label || "-")}</strong></div>
+          <div class="profile-stat"><span>起运年龄</span><strong>${escapeHtml(formatDayunAge(start.start_age_years))}<small>${escapeHtml(String(start.start_age_months ?? "-"))}个月</small></strong></div>
+          <div class="profile-stat"><span>起运依据</span><strong>${escapeHtml(start.anchor_term || "-")}<small>${escapeHtml(start.anchor_direction_label || start.anchor_direction || "-")}</small></strong></div>
+          <div class="profile-stat"><span>年干阴阳</span><strong>${escapeHtml(dayun.year_stem || "-")}<small>${escapeHtml(dayun.year_stem_polarity_label || dayun.year_stem_polarity || "-")}</small></strong></div>
+        </div>
+        ${cycleRows ? `<div class="detail"><strong>前六步大运</strong><div class="cycle-list">${cycleRows}</div></div>` : ""}
+        ${overlayRows ? `<div class="detail"><strong>题目年份叠加</strong><div class="overlay-list">${overlayRows}</div></div>` : ""}
+        ${caveats.length ? `<div class="detail"><strong>大运边界</strong><ul>${caveats.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+      </div>`;
+    }
+
+    function renderDayunCycleRow(cycle, active = false) {
+      const ageRange = `${formatDayunAge(cycle.age_start)} - ${formatDayunAge(cycle.age_end)}`;
+      const yearRange = [cycle.approx_start_year, cycle.approx_end_year].filter(Boolean).join("-");
+      const elements = [cycle.stem_element, cycle.branch_element].filter(Boolean).join("/");
+      const tenGods = [cycle.stem_ten_god, cycle.branch_ten_god].filter(Boolean).join("/");
+      const meta = [yearRange ? `约${yearRange}年` : "", elements, tenGods].filter(Boolean).join(" · ");
+      return `<div class="cycle-row${active ? " is-active" : ""}">
+        <div class="cycle-main">
+          <strong>${escapeHtml(cycle.pillar || "-")}</strong>
+          <span class="cycle-meta">第${escapeHtml(String(cycle.index || "-"))}步${active ? " · 题目年份" : ""}</span>
+        </div>
+        <div class="cycle-main">
+          <strong>${escapeHtml(ageRange)}岁</strong>
+          <span class="cycle-meta">${escapeHtml(meta || "-")}</span>
+        </div>
+      </div>`;
+    }
+
+    function renderDayunOverlayRow(overlay) {
+      const active = overlay?.active_cycle || {};
+      const interactions = cleanTextList((overlay?.flow_to_dayun_interactions || []).map((item) => item?.label || item));
+      const note = active.pillar
+        ? `${overlay.year}年（${overlay.year_pillar || "-"}，${overlay.age ?? "-"}岁）约落在 ${active.pillar} 大运`
+        : `${overlay.year || "-"}年未落入当前生成的大运范围`;
+      return `<div class="cycle-row is-active">
+        <div class="cycle-main">
+          <strong>${escapeHtml(String(overlay.year || "-"))}</strong>
+          <span class="cycle-meta">${escapeHtml(overlay.year_pillar || "流年")}</span>
+        </div>
+        <div class="cycle-main">
+          <strong>${escapeHtml(note)}</strong>
+          ${interactions.length ? `<span class="cycle-meta">${interactions.map(escapeHtml).join("；")}</span>` : ""}
+        </div>
+      </div>`;
+    }
+
+    function formatDayunAge(value) {
+      if (value === undefined || value === null || value === "") {
+        return "-";
+      }
+      const number = Number(value);
+      if (!Number.isFinite(number)) {
+        return String(value);
+      }
+      return Number.isInteger(number) ? String(number) : number.toFixed(1);
     }
 
     function normalizeInterpretation(interpretation) {

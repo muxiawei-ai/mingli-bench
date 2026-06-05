@@ -11,6 +11,7 @@ from .bazi_profile import build_bazi_profile
 from .candidate_years import build_candidate_year_scores
 from .calendar import BRANCH_TO_ELEMENT, STEM_TO_ELEMENT
 from .chart_api import BaziChart
+from .dayun import build_dayun_analysis
 from .hexagram import build_time_hexagram
 from .hexagram_rules import build_hexagram_reading
 from .integrated_analysis import build_integrated_analysis
@@ -55,6 +56,7 @@ class ChartReport:
     event_years: List[Dict[str, Any]]
     option_semantics: List[Dict[str, Any]]
     candidate_year_scores: List[Dict[str, Any]]
+    dayun: Dict[str, Any]
     hexagram: Optional[Dict[str, Any]]
     integrated_analysis: Optional[Dict[str, Any]]
     caveats: List[str]
@@ -72,6 +74,7 @@ class ChartReport:
             "event_years": self.event_years,
             "option_semantics": self.option_semantics,
             "candidate_year_scores": self.candidate_year_scores,
+            "dayun": self.dayun,
             "hexagram": self.hexagram,
             "integrated_analysis": self.integrated_analysis,
             "caveats": self.caveats,
@@ -177,6 +180,39 @@ class ChartReport:
                     f"- {item['letter']}: {item['year']} "
                     f"score={item['score']} rank={item['rank']}"
                 )
+
+        if self.dayun:
+            lines.extend(["", "### 大运"])
+            if self.dayun.get("available"):
+                start = self.dayun.get("start_timing") or {}
+                lines.append(
+                    "- 顺逆: "
+                    f"{self.dayun.get('direction_label')} "
+                    f"({self.dayun.get('rule')})"
+                )
+                lines.append(
+                    "- 起运: "
+                    f"约 {start.get('start_age_years')} 岁，"
+                    f"依据 {start.get('anchor_term')} "
+                    f"({start.get('anchor_direction_label') or start.get('anchor_direction')})"
+                )
+                cycle_text = "；".join(
+                    f"{cycle['pillar']}({cycle['age_start']}-{cycle['age_end']}岁)"
+                    for cycle in (self.dayun.get("cycles") or [])[:4]
+                )
+                if cycle_text:
+                    lines.append(f"- 前四步大运: {cycle_text}")
+                for overlay in self.dayun.get("event_overlays") or []:
+                    active = overlay.get("active_cycle") or {}
+                    if active:
+                        lines.append(
+                            f"- {overlay['year']} 年: "
+                            f"约 {overlay['age']} 岁，"
+                            f"落在 {active.get('pillar')} 大运"
+                        )
+            else:
+                missing = "、".join(self.dayun.get("missing_inputs") or [])
+                lines.append(f"- 大运未生成: 缺少 {missing or '必要输入'}")
 
         if self.hexagram:
             primary = self.hexagram.get("primary") or {}
@@ -313,6 +349,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         "warnings": list(chart.warnings),
     }
     event_years = _build_event_years(chart, question)
+    dayun = build_dayun_analysis(chart, event_years=event_years)
     option_semantics = analyze_option_semantics(question)
     candidate_year_scores = build_candidate_year_scores(
         question,
@@ -344,6 +381,7 @@ def build_chart_report(chart: BaziChart, question: str) -> ChartReport:
         event_years=event_years,
         option_semantics=option_semantics,
         candidate_year_scores=candidate_year_scores,
+        dayun=dayun,
         hexagram=hexagram,
         integrated_analysis=integrated_analysis,
         caveats=caveats,

@@ -109,6 +109,7 @@ def build_interpretation_prompt(
 如果 warnings 中提示地点、历法或时区存在不确定性，请先说明该限制。
 本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
 如果本地 report.bazi_profile 提供了八字画像，请优先引用其中的 day_master_strength、ten_god_groups、hidden_stems、structure_signals 和 practical_focus；不要自行发明十神分布或身强弱标签。ten_god_groups.count 表示显性四柱计数，weighted_count 表示含藏干权重后的本地启发式分数，不要混用。
+如果本地 report.dayun 提供了大运信息，请只引用其中的 direction_label、start_timing、cycles 和 event_overlays；不要自行重排大运或重新估算起运年龄。
 如果本地 report.event_years 提供了题目年份的 year_pillar，请直接使用该流年干支，不要自行重算或猜测年份干支。
 如果本地 report.event_years 提供了 branch_interactions，请直接引用其中的 label，不要自行编造三合、三会、六合、六冲名称。
 如果本地 report.option_semantics 提供了选项事件类型，请只把它当作选项文字的语义标签，不要把它当作标准答案或命理加分依据。
@@ -132,6 +133,7 @@ intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_doma
 12. 如果引用卦象，只能引用本地 report.hexagram 的确定性字段和 report.hexagram.reading 的规则解读；不要自行补造卦辞、爻辞或重新起卦。
 13. 如果 report.integrated_analysis 存在，请至少引用其中一个 sections 条目或 alignment_signals 条目来说明八字与卦象如何互相参考。
 14. 如果 report.bazi_profile 存在，请至少引用一个 day_master_strength 或 ten_god_groups 字段作为画像依据；若要谈身强弱，只能使用该字段的标签和限制说明。若引用藏干，请明确它来自 hidden_stems 或 weighted_count，而不是显性计数。
+15. 如果 report.dayun.available 为 true，分析阶段性运势或题目年份时，请引用对应 cycles 或 event_overlays；如果 available 为 false，请说明缺少性别等输入，不能强行判断大运。
 {candidate_year_requirement}
 
 JSON 输出契约：

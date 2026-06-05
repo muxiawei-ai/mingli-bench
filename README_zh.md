@@ -303,7 +303,9 @@ print(summary["ziwei"]["palaces"][0])
 
 `mingli_bench.chart_api` 是推荐给应用层使用的稳定 API。它接受公历或 fixture-backed 农历 `ChartInput`，返回结构化 `BaziChart`，包含四柱、日主、五行统计、时区信息、农历信息、来源和 warnings。
 
-`mingli_bench.bazi_profile` 会从 `BaziChart` 构建本地结构化八字画像：显性十神组、藏干展开、十神权重分数、日主支持度启发式、结构信号和观察重点。大运和流年叠加仍属于后续模块，应该由程序明确补入，而不是让 LLM 自行猜测。
+`mingli_bench.bazi_profile` 会从 `BaziChart` 构建本地结构化八字画像：显性十神组、藏干展开、十神权重分数、日主支持度启发式、结构信号和观察重点。
+
+`mingli_bench.dayun` 提供初版可审计的大运时间轴脚手架：根据性别和年干阴阳确定顺逆，按节令边界近似估算起运年龄，生成十年大运序列，并把题目中提到的流年叠加到对应大运周期。该模块仍属于工程化近似，不替代高精度星历或不同流派细则。
 
 `mingli_bench.agent` 是后续搭建真正算命 Agent 的推荐入口。它把确定性的排盘计算保留在本地，只在配置模型客户端时才调用 LLM 做解释。
 
@@ -327,7 +329,7 @@ python -m unittest discover -s tests
 
 - 持续打磨稳定的 `ChartInput -> BaziChart` API 契约。
 - 增加更高层的 Agent 对话记忆和追问处理。
-- 扩展八字画像计算，补入更细的十神强弱权重、大运和流年叠加。
+- 扩展八字画像和大运计算，补入更细的十神强弱权重、起运细则和大运/流年交互规则。
 - 增加完整独立的农历 / 公历转换引擎。
 - 扩展节气验证样例和边界场景测试。
 - 扩展出生地标准化范围，不只覆盖当前 fixture 中出现的地点。

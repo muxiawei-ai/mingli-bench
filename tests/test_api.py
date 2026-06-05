@@ -43,6 +43,8 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["moving_line_source"], "zhouyi_classic.v1")
         self.assertEqual(response["report"]["hexagram"]["reading"]["domain"], "事业")
         self.assertEqual(response["report"]["bazi_profile"]["schema_version"], "bazi_profile.v1")
+        self.assertEqual(response["report"]["dayun"]["schema_version"], "dayun.v1")
+        self.assertFalse(response["report"]["dayun"]["available"])
         self.assertEqual(response["report"]["bazi_profile"]["ten_god_groups"]["peer"]["count"], 3)
         self.assertEqual(
             response["report"]["bazi_profile"]["ten_god_groups"]["peer"]["weighted_count"],
@@ -108,6 +110,9 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("baziProfilePanel", html)
             self.assertIn("renderBaziProfileModule", html)
             self.assertIn("八字画像", html)
+            self.assertIn("dayunPanel", html)
+            self.assertIn("renderDayunModule", html)
+            self.assertIn("大运时间轴", html)
             self.assertIn("hexagramPanel", html)
             self.assertIn("renderHexagramModule", html)
             self.assertIn("renderPrintableHexagramSection", html)

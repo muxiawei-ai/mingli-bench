@@ -58,6 +58,8 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.bazi_profile["ten_god_groups"]["wealth"]["count"], 2)
         self.assertEqual(report.bazi_profile["ten_god_groups"]["wealth"]["weighted_count"], 2.0)
         self.assertEqual(len(report.bazi_profile["hidden_stems"]), 7)
+        self.assertFalse(report.dayun["available"])
+        self.assertIn("gender", report.dayun["missing_inputs"])
         self.assertTrue(report.input_quality["has_birth_time"])
         self.assertIsNotNone(report.hexagram)
         assert report.hexagram is not None
@@ -78,6 +80,7 @@ class ChartReportTests(unittest.TestCase):
         self.assertIn("八字画像", report.to_markdown())
         self.assertIn("日主支持", report.to_markdown())
         self.assertIn("含藏干", report.to_markdown())
+        self.assertIn("大运未生成", report.to_markdown())
         self.assertIn("卦象参考", report.to_markdown())
         self.assertIn("八字+卦象联合分析", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())
@@ -121,6 +124,28 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.event_years[1]["year_pillar"], "戊子")
         self.assertIn("1996: 丙子", report.to_markdown())
         self.assertIn("申子辰三合水局", report.to_markdown())
+
+    def test_build_chart_report_includes_dayun_overlay_when_gender_is_present(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1990,
+                "month": 8,
+                "day": 16,
+                "hour": 9,
+                "minute": 30,
+                "gender": "女",
+                "country": "中国",
+                "location": "上海",
+            }
+        )
+        report = build_chart_report(chart, "2026年事业节奏如何？")
+
+        self.assertTrue(report.dayun["available"])
+        self.assertEqual(report.dayun["direction_label"], "逆排")
+        self.assertEqual(report.dayun["event_overlays"][0]["year"], 2026)
+        self.assertIsNotNone(report.dayun["event_overlays"][0]["active_cycle"])
+        self.assertIn("前四步大运", report.to_markdown())
 
     def test_build_chart_report_extracts_option_semantics(self):
         chart = build_bazi_chart(

@@ -176,6 +176,15 @@ def build_local_interpretation(
                 ],
             )
         )
+    if report.dayun:
+        sections.append(
+            InterpretationSection(
+                title="大运时间轴",
+                summary=_dayun_summary(report),
+                evidence=_dayun_evidence(report),
+                caveats=list(report.dayun.get("caveats") or []),
+            )
+        )
     if report.option_semantics:
         sections.append(
             InterpretationSection(
@@ -338,6 +347,54 @@ def _bazi_profile_evidence(report: ChartReport) -> List[str]:
     for signal in profile.get("structure_signals") or []:
         if signal.get("label") and signal.get("summary"):
             evidence.append(f"{signal['label']}: {signal['summary']}")
+    return evidence
+
+
+def _dayun_summary(report: ChartReport) -> str:
+    dayun = report.dayun or {}
+    if not dayun.get("available"):
+        missing = "、".join(dayun.get("missing_inputs") or [])
+        return f"大运未生成，缺少{missing or '必要输入'}。"
+    start = dayun.get("start_timing") or {}
+    overlays = dayun.get("event_overlays") or []
+    overlay_text = ""
+    if overlays:
+        first = overlays[0]
+        active = first.get("active_cycle") or {}
+        if active:
+            overlay_text = f"题目年份 {first['year']} 约落在 {active.get('pillar')} 大运。"
+    return (
+        f"大运按{dayun.get('direction_label')}生成，"
+        f"起运约 {start.get('start_age_years')} 岁。{overlay_text}"
+    )
+
+
+def _dayun_evidence(report: ChartReport) -> List[str]:
+    dayun = report.dayun or {}
+    evidence: List[str] = []
+    if not dayun:
+        return evidence
+    evidence.append(f"dayun.available={dayun.get('available')}")
+    if dayun.get("direction_label"):
+        evidence.append(f"direction={dayun.get('direction_label')}")
+    start = dayun.get("start_timing") or {}
+    if start:
+        evidence.append(
+            "start_timing="
+            f"{start.get('start_age_years')}岁 via {start.get('anchor_term')}"
+        )
+    for cycle in (dayun.get("cycles") or [])[:4]:
+        evidence.append(
+            f"cycle.{cycle.get('index')}="
+            f"{cycle.get('pillar')} age={cycle.get('age_start')}-{cycle.get('age_end')}"
+        )
+    for overlay in dayun.get("event_overlays") or []:
+        active = overlay.get("active_cycle") or {}
+        if active:
+            evidence.append(
+                f"event_year.{overlay.get('year')}="
+                f"{active.get('pillar')}大运"
+            )
     return evidence
 
 
