@@ -7,9 +7,12 @@ use need to be installed.
 """
 
 from .base import ModelClient
+from .cache import CachedModelClient, maybe_wrap_cached_model_client
 from .factory import ModelFactory
 
 __all__ = [
+    "CachedModelClient",
     "ModelClient",
     "ModelFactory",
+    "maybe_wrap_cached_model_client",
 ]

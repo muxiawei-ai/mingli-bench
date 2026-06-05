@@ -1,15 +1,34 @@
 import unittest
+import tempfile
 
 from mingli_bench.agent import MingLiAgent, build_interpretation_prompt
 from mingli_bench.chart_api import build_bazi_chart
+from mingli_bench.models.cache import CachedModelClient
 
 
 class FakeModelClient:
     model_name = "fake-model"
+    temperature = 0.0
+    max_tokens = 128
+    config = {}
+
+    def __init__(self):
+        self.calls = 0
 
     def generate(self, prompt: str) -> str:
+        self.calls += 1
         self.prompt = prompt
         return "这是一个测试解释。"
+
+    def validate_api_key(self):
+        return True
+
+    def get_config(self):
+        return {
+            "model_name": self.model_name,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
 
 
 class FakeJsonModelClient:
@@ -264,6 +283,31 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertEqual(result.trace[-2].data["model"], "fake-model")
         self.assertEqual(result.interpretation.mode, "llm_text")
         self.assertIn("llm_response_not_valid_json", result.interpretation.caveats)
+
+    def test_agent_with_cached_model_reuses_exact_prompt_response(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wrapped = FakeModelClient()
+            model = CachedModelClient(wrapped, cache_dir=tmpdir)
+            agent = MingLiAgent(model)
+            payload = {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+                "country": "中国",
+            }
+
+            first = agent.run(payload, question="分析事业")
+            second = agent.run(payload, question="分析事业")
+            first_llm = {stage.name: stage for stage in first.trace}["llm"]
+            second_llm = {stage.name: stage for stage in second.trace}["llm"]
+
+            self.assertEqual(wrapped.calls, 1)
+            self.assertFalse(first_llm.data["cache_hit"])
+            self.assertTrue(second_llm.data["cache_hit"])
+            self.assertEqual(first.response, second.response)
 
     def test_agent_with_json_model_returns_structured_interpretation(self):
         model = FakeJsonModelClient()

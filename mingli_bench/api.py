@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from .agent import DEFAULT_AGENT_QUESTION, MingLiAgent
 from .chart_api import build_bazi_chart
 from .models.base import ModelClient
+from .models.cache import DEFAULT_LLM_CACHE_DIR, maybe_wrap_cached_model_client
 from .web_ui import render_index_html
 
 
@@ -25,6 +26,8 @@ class ApiConfig:
     model_name: Optional[str] = None
     provider: Optional[str] = None
     env_file: Optional[str] = None
+    llm_cache_dir: str = DEFAULT_LLM_CACHE_DIR
+    llm_cache_enabled: bool = True
 
 
 def chart_response(
@@ -72,6 +75,8 @@ def create_model_client(
     *,
     provider: Optional[str] = None,
     env_file: Optional[str] = None,
+    llm_cache_dir: str = DEFAULT_LLM_CACHE_DIR,
+    llm_cache_enabled: bool = True,
 ) -> ModelClient:
     """Create a model client for API server use."""
 
@@ -79,7 +84,12 @@ def create_model_client(
     from .utils.config import load_config
 
     config = load_config(env_file)
-    return ModelFactory.create(model_name, provider=provider, config=config)
+    client = ModelFactory.create(model_name, provider=provider, config=config)
+    return maybe_wrap_cached_model_client(
+        client,
+        cache_dir=llm_cache_dir,
+        enabled=llm_cache_enabled,
+    )
 
 
 class MingLiApiHandler(BaseHTTPRequestHandler):
@@ -223,11 +233,19 @@ def run_server(
     model_name: Optional[str] = None,
     provider: Optional[str] = None,
     env_file: Optional[str] = None,
+    llm_cache_dir: str = DEFAULT_LLM_CACHE_DIR,
+    llm_cache_enabled: bool = True,
 ) -> None:
     """Start the local HTTP API server and block until interrupted."""
 
     model_client = (
-        create_model_client(model_name, provider=provider, env_file=env_file)
+        create_model_client(
+            model_name,
+            provider=provider,
+            env_file=env_file,
+            llm_cache_dir=llm_cache_dir,
+            llm_cache_enabled=llm_cache_enabled,
+        )
         if model_name
         else None
     )
@@ -239,6 +257,8 @@ def run_server(
             model_name=model_name,
             provider=provider,
             env_file=env_file,
+            llm_cache_dir=llm_cache_dir,
+            llm_cache_enabled=llm_cache_enabled,
         ),
         model_client=model_client,
     )

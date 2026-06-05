@@ -34,6 +34,7 @@ from .bazi import bazi_from_birth_info, bazi_from_gregorian
 from .locations import resolve_timezone
 from .lunar import lunar_from_solar_date, parse_chinese_lunar_date, solar_from_lunar_date
 from .interactive import collect_agent_input, format_agent_result, prompt_for_model_choice
+from .models.cache import DEFAULT_LLM_CACHE_DIR, maybe_wrap_cached_model_client
 from .models.factory import ModelFactory
 from .utils import get_logger
 from .data import DataLoader
@@ -52,6 +53,14 @@ def _parse_question_ids(values):
             if item.strip()
         )
     return question_ids or None
+
+
+def _maybe_cache_client(model_client, args):
+    return maybe_wrap_cached_model_client(
+        model_client,
+        cache_dir=args.llm_cache_dir,
+        enabled=not args.no_llm_cache,
+    )
 
 
 def main():
@@ -222,6 +231,21 @@ Examples:
     parser.add_argument(
         "--env-file",
         help="Path to .env file"
+    )
+
+    parser.add_argument(
+        "--llm-cache-dir",
+        default=DEFAULT_LLM_CACHE_DIR,
+        help=(
+            "Directory for exact LLM response cache "
+            f"(default: {DEFAULT_LLM_CACHE_DIR})"
+        ),
+    )
+
+    parser.add_argument(
+        "--no-llm-cache",
+        action="store_true",
+        help="Disable local exact-match LLM response caching.",
     )
 
     parser.add_argument(
@@ -429,6 +453,7 @@ Examples:
                     provider=args.platform,
                     config=config,
                 )
+                model_client = _maybe_cache_client(model_client, args)
             result = MingLiAgent(
                 model_client,
                 include_candidate_year_diagnostics=(
@@ -460,6 +485,8 @@ Examples:
                 model_name=args.api_model or args.model,
                 provider=args.platform,
                 env_file=args.env_file,
+                llm_cache_dir=args.llm_cache_dir,
+                llm_cache_enabled=not args.no_llm_cache,
             )
             return 0
         except Exception as e:
@@ -479,6 +506,7 @@ Examples:
                     provider=args.platform,
                     config=config_data,
                 )
+                model_client = _maybe_cache_client(model_client, args)
             config = AgentEvalConfig(
                 sample_size=args.sample,
                 question_ids=_parse_question_ids(args.question_ids),
@@ -677,6 +705,7 @@ Examples:
                     provider=args.platform,
                     config=config,
                 )
+                model_client = _maybe_cache_client(model_client, args)
             result = MingLiAgent(
                 model_client,
                 include_candidate_year_diagnostics=(
@@ -787,6 +816,7 @@ Examples:
     try:
         logger.info(f"Creating model client for {args.model}")
         model_client = ModelFactory.create(args.model, provider=args.platform, config=config)
+        model_client = _maybe_cache_client(model_client, args)
     except Exception as e:
         logger.error(f"Failed to create model client: {e}")
         return 1

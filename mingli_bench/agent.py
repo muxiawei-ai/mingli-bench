@@ -294,15 +294,25 @@ class MingLiAgent:
         response = None
         if self.model_client:
             response = self.model_client.generate(prompt)
+            llm_data = {
+                "model": self.model_client.model_name,
+                "response_chars": len(response),
+            }
+            cache_hit = getattr(self.model_client, "last_cache_hit", None)
+            if cache_hit is not None:
+                llm_data["cache_hit"] = bool(cache_hit)
+                llm_data["cache_key"] = getattr(self.model_client, "last_cache_key", None)
+                llm_data["cache_path"] = getattr(self.model_client, "last_cache_path", None)
             trace.append(
                 AgentStage(
                     name="llm",
                     status="completed",
-                    summary="Called model client for interpretation.",
-                    data={
-                        "model": self.model_client.model_name,
-                        "response_chars": len(response),
-                    },
+                    summary=(
+                        "Used cached model response for interpretation."
+                        if cache_hit
+                        else "Called model client for interpretation."
+                    ),
+                    data=llm_data,
                     warnings=[],
                 )
             )

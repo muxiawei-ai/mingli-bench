@@ -23,6 +23,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.agent_eval` and `eval-agent` CLI for pipeline-level Agent evaluation.
 - `analyze-agent-eval` CLI for compact saved-run error reports.
 - `compare-agent-evals` CLI for A/B comparisons between saved Agent eval runs.
+- `mingli_bench.models.cache` exact-match LLM response cache for Agent, API, eval, and benchmark runs.
 - Intent/category alignment diagnostics in Agent evaluation summaries.
 - Benchmark-option-aware intent routing with expanded Chinese domain keywords.
 - Generic `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL` env var compatibility for local Agent setups.

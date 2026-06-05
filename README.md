@@ -48,6 +48,8 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
     moving line, changed hexagram, and question-domain guidance,
   - Bazi + hexagram integrated analysis scaffolds that cross-link element
     profile, moving-line triggers, and question-domain guidance,
+  - exact-match local LLM response caching to avoid repeat API spend during
+    web UI refreshes and benchmark replays,
   - compact chart summary extraction.
 - CLI utilities that do not require an LLM key:
   - dataset statistics,
@@ -112,6 +114,12 @@ They also include an `intent` field that routes the user question into coarse do
 
 `mingli-bench agent` starts an interactive local agent. Use `--no-llm` to keep it fully local with a structured chart report, `--model` to call an LLM, and `--json` for machine-readable output.
 Add `--show-prompt` when you want to inspect the full prompt sent to the model.
+
+When an LLM model is configured, exact prompt responses are cached locally by
+default under `.cache/mingli_bench/llm`. Re-running the same prompt with the
+same model and generation settings reuses the cached response instead of making
+another API call. Use `--llm-cache-dir PATH` to choose another cache location or
+`--no-llm-cache` to disable this behavior.
 
 ## Agent Evaluation
 
