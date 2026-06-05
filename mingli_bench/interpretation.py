@@ -328,8 +328,13 @@ def _bazi_profile_evidence(report: ChartReport) -> List[str]:
     groups = profile.get("ten_god_groups") or {}
     for key, payload in groups.items():
         evidence.append(
-            f"ten_god_group.{key}={payload.get('label')}:{payload.get('count')}"
+            f"ten_god_group.{key}={payload.get('label')}:"
+            f"visible={payload.get('count')},"
+            f"weighted={payload.get('weighted_count', payload.get('count'))}"
         )
+    hidden_stems = profile.get("hidden_stems") or []
+    if hidden_stems:
+        evidence.append(f"hidden_stems_count={len(hidden_stems)}")
     for signal in profile.get("structure_signals") or []:
         if signal.get("label") and signal.get("summary"):
             evidence.append(f"{signal['label']}: {signal['summary']}")

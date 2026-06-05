@@ -24,7 +24,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `analyze-agent-eval` CLI for compact saved-run error reports.
 - `compare-agent-evals` CLI for A/B comparisons between saved Agent eval runs.
 - `mingli_bench.models.cache` exact-match LLM response cache for Agent, API, eval, and benchmark runs.
-- `mingli_bench.bazi_profile` structured Bazi profile engine for visible ten-god groups, day-master support heuristics, structure signals, and practical focus hints.
+- `mingli_bench.bazi_profile` structured Bazi profile engine for visible ten-god groups, hidden stems, weighted ten-god scores, day-master support heuristics, structure signals, and practical focus hints.
 - Intent/category alignment diagnostics in Agent evaluation summaries.
 - Benchmark-option-aware intent routing with expanded Chinese domain keywords.
 - Generic `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL` env var compatibility for local Agent setups.

@@ -123,7 +123,8 @@ class ChartReport:
             groups = self.bazi_profile.get("ten_god_groups") or {}
             if groups:
                 group_text = "；".join(
-                    f"{payload.get('label')}: {payload.get('count')}"
+                    f"{payload.get('label')}: 显性{payload.get('count')}，"
+                    f"含藏干{payload.get('weighted_count', payload.get('count'))}"
                     for payload in groups.values()
                 )
                 lines.append(f"- 十神组: {group_text}")

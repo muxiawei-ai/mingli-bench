@@ -3,7 +3,7 @@
 __version__ = "0.1.0"
 
 from .agent import AgentResult, MingLiAgent, build_interpretation_prompt
-from .bazi_profile import build_bazi_profile, ten_god_for
+from .bazi_profile import build_bazi_profile, hidden_stems_for_branch, ten_god_for
 from .calendar import hour_branch, parse_bazi_pillars
 from .candidate_years import build_candidate_year_scores, infer_timing_focus
 from .charts import get_chart_summary
@@ -57,6 +57,7 @@ __all__ = [
     "get_chart_summary",
     "get_hexagram_text",
     "get_line_text",
+    "hidden_stems_for_branch",
     "hour_branch",
     "infer_timing_focus",
     "hour_pillar_for_datetime",

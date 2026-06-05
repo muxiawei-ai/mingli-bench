@@ -108,7 +108,7 @@ def build_interpretation_prompt(
 请只基于下方 JSON 中的结构化排盘结果进行分析，不要重新发明或猜测四柱。
 如果 warnings 中提示地点、历法或时区存在不确定性，请先说明该限制。
 本地 report 是程序确定性整理出的命盘摘要和限制条件，请优先使用它作为分析骨架。
-如果本地 report.bazi_profile 提供了八字画像，请优先引用其中的 day_master_strength、ten_god_groups、structure_signals 和 practical_focus；不要自行发明十神分布或身强弱标签。
+如果本地 report.bazi_profile 提供了八字画像，请优先引用其中的 day_master_strength、ten_god_groups、hidden_stems、structure_signals 和 practical_focus；不要自行发明十神分布或身强弱标签。ten_god_groups.count 表示显性四柱计数，weighted_count 表示含藏干权重后的本地启发式分数，不要混用。
 如果本地 report.event_years 提供了题目年份的 year_pillar，请直接使用该流年干支，不要自行重算或猜测年份干支。
 如果本地 report.event_years 提供了 branch_interactions，请直接引用其中的 label，不要自行编造三合、三会、六合、六冲名称。
 如果本地 report.option_semantics 提供了选项事件类型，请只把它当作选项文字的语义标签，不要把它当作标准答案或命理加分依据。
@@ -131,7 +131,7 @@ intent 是程序对用户问题的粗粒度路由，请优先围绕 primary_doma
 11. 对 A/B/C/D 选项，可以引用本地 report.option_semantics 中的 primary_event_type、labels 和 matched_keywords 来说明选项文字含义；评分必须来自 chart/report 的干支、流年、地支关系与选项文本的直接对应。不要因为标签中出现婚恋、财运、健康或意外就自动加分，也不要只因为“意外”“车祸”等词更具体就选择它。
 12. 如果引用卦象，只能引用本地 report.hexagram 的确定性字段和 report.hexagram.reading 的规则解读；不要自行补造卦辞、爻辞或重新起卦。
 13. 如果 report.integrated_analysis 存在，请至少引用其中一个 sections 条目或 alignment_signals 条目来说明八字与卦象如何互相参考。
-14. 如果 report.bazi_profile 存在，请至少引用一个 day_master_strength 或 ten_god_groups 字段作为画像依据；若要谈身强弱，只能使用该字段的标签和限制说明。
+14. 如果 report.bazi_profile 存在，请至少引用一个 day_master_strength 或 ten_god_groups 字段作为画像依据；若要谈身强弱，只能使用该字段的标签和限制说明。若引用藏干，请明确它来自 hidden_stems 或 weighted_count，而不是显性计数。
 {candidate_year_requirement}
 
 JSON 输出契约：

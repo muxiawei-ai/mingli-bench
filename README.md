@@ -49,7 +49,8 @@ The project is not positioned as a fortune-telling consumer app. It is a develop
   - Bazi + hexagram integrated analysis scaffolds that cross-link element
     profile, moving-line triggers, and question-domain guidance,
   - structured Bazi profile calculation with visible ten-god groups,
-    day-master support heuristics, structure signals, and practical focus hints,
+    hidden stems, weighted ten-god scores, day-master support heuristics,
+    structure signals, and practical focus hints,
   - exact-match local LLM response caching to avoid repeat API spend during
     web UI refreshes and benchmark replays,
   - compact chart summary extraction.
@@ -344,7 +345,7 @@ The Bazi year pillar follows the Li Chun convention. Around January/February, th
 
 `mingli_bench.chart_api` is the recommended application-facing API. It accepts solar or fixture-backed lunar `ChartInput` data and returns a stable `BaziChart` object with pillars, day master, five-element summary, timezone metadata, lunar metadata, source, and warnings.
 
-`mingli_bench.bazi_profile` builds a structured local profile from a `BaziChart`: visible ten-god grouping, day-master support heuristics, structure signals, and practical focus hints. It intentionally uses visible stems/branch main elements only for now, so hidden stems, Da Yun, and Liu Nian overlays should be added by later modules rather than inferred by the LLM.
+`mingli_bench.bazi_profile` builds a structured local profile from a `BaziChart`: visible ten-god grouping, hidden-stem expansion, weighted ten-god scores, day-master support heuristics, structure signals, and practical focus hints. Da Yun and Liu Nian overlays are still future modules and should be added explicitly rather than inferred by the LLM.
 
 `mingli_bench.agent` is the recommended first integration point for an actual fortune-telling agent. It keeps deterministic chart calculation local, then optionally calls an LLM for interpretation when a model client is configured.
 
@@ -368,7 +369,7 @@ The test suite covers pure calendar helpers and chart fixture extraction. LLM AP
 
 - Keep hardening the stable `ChartInput -> BaziChart` API contract.
 - Add higher-level agent conversation memory and follow-up question handling.
-- Expand Bazi profile calculation with hidden stems, ten-god strength weighting, Da Yun, and Liu Nian overlays.
+- Expand Bazi profile calculation with ten-god strength weighting, Da Yun, and Liu Nian overlays.
 - Add a full standalone lunar / solar conversion engine.
 - Expand solar-term validation fixtures and boundary-case coverage.
 - Expand birthplace normalization beyond bundled fixture locations.

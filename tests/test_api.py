@@ -44,6 +44,11 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["reading"]["domain"], "事业")
         self.assertEqual(response["report"]["bazi_profile"]["schema_version"], "bazi_profile.v1")
         self.assertEqual(response["report"]["bazi_profile"]["ten_god_groups"]["peer"]["count"], 3)
+        self.assertEqual(
+            response["report"]["bazi_profile"]["ten_god_groups"]["peer"]["weighted_count"],
+            2.7,
+        )
+        self.assertEqual(len(response["report"]["bazi_profile"]["hidden_stems"]), 7)
         self.assertIn("变卦方向", response["report"]["hexagram"]["reading"]["sections"][2]["title"])
         self.assertEqual(response["report"]["integrated_analysis"]["domain"], "事业")
         self.assertIn(

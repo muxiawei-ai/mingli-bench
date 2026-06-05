@@ -366,6 +366,15 @@ INDEX_HTML = """<!doctype html>
       line-height: 1.35;
     }
 
+    .profile-stat small {
+      display: block;
+      padding-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
     .panel {
       margin-bottom: 16px;
       overflow: hidden;
@@ -1541,12 +1550,17 @@ INDEX_HTML = """<!doctype html>
             polarity_label: "阴"
           },
           ten_god_groups: {
-            peer: {count: 1, label: "同类/自我", details: {比肩: 1}},
-            output: {count: 1, label: "食伤/表达", details: {伤官: 1}},
-            wealth: {count: 3, label: "财星/资源", details: {正财: 2, 偏财: 1}},
-            officer: {count: 1, label: "官杀/规则", details: {七杀: 1}},
-            resource: {count: 2, label: "印星/支持", details: {正印: 1, 偏印: 1}}
+            peer: {count: 1, weighted_count: 1.7, label: "同类/自我", details: {比肩: 1}, weighted_details: {比肩: 1.7}},
+            output: {count: 1, weighted_count: 1.6, label: "食伤/表达", details: {伤官: 1}, weighted_details: {伤官: 1.6}},
+            wealth: {count: 3, weighted_count: 3.25, label: "财星/资源", details: {正财: 2, 偏财: 1}, weighted_details: {正财: 2.25, 偏财: 1}},
+            officer: {count: 1, weighted_count: 1.15, label: "官杀/规则", details: {七杀: 1}, weighted_details: {七杀: 1.15}},
+            resource: {count: 2, weighted_count: 2.3, label: "印星/支持", details: {正印: 1, 偏印: 1}, weighted_details: {正印: 1.3, 偏印: 1}}
           },
+          hidden_stems: [
+            {branch: "申", char: "庚", hidden_role_label: "本气", weight: 0.6},
+            {branch: "申", char: "壬", hidden_role_label: "中气", weight: 0.25},
+            {branch: "丑", char: "辛", hidden_role_label: "余气", weight: 0.15}
+          ],
           day_master_strength: {
             level: "balanced",
             label: "支持与消耗相对均衡",
@@ -1987,9 +2001,13 @@ INDEX_HTML = """<!doctype html>
       const groups = profile.ten_god_groups || {};
       Object.values(groups).forEach((group) => {
         if (group && group.label) {
-          lines.push(`- ${mdText(group.label)}：${mdText(group.count)}`);
+          const weighted = group.weighted_count ?? group.count;
+          lines.push(`- ${mdText(group.label)}：显性 ${mdText(group.count)}，含藏干 ${mdText(weighted)}`);
         }
       });
+      if (Array.isArray(profile.hidden_stems) && profile.hidden_stems.length) {
+        lines.push(`- 藏干数量：${mdText(profile.hidden_stems.length)}`);
+      }
       appendDetailList(lines, "结构信号", (profile.structure_signals || []).map((item) => `${item.label}: ${item.summary}`));
       appendDetailList(lines, "观察重点", (profile.practical_focus || []).map((item) => `${item.label}: ${item.summary}`));
       lines.push("");
@@ -2249,6 +2267,14 @@ INDEX_HTML = """<!doctype html>
       font-size: 16px;
       line-height: 1.3;
       overflow-wrap: anywhere;
+    }
+    .profile-stat small {
+      display: block;
+      padding-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
     }
     .hex-print-module {
       margin-top: 16px;
@@ -3777,6 +3803,15 @@ INDEX_HTML = """<!doctype html>
       panel.hidden = false;
     }
 
+    function renderProfileGroupValue(group) {
+      const count = group?.count ?? "-";
+      const weighted = group?.weighted_count;
+      if (weighted === undefined || weighted === null || String(weighted) === String(count)) {
+        return escapeHtml(String(count));
+      }
+      return `${escapeHtml(String(count))}<small>含藏干 ${escapeHtml(String(weighted))}</small>`;
+    }
+
     function renderBaziProfileModule(profile) {
       if (!profile || typeof profile !== "object") {
         return "";
@@ -3786,8 +3821,8 @@ INDEX_HTML = """<!doctype html>
       const groupCards = Object.values(groups)
         .filter((group) => group && typeof group === "object")
         .map((group) => `<div class="profile-stat">
-          <span>${escapeHtml(group.label || "十神组")}</span>
-          <strong>${escapeHtml(String(group.count ?? "-"))}</strong>
+          <span>${escapeHtml(group.label || "十神组")} · 显性</span>
+          <strong>${renderProfileGroupValue(group)}</strong>
         </div>`)
         .join("");
       const signals = cleanTextList((profile.structure_signals || []).map((item) => (
@@ -3806,6 +3841,7 @@ INDEX_HTML = """<!doctype html>
           <div class="profile-stat"><span>日主支持</span><strong>${escapeHtml(strength.label || "-")}</strong></div>
           <div class="profile-stat"><span>support_index</span><strong>${escapeHtml(String(strength.support_index ?? "-"))}</strong></div>
           <div class="profile-stat"><span>画像来源</span><strong>${escapeHtml(profile.source || "-")}</strong></div>
+          <div class="profile-stat"><span>藏干数量</span><strong>${escapeHtml(String((profile.hidden_stems || []).length || "-"))}</strong></div>
           ${groupCards}
         </div>
         ${signals.length ? `<div class="detail"><strong>结构信号</strong><ul>${signals.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
