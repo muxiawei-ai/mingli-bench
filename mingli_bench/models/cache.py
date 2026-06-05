@@ -31,6 +31,11 @@ class CachedModelClient(ModelClient):
         self.temperature = getattr(wrapped, "temperature", None)
         self.max_tokens = getattr(wrapped, "max_tokens", None)
         self.config = getattr(wrapped, "config", {})
+        # Mirror retry params from the wrapped client so _call_with_retry works
+        # if ever invoked on this instance (base class sets them in __init__, but
+        # CachedModelClient intentionally bypasses super().__init__()).
+        self.max_retries = getattr(wrapped, "max_retries", 2)
+        self.retry_delay = getattr(wrapped, "retry_delay", 1.0)
         self.cache_dir = Path(cache_dir)
         self.last_cache_hit: Optional[bool] = None
         self.last_cache_key: Optional[str] = None
