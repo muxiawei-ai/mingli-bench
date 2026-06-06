@@ -1221,6 +1221,22 @@ INDEX_HTML = """<!doctype html>
             </label>
           </fieldset>
 
+          <fieldset>
+            <legend>起卦设置</legend>
+            <label>
+              起卦来源
+              <select id="hexagramTimeSource" name="hexagram_time_source">
+                <option value="birth_time">出生时间起卦</option>
+                <option value="question_time">问事当下起卦</option>
+                <option value="specified_time">指定时间起卦</option>
+              </select>
+            </label>
+            <label id="hexagramTimeWrap" hidden>
+              指定起卦时间
+              <input id="hexagramTime" name="hexagram_time" type="datetime-local">
+            </label>
+          </fieldset>
+
           <div class="actions">
             <button type="submit" id="submitButton">生成报告</button>
             <button type="button" id="demoButton">加载示例</button>
@@ -1333,6 +1349,9 @@ INDEX_HTML = """<!doctype html>
     const calendarType = document.getElementById("calendarType");
     const lunarDateWrap = document.getElementById("lunarDateWrap");
     const ymdWrap = document.getElementById("ymdWrap");
+    const hexagramTimeSource = document.getElementById("hexagramTimeSource");
+    const hexagramTimeWrap = document.getElementById("hexagramTimeWrap");
+    const hexagramTime = document.getElementById("hexagramTime");
     const submitButton = document.getElementById("submitButton");
     const demoButton = document.getElementById("demoButton");
     const resetButton = document.getElementById("resetButton");
@@ -1355,6 +1374,7 @@ INDEX_HTML = """<!doctype html>
     let currentChartInput = null;
     let currentQuestion = "";
     let currentOverview = "";
+    let currentHexagramOptions = {hexagram_time_source: "birth_time"};
     let latestResultData = null;
     let reportGeneratedAt = null;
     let conversationTurns = [];
@@ -1365,9 +1385,14 @@ INDEX_HTML = """<!doctype html>
       ymdWrap.hidden = isLunar;
     });
 
+    hexagramTimeSource.addEventListener("change", () => {
+      syncHexagramTimeInput();
+    });
+
     resetButton.addEventListener("click", () => {
       form.reset();
       calendarType.dispatchEvent(new Event("change"));
+      syncHexagramTimeInput({fillDefault: false});
       formError.textContent = "";
       followUpError.textContent = "";
       followUpQuestion.value = "";
@@ -1376,6 +1401,7 @@ INDEX_HTML = """<!doctype html>
       currentChartInput = null;
       currentQuestion = "";
       currentOverview = "";
+      currentHexagramOptions = {hexagram_time_source: "birth_time"};
       latestResultData = null;
       reportGeneratedAt = null;
       conversationTurns = [];
@@ -1386,9 +1412,10 @@ INDEX_HTML = """<!doctype html>
 
     demoButton.addEventListener("click", () => {
       const demo = buildDemoReportData();
-      applyFormValues(demo.chartInput, demo.question);
+      applyFormValues(demo.chartInput, demo.question, demo.hexagramOptions);
       currentChartInput = demo.chartInput;
       currentQuestion = demo.question;
+      currentHexagramOptions = demo.hexagramOptions;
       latestResultData = demo.data;
       reportGeneratedAt = demo.generatedAt;
       debugPanel.open = false;
@@ -1430,6 +1457,7 @@ INDEX_HTML = """<!doctype html>
         updateDebugToggle();
         currentChartInput = payload.chart_input;
         currentQuestion = payload.question;
+        currentHexagramOptions = resolveHexagramOptions(payload, data);
         currentOverview = data.interpretation?.overview || "";
         conversationTurns = [{
           question: payload.question,
@@ -1463,7 +1491,8 @@ INDEX_HTML = """<!doctype html>
       try {
         const payload = {
           chart_input: currentChartInput,
-          question: buildFollowUpQuestion(nextQuestion)
+          question: buildFollowUpQuestion(nextQuestion),
+          ...currentHexagramOptions
         };
         const response = await fetch("/agent", {
           method: "POST",
@@ -1479,6 +1508,7 @@ INDEX_HTML = """<!doctype html>
         debugPanel.open = false;
         updateDebugToggle();
         currentQuestion = nextQuestion;
+        currentHexagramOptions = resolveHexagramOptions(payload, data);
         currentOverview = data.interpretation?.overview || "";
         conversationTurns.push({
           question: nextQuestion,
@@ -1503,6 +1533,8 @@ INDEX_HTML = """<!doctype html>
     });
 
     debugPanel.addEventListener("toggle", updateDebugToggle);
+    syncHexagramTimeInput({fillDefault: false});
+    updateDebugToggle();
 
     copyMarkdownButton.addEventListener("click", async () => {
       const markdown = buildMarkdownReport();
@@ -1567,6 +1599,10 @@ INDEX_HTML = """<!doctype html>
         location: "上海"
       };
       const question = "分析事业和性格";
+      const hexagramOptions = {
+        hexagram_time_source: "specified_time",
+        hexagram_time: "2026-06-30T12:00"
+      };
       const report = {
         question,
         summary: {
@@ -1672,7 +1708,11 @@ INDEX_HTML = """<!doctype html>
           caveats: ["这是前端示例大运，不对应真实起运计算。"]
         },
         hexagram: {
+          schema_version: "hexagram.v1",
           method: "梅花易数时间法示例",
+          time_source: "specified_time",
+          time_source_label: "指定时间起卦",
+          input_datetime: "2026-06-30T12:00",
           basis: [
             "年数(10)+月数(6)+日数(30)=46 -> 余6 -> 上卦：坎",
             "加时数(7，午时)=53 -> 余5 -> 下卦：巽 · 动爻：第五爻"
@@ -1885,6 +1925,7 @@ INDEX_HTML = """<!doctype html>
       return {
         chartInput,
         question,
+        hexagramOptions,
         generatedAt: new Date(),
         turns,
         data: {
@@ -1921,7 +1962,7 @@ INDEX_HTML = """<!doctype html>
       };
     }
 
-    function applyFormValues(chartInput, question) {
+    function applyFormValues(chartInput, question, hexagramOptions = {}) {
       calendarType.value = chartInput.calendar_type || "solar";
       calendarType.dispatchEvent(new Event("change"));
       document.getElementById("year").value = chartInput.year || "";
@@ -1935,6 +1976,9 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("country").value = chartInput.country || "";
       document.getElementById("location").value = chartInput.location || "";
       document.getElementById("question").value = question || "";
+      hexagramTimeSource.value = hexagramOptions.hexagram_time_source || "birth_time";
+      hexagramTime.value = formatDateTimeInput(hexagramOptions.hexagram_time || "");
+      syncHexagramTimeInput({fillDefault: false});
     }
 
     function buildMarkdownReport() {
@@ -3787,6 +3831,22 @@ INDEX_HTML = """<!doctype html>
       ].join("");
     }
 
+    function formatDateTimeInput(value) {
+      if (!value) {
+        return "";
+      }
+      if (typeof value === "string") {
+        const normalized = value.replace(" ", "T");
+        return normalized.length >= 16 ? normalized.slice(0, 16) : normalized;
+      }
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 16);
+    }
+
     function pad2(value) {
       return String(value).padStart(2, "0");
     }
@@ -3813,6 +3873,14 @@ INDEX_HTML = """<!doctype html>
 
     function updateDebugToggle() {
       debugToggle.textContent = debugPanel.open ? "收起" : "展开";
+    }
+
+    function syncHexagramTimeInput({fillDefault = true} = {}) {
+      const isSpecified = hexagramTimeSource.value === "specified_time";
+      hexagramTimeWrap.hidden = !isSpecified;
+      if (isSpecified && fillDefault && !hexagramTime.value) {
+        hexagramTime.value = formatDateTimeInput(new Date());
+      }
     }
 
     function buildPayload() {
@@ -3842,8 +3910,32 @@ INDEX_HTML = """<!doctype html>
 
       return {
         chart_input: chartInput,
-        question: valueOf("question") || "请基于这个八字命盘，给出结构化、审慎的中文命理分析。"
+        question: valueOf("question") || "请基于这个八字命盘，给出结构化、审慎的中文命理分析。",
+        ...buildHexagramOptions()
       };
+    }
+
+    function buildHexagramOptions() {
+      const source = hexagramTimeSource.value || "birth_time";
+      const options = {hexagram_time_source: source};
+      if (source === "specified_time") {
+        const selectedTime = valueOf("hexagramTime");
+        if (!selectedTime) {
+          throw new Error("请输入指定起卦时间");
+        }
+        options.hexagram_time = selectedTime;
+      }
+      return options;
+    }
+
+    function resolveHexagramOptions(payload, data) {
+      const source = payload.hexagram_time_source || "birth_time";
+      const options = {hexagram_time_source: source};
+      const resolvedTime = data?.report?.hexagram?.input_datetime || payload.hexagram_time;
+      if (source !== "birth_time" && resolvedTime) {
+        options.hexagram_time = resolvedTime;
+      }
+      return options;
     }
 
     function buildFollowUpQuestion(nextQuestion) {
