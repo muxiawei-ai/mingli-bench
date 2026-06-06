@@ -966,6 +966,13 @@ INDEX_HTML = """<!doctype html>
       line-height: 1.7;
     }
 
+    .question-hint {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
     .boundary-note {
       display: grid;
       gap: 8px;
@@ -1217,8 +1224,9 @@ INDEX_HTML = """<!doctype html>
             <legend>问题</legend>
             <label>
               咨询方向
-              <textarea id="question" name="question">分析事业和性格</textarea>
+              <textarea id="question" name="question" placeholder="例如：我2026年的事业和性格">分析事业和性格</textarea>
             </label>
+            <p class="question-hint">💡 问题中包含年份（如"2026年"）可自动触发流年分析，获得更具体的解读。</p>
           </fieldset>
 
           <fieldset>
