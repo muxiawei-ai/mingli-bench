@@ -553,6 +553,14 @@ def _load_json_object(text: str) -> Optional[Dict[str, Any]]:
     if not cleaned:
         return None
 
+    # Strip markdown code fences (```json ... ```) that models often wrap responses in
+    if cleaned.startswith("```"):
+        first_newline = cleaned.find("\n")
+        if first_newline >= 0:
+            end_fence = cleaned.rfind("```")
+            if end_fence > first_newline:
+                cleaned = cleaned[first_newline + 1 : end_fence].strip()
+
     candidates = [cleaned]
     start = cleaned.find("{")
     end = cleaned.rfind("}")

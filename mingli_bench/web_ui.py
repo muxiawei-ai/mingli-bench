@@ -3214,7 +3214,7 @@ INDEX_HTML = """<!doctype html>
 
     <section>
       <h2>咨询记录</h2>
-      ${turns.map((turn, index) => renderHtmlTurn(turn, index)).join("")}
+      ${turns.map((turn, index) => renderHtmlTurn(turn, index, {client: true})).join("")}
     </section>
 
     ${htmlListSection("输入与限制", report.caveats)}
@@ -3247,7 +3247,7 @@ INDEX_HTML = """<!doctype html>
       };
     }
 
-    function renderHtmlTurn(turn, index) {
+    function renderHtmlTurn(turn, index, {client = false} = {}) {
       return `<article class="turn">
         <div class="turn-head">
           <span class="turn-number">${index + 1}</span>
@@ -3256,11 +3256,11 @@ INDEX_HTML = """<!doctype html>
             <div class="question">${escapeHtml(turn.question)}</div>
           </div>
         </div>
-        ${renderHtmlInterpretation(turn.interpretation)}
+        ${renderHtmlInterpretation(turn.interpretation, {client})}
       </article>`;
     }
 
-    function renderHtmlInterpretation(interpretation) {
+    function renderHtmlInterpretation(interpretation, {client = false} = {}) {
       if (!interpretation) {
         return "";
       }
@@ -3268,28 +3268,34 @@ INDEX_HTML = """<!doctype html>
       if (interpretation.answer_choice) {
         meta.push(`结论选项：${interpretation.answer_choice}`);
       }
-      if (interpretation.answer_confidence !== null && interpretation.answer_confidence !== undefined) {
+      if (!client && interpretation.answer_confidence !== null && interpretation.answer_confidence !== undefined) {
         meta.push(`审慎置信度：${formatPercent(interpretation.answer_confidence)}`);
       }
-      if (interpretation.mode) {
+      if (!client && interpretation.mode) {
         meta.push(`生成方式：${formatModeLabel(interpretation.mode)}`);
       }
+      // Guard: don't render raw JSON or code fences as overview text
+      const overviewText = interpretation.overview || "";
+      const overviewTrimmed = overviewText.trim();
+      const safeOverview = overviewTrimmed && !overviewTrimmed.startsWith("{") && !overviewTrimmed.startsWith("```")
+        ? `<p>${escapeHtml(overviewText)}</p>`
+        : "";
       return [
-        interpretation.overview ? `<p>${escapeHtml(interpretation.overview)}</p>` : "",
+        safeOverview,
         htmlChips("", meta),
         htmlOptionScores(interpretation.option_scores),
-        ...(interpretation.sections || []).map(renderHtmlSection),
+        ...(interpretation.sections || []).map((s) => renderHtmlSection(s, {client})),
         htmlListBlock("建议追问", interpretation.follow_up_questions),
-        htmlListBlock("整体边界", interpretation.caveats)
+        client ? "" : htmlListBlock("整体边界", interpretation.caveats)
       ].filter(Boolean).join("");
     }
 
-    function renderHtmlSection(section) {
+    function renderHtmlSection(section, {client = false} = {}) {
       return `<section class="section">
         <h3>${escapeHtml(section.title || "未命名段落")}</h3>
         ${section.summary ? `<p>${escapeHtml(section.summary)}</p>` : ""}
-        ${htmlListBlock("依据", section.evidence, "detail")}
-        ${htmlListBlock("限制", section.caveats, "detail")}
+        ${client ? "" : htmlListBlock("依据", section.evidence, "detail")}
+        ${client ? "" : htmlListBlock("限制", section.caveats, "detail")}
       </section>`;
     }
 
