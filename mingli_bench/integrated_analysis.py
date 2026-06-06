@@ -48,10 +48,12 @@ def build_integrated_analysis(
     missing_elements: Sequence[str],
     event_years: Sequence[Dict[str, Any]],
     hexagram: Optional[Dict[str, Any]],
+    question_hexagram: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Build a deterministic scaffold that connects Bazi and hexagram signals."""
 
-    if not hexagram:
+    active_hexagram = question_hexagram or hexagram
+    if not active_hexagram:
         return None
 
     intent = parse_question_intent(question)
@@ -59,7 +61,9 @@ def build_integrated_analysis(
     profile = [_profile_item(item) for item in element_profile]
     strongest = [str(item) for item in strongest_elements if item]
     missing = [str(item) for item in missing_elements if item]
-    alignment_signals = _alignment_signals(profile, strongest, missing, hexagram)
+    alignment_signals = _alignment_signals(profile, strongest, missing, active_hexagram)
+    hexagram_role = "question_hexagram" if question_hexagram else "hexagram"
+    hexagram_role_label = "问事卦" if question_hexagram else "本命卦"
 
     sections = [
         {
@@ -68,9 +72,9 @@ def build_integrated_analysis(
             "evidence": _bazi_evidence(summary, profile, strongest, missing),
         },
         {
-            "title": "卦象触发",
-            "summary": _hexagram_summary(hexagram),
-            "evidence": _hexagram_evidence(hexagram),
+            "title": f"{hexagram_role_label}触发",
+            "summary": _hexagram_summary(active_hexagram),
+            "evidence": _hexagram_evidence(active_hexagram),
         },
         {
             "title": "交叉印证",
@@ -87,7 +91,7 @@ def build_integrated_analysis(
                 summary,
                 strongest,
                 missing,
-                hexagram,
+                active_hexagram,
             ),
             "evidence": _domain_evidence(intent, event_years),
         },
@@ -97,10 +101,12 @@ def build_integrated_analysis(
         "schema_version": INTEGRATED_ANALYSIS_SCHEMA_VERSION,
         "domain": domain,
         "intent_confidence": intent.confidence,
-        "overview": _overview(summary, strongest, missing, hexagram, domain),
+        "hexagram_role": hexagram_role,
+        "hexagram_role_label": hexagram_role_label,
+        "overview": _overview(summary, strongest, missing, active_hexagram, domain),
         "sections": sections,
         "alignment_signals": alignment_signals,
-        "next_questions": _next_questions(domain, hexagram, event_years),
+        "next_questions": _next_questions(domain, active_hexagram, event_years),
         "caveats": [
             "联合分析只说明八字结构与卦象结构如何互相参考，不把传统命理推演表述为确定事实。",
             "卦象由本地时间法生成，八字由本地排盘规则生成；现实决策仍需结合事实信息和专业意见。",

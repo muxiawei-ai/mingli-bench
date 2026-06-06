@@ -42,6 +42,7 @@ class LocalApiTests(unittest.TestCase):
         self.assertEqual(response["report"]["hexagram"]["moving_line_text"], "咸临，吉，无不利。")
         self.assertEqual(response["report"]["hexagram"]["moving_line_source"], "zhouyi_classic.v1")
         self.assertEqual(response["report"]["hexagram"]["reading"]["domain"], "事业")
+        self.assertIsNone(response["report"]["question_hexagram"])
         self.assertEqual(response["report"]["bazi_profile"]["schema_version"], "bazi_profile.v1")
         self.assertEqual(response["report"]["dayun"]["schema_version"], "dayun.v1")
         self.assertFalse(response["report"]["dayun"]["available"])
@@ -83,15 +84,19 @@ class LocalApiTests(unittest.TestCase):
             }
         )
 
-        hexagram = response["report"]["hexagram"]
-        self.assertEqual(hexagram["time_source"], "specified_time")
-        self.assertEqual(hexagram["time_source_label"], "指定时间起卦")
-        self.assertEqual(hexagram["input_datetime"], "2026-06-05T20:52")
-        self.assertEqual(hexagram["primary"]["name"], "大过卦")
-        self.assertEqual(hexagram["changed"]["name"], "恒卦")
+        birth_hexagram = response["report"]["hexagram"]
+        question_hexagram = response["report"]["question_hexagram"]
+        self.assertEqual(birth_hexagram["time_source"], "birth_time")
+        self.assertEqual(birth_hexagram["primary"]["name"], "临卦")
+        self.assertEqual(question_hexagram["time_source"], "specified_time")
+        self.assertEqual(question_hexagram["time_source_label"], "指定时间起卦")
+        self.assertEqual(question_hexagram["input_datetime"], "2026-06-05T20:52")
+        self.assertEqual(question_hexagram["primary"]["name"], "大过卦")
+        self.assertEqual(question_hexagram["changed"]["name"], "恒卦")
         trace = {stage["name"]: stage for stage in response["trace"]}
         self.assertEqual(trace["input"]["data"]["hexagram_time_source"], "specified_time")
-        self.assertEqual(trace["report"]["data"]["hexagram_time_source"], "specified_time")
+        self.assertEqual(trace["report"]["data"]["hexagram_time_source"], "birth_time")
+        self.assertEqual(trace["report"]["data"]["question_hexagram_time_source"], "specified_time")
 
     def test_http_health_and_agent_endpoints(self):
         server = create_server("127.0.0.1", 0)
@@ -141,9 +146,14 @@ class LocalApiTests(unittest.TestCase):
             self.assertIn("renderDayunModule", html)
             self.assertIn("大运时间轴", html)
             self.assertIn("hexagramPanel", html)
+            self.assertIn("questionHexagramPanel", html)
+            self.assertIn("本命卦参考", html)
+            self.assertIn("问事卦参考", html)
             self.assertIn("renderHexagramModule", html)
             self.assertIn("renderPrintableHexagramSection", html)
             self.assertIn("hexagramTimeSource", html)
+            self.assertIn("问事卦设置", html)
+            self.assertIn("仅本命卦，不另起问事卦", html)
             self.assertIn("问事当下起卦", html)
             self.assertIn("指定时间起卦", html)
             self.assertIn("buildHexagramOptions", html)

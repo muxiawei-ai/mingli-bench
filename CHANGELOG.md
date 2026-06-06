@@ -27,6 +27,7 @@ The format is inspired by Keep a Changelog, and this project uses semantic versi
 - `mingli_bench.bazi_profile` structured Bazi profile engine for visible ten-god groups, hidden stems, weighted ten-god scores, day-master support heuristics, structure signals, and practical focus hints.
 - `mingli_bench.dayun` auditable Da Yun timeline scaffold with direction rules, approximate start age, ten-year cycles, and question-year overlays.
 - Reusable hexagram generation entry points for birth-time, question-time, specified-time, and manual-number sources, plus CLI/API controls for replayable hexagram timing.
+- Parallel birth-time and question-time hexagram report fields: `report.hexagram` remains the birth-time hexagram, while `report.question_hexagram` stores optional question-time or specified-time hexagrams for separated interpretation.
 - Reproducible benchmark/eval metadata, including CLI `--seed`, selected question IDs, git commit, dirty state, Python version, and platform fields in saved runs.
 - Intent/category alignment diagnostics in Agent evaluation summaries.
 - Benchmark-option-aware intent routing with expanded Chinese domain keywords.

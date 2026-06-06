@@ -68,6 +68,7 @@ class ChartReportTests(unittest.TestCase):
         self.assertEqual(report.hexagram["moving_line_name"], "九二")
         self.assertEqual(report.hexagram["moving_line_text"], "咸临，吉，无不利。")
         self.assertEqual(report.hexagram["reading"]["domain"], "事业")
+        self.assertIsNone(report.question_hexagram)
         self.assertIsNotNone(report.integrated_analysis)
         assert report.integrated_analysis is not None
         self.assertEqual(report.integrated_analysis["domain"], "事业")
@@ -81,11 +82,11 @@ class ChartReportTests(unittest.TestCase):
         self.assertIn("日主支持", report.to_markdown())
         self.assertIn("含藏干", report.to_markdown())
         self.assertIn("大运未生成", report.to_markdown())
-        self.assertIn("卦象参考", report.to_markdown())
+        self.assertIn("本命卦象参考", report.to_markdown())
         self.assertIn("八字+卦象联合分析", report.to_markdown())
         self.assertIn("爻辞: 咸临，吉，无不利。", report.to_markdown())
 
-    def test_build_chart_report_can_use_specified_hexagram_time(self):
+    def test_build_chart_report_keeps_birth_hexagram_with_specified_question_hexagram(self):
         chart = build_bazi_chart(
             {
                 "calendar_type": "solar",
@@ -104,14 +105,51 @@ class ChartReportTests(unittest.TestCase):
         )
 
         self.assertIsNotNone(report.hexagram)
+        self.assertIsNotNone(report.question_hexagram)
         assert report.hexagram is not None
-        self.assertEqual(report.hexagram["time_source"], "specified_time")
-        self.assertEqual(report.hexagram["input_datetime"], "2026-06-05T20:52")
-        self.assertEqual(report.hexagram["primary"]["name"], "大过卦")
-        self.assertEqual(report.hexagram["changed"]["name"], "恒卦")
-        self.assertEqual(report.hexagram["moving_line_name"], "九五")
+        assert report.question_hexagram is not None
+        self.assertEqual(report.hexagram["time_source"], "birth_time")
+        self.assertEqual(report.hexagram["primary"]["name"], "临卦")
+        self.assertEqual(report.hexagram["changed"]["name"], "复卦")
+        self.assertEqual(report.question_hexagram["time_source"], "specified_time")
+        self.assertEqual(report.question_hexagram["input_datetime"], "2026-06-05T20:52")
+        self.assertEqual(report.question_hexagram["primary"]["name"], "大过卦")
+        self.assertEqual(report.question_hexagram["changed"]["name"], "恒卦")
+        self.assertEqual(report.question_hexagram["moving_line_name"], "九五")
         self.assertIsNotNone(report.integrated_analysis)
+        assert report.integrated_analysis is not None
+        self.assertEqual(report.integrated_analysis["hexagram_role"], "question_hexagram")
+        self.assertIn("问事卦触发", [section["title"] for section in report.integrated_analysis["sections"]])
+        self.assertIn("本命卦象参考", report.to_markdown())
+        self.assertIn("问事卦象参考", report.to_markdown())
         self.assertIn("指定时间起卦", report.to_markdown())
+
+    def test_build_chart_report_can_use_explicit_question_time(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "现在问事业机会",
+            hexagram_time_source="question_time",
+            hexagram_time="2026-06-05T20:52",
+        )
+
+        self.assertIsNotNone(report.hexagram)
+        self.assertIsNotNone(report.question_hexagram)
+        assert report.hexagram is not None
+        assert report.question_hexagram is not None
+        self.assertEqual(report.hexagram["time_source"], "birth_time")
+        self.assertEqual(report.question_hexagram["time_source"], "question_time")
+        self.assertEqual(report.question_hexagram["time_source_label"], "问事时间起卦")
+        self.assertEqual(report.question_hexagram["input_datetime"], "2026-06-05T20:52")
 
     def test_build_chart_report_extracts_event_years(self):
         chart = build_bazi_chart(
@@ -240,6 +278,7 @@ class ChartReportTests(unittest.TestCase):
         report = build_chart_report(chart, "")
         self.assertFalse(report.input_quality["has_birth_time"])
         self.assertIsNone(report.hexagram)
+        self.assertIsNone(report.question_hexagram)
         self.assertIsNone(report.integrated_analysis)
         self.assertGreaterEqual(len(report.follow_up_questions), 2)
         self.assertIn("出生时间未知", "\n".join(report.caveats))

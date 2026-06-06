@@ -32,6 +32,7 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertIn("sections", contract)
         self.assertIn("answer_choice", contract)
         self.assertIn("option_scores", contract)
+        self.assertIn("问事卦象参考", contract)
 
     def test_build_local_interpretation(self):
         intent = parse_question_intent("分析事业")
@@ -42,6 +43,31 @@ class InterpretationContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(interpretation.sections), 4)
         self.assertIn("本地模式", interpretation.overview)
         self.assertIn("事业问题路由", interpretation.to_markdown())
+
+    def test_build_local_interpretation_separates_question_hexagram(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+            }
+        )
+        report = build_chart_report(
+            chart,
+            "分析事业",
+            hexagram_time_source="specified_time",
+            hexagram_time="2026-06-05T20:52",
+        )
+        interpretation = build_local_interpretation(report, parse_question_intent("分析事业"))
+        titles = [section.title for section in interpretation.sections]
+
+        self.assertIn("本命卦象参考", titles)
+        self.assertIn("问事卦象参考", titles)
+        self.assertIn("指定时间起卦", interpretation.to_markdown())
+        self.assertIn("question_hexagram.input_datetime", interpretation.to_markdown())
 
     def test_parse_json_interpretation_response(self):
         interpretation = parse_interpretation_response(

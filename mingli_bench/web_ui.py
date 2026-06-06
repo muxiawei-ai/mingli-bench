@@ -1222,11 +1222,11 @@ INDEX_HTML = """<!doctype html>
           </fieldset>
 
           <fieldset>
-            <legend>起卦设置</legend>
+            <legend>问事卦设置</legend>
             <label>
-              起卦来源
+              问事卦来源
               <select id="hexagramTimeSource" name="hexagram_time_source">
-                <option value="birth_time">出生时间起卦</option>
+                <option value="birth_time">仅本命卦，不另起问事卦</option>
                 <option value="question_time">问事当下起卦</option>
                 <option value="specified_time">指定时间起卦</option>
               </select>
@@ -1282,8 +1282,13 @@ INDEX_HTML = """<!doctype html>
           </section>
 
           <section class="panel" id="hexagramPanel" hidden>
-            <h2>卦象参考</h2>
+            <h2>本命卦参考</h2>
             <div class="panel-body" id="hexagramContent"></div>
+          </section>
+
+          <section class="panel" id="questionHexagramPanel" hidden>
+            <h2>问事卦参考</h2>
+            <div class="panel-body" id="questionHexagramContent"></div>
           </section>
 
           <section class="panel" id="integratedPanel" hidden>
@@ -1751,7 +1756,7 @@ INDEX_HTML = """<!doctype html>
           interpretation: "井水洁净，甘泉可饮。象征长期积蓄的实力与资源，此刻可以被汲取运用；对事业主题而言，重点是把已有积累转成可见成果，而不是重新从零开始。",
           caveats: [
             "这是前端卦象展示示例，用于验证盘面模块与导出版式。",
-            "真实起卦需要后续接入确定性的卦象计算引擎，不应由 LLM 直接编造。"
+            "真实起卦由后端确定性卦象计算引擎生成，不应由 LLM 直接编造。"
           ],
           line_details: [
             {index: 1, name: "初六 · 阴", text: "井泥不食，旧井无禽。", note: "底层资源尚未清理，旧方法需要重整。"},
@@ -1790,6 +1795,8 @@ INDEX_HTML = """<!doctype html>
           schema_version: "mingli_integrated_analysis.v1",
           domain: "事业",
           intent_confidence: 0.78,
+          hexagram_role: "question_hexagram",
+          hexagram_role_label: "问事卦",
           overview: "联合分析以日主癸（水）和五行结构为底盘，以本卦《井卦》、动九五、变卦《升卦》作为当下触发。在事业方向上，重点观察已有资源如何被整理、表达和逐步抬升。",
           sections: [
             {
@@ -1797,7 +1804,7 @@ INDEX_HTML = """<!doctype html>
               summary: "示例八字中火金较显，行动、表达和规则执行感较强；水木相对较弱，提示需要复盘、规划和长期生长线索。"
             },
             {
-              title: "卦象触发",
+              title: "问事卦触发",
               summary: "井卦提示已有资源和能力需要被汲取，九五提示资源可用，升卦则指向渐进式上升。"
             },
             {
@@ -1834,6 +1841,17 @@ INDEX_HTML = """<!doctype html>
         follow_up_questions: [
           "如果关注 2026 年事业节奏，可以继续追问具体月份。",
           "如果关注转型窗口，可以补充行业和当前岗位。"
+        ]
+      };
+      report.question_hexagram = report.hexagram;
+      report.hexagram = {
+        ...report.hexagram,
+        time_source: "birth_time",
+        time_source_label: "出生时间起卦",
+        input_datetime: "1990-08-16T09:30",
+        caveats: [
+          "这是前端本命卦示例，用于验证本命卦与问事卦的分栏展示。",
+          "真实起卦由后端确定性卦象计算引擎生成。"
         ]
       };
       const turns = [
@@ -2027,7 +2045,8 @@ INDEX_HTML = """<!doctype html>
 
       appendBaziProfileMarkdown(lines, report.bazi_profile);
       appendDayunMarkdown(lines, report.dayun);
-      appendHexagramMarkdown(lines, report.hexagram);
+      appendHexagramMarkdown(lines, report.hexagram, "本命卦参考");
+      appendHexagramMarkdown(lines, report.question_hexagram, "问事卦参考");
       appendIntegratedMarkdown(lines, report.integrated_analysis);
 
       conversationTurns.forEach((turn, index) => {
@@ -2048,13 +2067,13 @@ INDEX_HTML = """<!doctype html>
       return lines.join("\\n").replace(/\\n{3,}/g, "\\n\\n").trim() + "\\n";
     }
 
-    function appendHexagramMarkdown(lines, hexagram) {
+    function appendHexagramMarkdown(lines, hexagram, title = "卦象参考") {
       if (!hexagram) {
         return;
       }
       const primary = hexagram.primary || {};
       const changed = hexagram.changed || {};
-      lines.push("## 卦象参考");
+      lines.push(`## ${mdText(title)}`);
       if (hexagram.method) {
         lines.push(`- 起卦方法：${mdText(hexagram.method)}`);
       }
@@ -3181,7 +3200,8 @@ INDEX_HTML = """<!doctype html>
 
     ${renderPrintableBaziProfileSection(report.bazi_profile)}
     ${renderPrintableDayunSection(report.dayun)}
-    ${renderPrintableHexagramSection(report.hexagram)}
+    ${renderPrintableHexagramSection(report.hexagram, "本命卦参考")}
+    ${renderPrintableHexagramSection(report.question_hexagram, "问事卦参考")}
     ${renderPrintableIntegratedSection(report.integrated_analysis)}
 
     <section>
@@ -3295,7 +3315,7 @@ INDEX_HTML = """<!doctype html>
       return content ? `<section><h2>大运时间轴</h2>${content}</section>` : "";
     }
 
-    function renderPrintableHexagramSection(hexagram) {
+    function renderPrintableHexagramSection(hexagram, title = "卦象参考") {
       if (!hexagram || typeof hexagram !== "object") {
         return "";
       }
@@ -3307,7 +3327,7 @@ INDEX_HTML = """<!doctype html>
       const primaryName = stripHexSuffix(primary.name || "本卦");
       const changedName = stripHexSuffix(changed.name || "变卦");
       return `<section>
-        <h2>卦象参考</h2>
+        <h2>${escapeHtml(title)}</h2>
         <div class="hex-print-module">
           <header class="hex-print-head">
             <div class="hex-print-eyebrow">${escapeHtml([hexagram.method || "卦象展示", hexagram.time_source_label || ""].filter(Boolean).join(" · "))}</div>
@@ -3497,9 +3517,9 @@ INDEX_HTML = """<!doctype html>
       return `${digits[tens]}十${ones ? digits[ones] : ""}`;
     }
 
-    function renderHtmlHexagramSection(hexagram) {
+    function renderHtmlHexagramSection(hexagram, title = "卦象参考") {
       const module = renderHexagramModule(hexagram);
-      return module ? `<section><h2>卦象参考</h2>${module}</section>` : "";
+      return module ? `<section><h2>${escapeHtml(title)}</h2>${module}</section>` : "";
     }
 
     function renderHtmlIntegratedSection(integrated) {
@@ -3507,9 +3527,9 @@ INDEX_HTML = """<!doctype html>
       return module ? `<section><h2>八字+卦象联合分析</h2>${module}</section>` : "";
     }
 
-    function renderHexagramPanel(hexagram) {
-      const panel = document.getElementById("hexagramPanel");
-      const content = document.getElementById("hexagramContent");
+    function renderHexagramPanel(hexagram, panelId = "hexagramPanel", contentId = "hexagramContent") {
+      const panel = document.getElementById(panelId);
+      const content = document.getElementById(contentId);
       const module = renderHexagramModule(hexagram);
       if (!module) {
         panel.hidden = true;
@@ -3931,7 +3951,7 @@ INDEX_HTML = """<!doctype html>
     function resolveHexagramOptions(payload, data) {
       const source = payload.hexagram_time_source || "birth_time";
       const options = {hexagram_time_source: source};
-      const resolvedTime = data?.report?.hexagram?.input_datetime || payload.hexagram_time;
+      const resolvedTime = data?.report?.question_hexagram?.input_datetime || payload.hexagram_time;
       if (source !== "birth_time" && resolvedTime) {
         options.hexagram_time = resolvedTime;
       }
@@ -4002,6 +4022,7 @@ INDEX_HTML = """<!doctype html>
       renderBaziProfilePanel(report.bazi_profile);
       renderDayunPanel(report.dayun);
       renderHexagramPanel(report.hexagram);
+      renderHexagramPanel(report.question_hexagram, "questionHexagramPanel", "questionHexagramContent");
       renderIntegratedPanel(report.integrated_analysis);
       renderElements(report.element_profile || []);
       renderSignalTags(report, intent, inputQuality);

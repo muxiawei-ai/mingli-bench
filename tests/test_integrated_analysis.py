@@ -44,11 +44,12 @@ class IntegratedAnalysisTests(unittest.TestCase):
         assert analysis is not None
         self.assertEqual(analysis["schema_version"], INTEGRATED_ANALYSIS_SCHEMA_VERSION)
         self.assertEqual(analysis["domain"], "事业")
+        self.assertEqual(analysis["hexagram_role"], "hexagram")
         self.assertIn("日主丁", analysis["overview"])
         self.assertIn("临卦", analysis["overview"])
         self.assertEqual(
             [section["title"] for section in analysis["sections"]],
-            ["八字底盘", "卦象触发", "交叉印证", "事业综合框架"],
+            ["八字底盘", "本命卦触发", "交叉印证", "事业综合框架"],
         )
         signal_types = {signal["type"] for signal in analysis["alignment_signals"]}
         self.assertIn("reinforces_existing_pattern", signal_types)
@@ -67,6 +68,51 @@ class IntegratedAnalysisTests(unittest.TestCase):
         )
 
         self.assertIsNone(analysis)
+
+    def test_build_integrated_analysis_prefers_question_hexagram(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+                "country": "中国",
+            }
+        )
+        birth_hexagram = build_time_hexagram(chart)
+        assert birth_hexagram is not None
+        question_hexagram = dict(birth_hexagram)
+        question_hexagram["time_source"] = "specified_time"
+        question_hexagram["primary"] = {
+            **question_hexagram["primary"],
+            "name": "测试问事卦",
+        }
+        question_hexagram["reading"] = build_hexagram_reading(question_hexagram, "分析事业")
+
+        analysis = build_integrated_analysis(
+            question="分析事业",
+            summary={
+                "pillars_text": chart.pillars.display(),
+                "day_master": chart.day_master,
+                "day_master_element": chart.day_master_element,
+            },
+            element_profile=build_element_profile(chart),
+            strongest_elements=["火", "土"],
+            missing_elements=["木", "水"],
+            event_years=[],
+            hexagram=birth_hexagram,
+            question_hexagram=question_hexagram,
+        )
+
+        assert analysis is not None
+        self.assertEqual(analysis["hexagram_role"], "question_hexagram")
+        self.assertEqual(
+            [section["title"] for section in analysis["sections"]][1],
+            "问事卦触发",
+        )
+        self.assertIn("测试问事卦", analysis["overview"])
 
 
 if __name__ == "__main__":

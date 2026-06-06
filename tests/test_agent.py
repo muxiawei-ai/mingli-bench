@@ -89,12 +89,43 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("不要自行编造三合、三会、六合、六冲名称", prompt)
         self.assertIn("report.option_semantics", prompt)
         self.assertIn("report.hexagram", prompt)
+        self.assertIn("report.question_hexagram", prompt)
+        self.assertIn("本命卦", prompt)
+        self.assertIn("问事卦", prompt)
+        self.assertIn("不能互相替代", prompt)
         self.assertIn("reading 规则解读", prompt)
         self.assertIn("不要自行重新起卦", prompt)
         self.assertIn('"primary": {', prompt)
         self.assertIn('"name": "临卦"', prompt)
+        self.assertIn('"question_hexagram": null', prompt)
         self.assertIn("report.integrated_analysis", prompt)
         self.assertIn("八字+卦象联合分析", prompt)
+
+    def test_build_interpretation_prompt_includes_question_hexagram_when_requested(self):
+        chart = build_bazi_chart(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+                "country": "中国",
+            }
+        )
+        prompt = build_interpretation_prompt(
+            chart,
+            "分析事业",
+            hexagram_time_source="specified_time",
+            hexagram_time="2026-06-05T20:52",
+        )
+
+        self.assertIn('"hexagram": {', prompt)
+        self.assertIn('"question_hexagram": {', prompt)
+        self.assertIn('"time_source": "birth_time"', prompt)
+        self.assertIn('"time_source": "specified_time"', prompt)
+        self.assertIn('"input_datetime": "2026-06-05T20:52"', prompt)
+        self.assertIn("问事卦象参考", prompt)
 
     def test_build_interpretation_prompt_includes_event_branch_interactions(self):
         chart = build_bazi_chart(
@@ -222,7 +253,7 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("大运时间轴", result.interpretation.to_markdown())
         self.assertIn("day_master_strength", result.interpretation.to_markdown())
         self.assertIn("hidden_stems_count", result.interpretation.to_markdown())
-        self.assertIn("卦象参考", result.interpretation.to_markdown())
+        self.assertIn("本命卦象参考", result.interpretation.to_markdown())
         self.assertIn("咸临，吉，无不利", result.interpretation.to_markdown())
         self.assertIn("变卦方向", result.interpretation.to_markdown())
         self.assertIn("八字卦象联合分析", result.interpretation.to_markdown())
@@ -230,6 +261,35 @@ class MingLiAgentTests(unittest.TestCase):
         self.assertIn("trace", result.as_dict())
         self.assertIn("intent", result.as_dict())
         self.assertIn("interpretation", result.as_dict())
+
+    def test_agent_without_model_returns_birth_and_question_hexagrams(self):
+        result = MingLiAgent().run(
+            {
+                "calendar_type": "solar",
+                "year": 1978,
+                "month": 4,
+                "day": 5,
+                "hour": 18,
+                "location": "台湾",
+                "country": "中国",
+            },
+            question="分析事业",
+            hexagram_time_source="specified_time",
+            hexagram_time="2026-06-05T20:52",
+        )
+        trace = {stage.name: stage for stage in result.trace}
+
+        self.assertIsNotNone(result.report.hexagram)
+        self.assertIsNotNone(result.report.question_hexagram)
+        assert result.report.hexagram is not None
+        assert result.report.question_hexagram is not None
+        self.assertEqual(result.report.hexagram["time_source"], "birth_time")
+        self.assertEqual(result.report.question_hexagram["time_source"], "specified_time")
+        self.assertEqual(result.report.question_hexagram["primary"]["name"], "大过卦")
+        self.assertTrue(trace["report"].data["has_hexagram"])
+        self.assertTrue(trace["report"].data["has_question_hexagram"])
+        self.assertEqual(trace["report"].data["question_hexagram_time_source"], "specified_time")
+        self.assertIn("问事卦象参考", result.interpretation.to_markdown())
 
     def test_agent_without_model_includes_event_year_relation_section(self):
         result = MingLiAgent().run(

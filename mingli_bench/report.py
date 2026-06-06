@@ -59,6 +59,7 @@ class ChartReport:
     candidate_year_scores: List[Dict[str, Any]]
     dayun: Dict[str, Any]
     hexagram: Optional[Dict[str, Any]]
+    question_hexagram: Optional[Dict[str, Any]]
     integrated_analysis: Optional[Dict[str, Any]]
     caveats: List[str]
     follow_up_questions: List[str]
@@ -77,6 +78,7 @@ class ChartReport:
             "candidate_year_scores": self.candidate_year_scores,
             "dayun": self.dayun,
             "hexagram": self.hexagram,
+            "question_hexagram": self.question_hexagram,
             "integrated_analysis": self.integrated_analysis,
             "caveats": self.caveats,
             "follow_up_questions": self.follow_up_questions,
@@ -215,44 +217,8 @@ class ChartReport:
                 missing = "、".join(self.dayun.get("missing_inputs") or [])
                 lines.append(f"- 大运未生成: 缺少 {missing or '必要输入'}")
 
-        if self.hexagram:
-            primary = self.hexagram.get("primary") or {}
-            changed = self.hexagram.get("changed") or {}
-            lines.extend(["", "### 卦象参考"])
-            lines.append(f"- 起卦方法: {self.hexagram.get('method')}")
-            if self.hexagram.get("time_source_label"):
-                lines.append(f"- 起卦来源: {self.hexagram['time_source_label']}")
-            lines.append(
-                "- 本卦: "
-                f"{primary.get('name')} {primary.get('symbol')} "
-                f"第{primary.get('number')}卦"
-            )
-            if primary.get("judgment"):
-                lines.append(f"  - 卦辞: {primary['judgment']}")
-            if primary.get("theme"):
-                lines.append(f"  - 主题: {primary['theme']}")
-            lines.append(
-                "- 变卦: "
-                f"{changed.get('name')} {changed.get('symbol')} "
-                f"第{changed.get('number')}卦"
-            )
-            if changed.get("judgment"):
-                lines.append(f"  - 卦辞: {changed['judgment']}")
-            lines.append(
-                "- 动爻: "
-                f"第{self.hexagram.get('moving_line')}爻 "
-                f"({self.hexagram.get('moving_line_name')})"
-            )
-            if self.hexagram.get("moving_line_text"):
-                lines.append(f"  - 爻辞: {self.hexagram['moving_line_text']}")
-            reading = self.hexagram.get("reading") or {}
-            if reading.get("overview"):
-                lines.append(f"- 规则解读: {reading['overview']}")
-            for section in reading.get("sections") or []:
-                title = section.get("title")
-                summary = section.get("summary")
-                if title and summary:
-                    lines.append(f"  - {title}: {summary}")
+        _append_hexagram_markdown(lines, "本命卦象参考", self.hexagram)
+        _append_hexagram_markdown(lines, "问事卦象参考", self.question_hexagram)
 
         if self.integrated_analysis:
             lines.extend(["", "### 八字+卦象联合分析"])
@@ -269,6 +235,54 @@ class ChartReport:
             for question in self.follow_up_questions:
                 lines.append(f"- {question}")
         return "\n".join(lines)
+
+
+def _append_hexagram_markdown(
+    lines: List[str],
+    title: str,
+    hexagram: Optional[Dict[str, Any]],
+) -> None:
+    if not hexagram:
+        return
+    primary = hexagram.get("primary") or {}
+    changed = hexagram.get("changed") or {}
+    lines.extend(["", f"### {title}"])
+    lines.append(f"- 起卦方法: {hexagram.get('method')}")
+    if hexagram.get("time_source_label"):
+        lines.append(f"- 起卦来源: {hexagram['time_source_label']}")
+    if hexagram.get("input_datetime"):
+        lines.append(f"- 起卦时间: {hexagram['input_datetime']}")
+    lines.append(
+        "- 本卦: "
+        f"{primary.get('name')} {primary.get('symbol')} "
+        f"第{primary.get('number')}卦"
+    )
+    if primary.get("judgment"):
+        lines.append(f"  - 卦辞: {primary['judgment']}")
+    if primary.get("theme"):
+        lines.append(f"  - 主题: {primary['theme']}")
+    lines.append(
+        "- 变卦: "
+        f"{changed.get('name')} {changed.get('symbol')} "
+        f"第{changed.get('number')}卦"
+    )
+    if changed.get("judgment"):
+        lines.append(f"  - 卦辞: {changed['judgment']}")
+    lines.append(
+        "- 动爻: "
+        f"第{hexagram.get('moving_line')}爻 "
+        f"({hexagram.get('moving_line_name')})"
+    )
+    if hexagram.get("moving_line_text"):
+        lines.append(f"  - 爻辞: {hexagram['moving_line_text']}")
+    reading = hexagram.get("reading") or {}
+    if reading.get("overview"):
+        lines.append(f"- 规则解读: {reading['overview']}")
+    for section in reading.get("sections") or []:
+        title = section.get("title")
+        summary = section.get("summary")
+        if title and summary:
+            lines.append(f"  - {title}: {summary}")
 
 
 def classify_element_count(count: int) -> str:
@@ -365,13 +379,16 @@ def build_chart_report(
         event_years,
         option_semantics,
     )
-    hexagram = _build_report_hexagram(
+    hexagram = build_time_hexagram(chart, time_source="birth_time")
+    if hexagram:
+        hexagram["reading"] = build_hexagram_reading(hexagram, question)
+    question_hexagram = _build_question_hexagram(
         chart,
         time_source=hexagram_time_source,
         hexagram_time=hexagram_time,
     )
-    if hexagram:
-        hexagram["reading"] = build_hexagram_reading(hexagram, question)
+    if question_hexagram:
+        question_hexagram["reading"] = build_hexagram_reading(question_hexagram, question)
     integrated_analysis = build_integrated_analysis(
         question=question,
         summary=summary,
@@ -380,6 +397,7 @@ def build_chart_report(
         missing_elements=missing_elements,
         event_years=event_years,
         hexagram=hexagram,
+        question_hexagram=question_hexagram,
     )
     caveats = _build_caveats(chart)
     follow_up_questions = _build_follow_up_questions(chart, question)
@@ -396,20 +414,21 @@ def build_chart_report(
         candidate_year_scores=candidate_year_scores,
         dayun=dayun,
         hexagram=hexagram,
+        question_hexagram=question_hexagram,
         integrated_analysis=integrated_analysis,
         caveats=caveats,
         follow_up_questions=follow_up_questions,
     )
 
 
-def _build_report_hexagram(
+def _build_question_hexagram(
     chart: BaziChart,
     *,
     time_source: str,
     hexagram_time: Optional[Any],
 ) -> Optional[Dict[str, Any]]:
     if time_source == "birth_time":
-        return build_time_hexagram(chart, time_source=time_source)
+        return None
 
     if time_source not in {"question_time", "specified_time"}:
         raise ValueError(f"unsupported hexagram_time_source: {time_source!r}")

@@ -118,6 +118,7 @@ JSON 必须符合以下结构：
   "follow_up_questions": ["如果信息不足，需要追问的问题"],
   "caveats": ["整体限制和不确定性"]
 }}
+如果 report.question_hexagram 存在，sections 中应包含“问事卦象参考”，并与 report.hexagram 的本命卦象参考分开说明。
 如果用户问题包含 A/B/C/D 选项，请在 answer_choice 中给出最终选择（"A"、"B"、"C" 或 "D"）。
 如果没有选项或无法判断，请使用 null。answer_confidence 为 0 到 1 之间的小数，表示对该选项的审慎置信度。
 如果用户问题包含 A/B/C/D 选项，请在 option_scores 中为每个选项给出 0 到 1 的分数和一句理由，例如：
@@ -199,10 +200,19 @@ def build_local_interpretation(
     if report.hexagram:
         sections.append(
             InterpretationSection(
-                title="卦象参考",
+                title="本命卦象参考",
                 summary=_hexagram_summary(report),
                 evidence=_hexagram_evidence(report),
                 caveats=list(report.hexagram.get("caveats") or []),
+            )
+        )
+    if report.question_hexagram:
+        sections.append(
+            InterpretationSection(
+                title="问事卦象参考",
+                summary=_question_hexagram_summary(report),
+                evidence=_question_hexagram_evidence(report),
+                caveats=list(report.question_hexagram.get("caveats") or []),
             )
         )
     if report.integrated_analysis:
@@ -400,13 +410,22 @@ def _dayun_evidence(report: ChartReport) -> List[str]:
 
 def _hexagram_summary(report: ChartReport) -> str:
     hexagram = report.hexagram or {}
+    return _format_hexagram_summary(hexagram, "本命卦")
+
+
+def _question_hexagram_summary(report: ChartReport) -> str:
+    hexagram = report.question_hexagram or {}
+    return _format_hexagram_summary(hexagram, "问事卦")
+
+
+def _format_hexagram_summary(hexagram: Dict[str, Any], role_label: str) -> str:
     reading = hexagram.get("reading") or {}
     if reading.get("overview"):
-        return str(reading["overview"])
+        return f"{role_label}：{reading['overview']}"
     primary = hexagram.get("primary") or {}
     changed = hexagram.get("changed") or {}
     return (
-        f"本地梅花易数时间法生成本卦《{primary.get('name', '-')}》"
+        f"{role_label}由本地梅花易数时间法生成，本卦《{primary.get('name', '-')}》"
         f"（{primary.get('description', '-')}），"
         f"动{hexagram.get('moving_line_name', '-')}，"
         f"变卦为《{changed.get('name', '-')}》"
@@ -416,7 +435,20 @@ def _hexagram_summary(report: ChartReport) -> str:
 
 def _hexagram_evidence(report: ChartReport) -> List[str]:
     hexagram = report.hexagram or {}
+    return _format_hexagram_evidence(hexagram, "hexagram")
+
+
+def _question_hexagram_evidence(report: ChartReport) -> List[str]:
+    hexagram = report.question_hexagram or {}
+    return _format_hexagram_evidence(hexagram, "question_hexagram")
+
+
+def _format_hexagram_evidence(hexagram: Dict[str, Any], prefix: str) -> List[str]:
     evidence = [str(item) for item in hexagram.get("basis") or []]
+    if hexagram.get("time_source_label"):
+        evidence.append(f"{prefix}.time_source_label: {hexagram['time_source_label']}")
+    if hexagram.get("input_datetime"):
+        evidence.append(f"{prefix}.input_datetime: {hexagram['input_datetime']}")
     if hexagram.get("moving_line_text"):
         evidence.append(
             f"moving_line_text: {hexagram.get('moving_line_name', '-')}"
